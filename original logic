@@ -1,0 +1,29 @@
+call:
+	lookup user media fd
+	if n/a : send n/a
+	set status to eachother + 100 (waiting)
+	-->x2 ring
+
+accept:
+	lookup other's media fd
+	if n/a : kick
+	if other media status != mine + 100 : kick
+	find my clientssl index, set other media fd to my clientssl index
+	find other clientssl index, set my media fd to other clientssl index
+	-->x2 start
+
+reject:
+	lookup other's mediafd
+	if n/a : kick
+	if other media status != mine + 100 : kick
+	-->me nostart
+
+end:
+	lookup other's mediafd
+	if n/a : kick
+	find my clientssl index
+	if other media status != my clientssl index : kick
+	-->me end
+
+MEDIAFD:
+	write to the clientssl[value] the stuff

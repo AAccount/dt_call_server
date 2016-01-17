@@ -1,0 +1,5 @@
+*.gch
+*.o
+server
+*.pem
+
