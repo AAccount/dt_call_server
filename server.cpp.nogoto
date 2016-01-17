@@ -1,0 +1,656 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h> 
+#include <sys/socket.h>
+#include <sys/time.h> 
+#include <sys/select.h>
+#include <netinet/in.h>
+#include <signal.h>
+#include <arpa/inet.h>
+
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+#include "const.h"
+#include "error.h"
+#include "server.hpp"
+#include "pgutils.hpp"
+
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <vector>
+using namespace std;
+
+unordered_map<int, int> sdinfo; //information on what each socket descriptor is (command, media) and what it's supposed to be doing if it's a media socket
+SSL *clientssl[MAXCLIENT*2];
+int clientsd[MAXCLIENT*2];
+
+int main(int argc, char *argv[])
+{
+	//you MUST establish the postgres utilities instance variable here or get a segmentation inside on c->prepare
+	PGUtils *postgres = PGUtils::getInstance();
+	
+	int cmdFD, incomingCmd, cmdPort; //command port stuff
+	int mediaFD, incomingMedia, mediaPort; //media port stuff
+	int returnValue; //error handling
+	int maxsd, i, sd; //select related vars
+	socklen_t clilen;
+	char buffer[MAXCMD+1];
+	
+	struct sockaddr_in serv_cmd, serv_media, cli_addr;
+	fd_set readfds;
+
+	if (argc < 3)
+	{
+		cout << "Must provide command AND media port\n";
+		exit(1);
+	}
+
+	//openssl setup
+	SSL_load_error_strings();
+	SSL_library_init();
+	OpenSSL_add_all_algorithms();
+
+	//set ssl properties
+	SSL_CTX *sslcontext;
+	sslcontext = SSL_CTX_new(TLSv1_method());
+	errorEQ0((long long)sslcontext, "error creating ssl connection properties"); //TODO: set ifdef for 32 bit
+	SSL_CTX_set_options(sslcontext, SSL_OP_NO_TLSv1);
+	SSL_CTX_set_options(sslcontext, SSL_OP_NO_TLSv1_1);
+	SSL_CTX_set_options(sslcontext, SSL_OP_SINGLE_DH_USE);
+	returnValue= SSL_CTX_use_PrivateKey_file(sslcontext, "/home/Daniel/Documents/untitled_folder/private.pem", SSL_FILETYPE_PEM);
+	errorLT0(returnValue, "error retrieving server's private key");
+	returnValue = SSL_CTX_use_certificate_file(sslcontext, "/home/Daniel/Documents/untitled_folder/public.pem", SSL_FILETYPE_PEM);
+	errorLT0(returnValue, "error retrieving server's public key");
+
+	//setup command port to accept new connections
+	cmdFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
+	errorLT0(cmdFD, "socket system call error for command");
+	bzero((char *) &serv_cmd, sizeof(serv_cmd));
+	cmdPort = atoi(argv[1]);
+	serv_cmd.sin_family = AF_INET;
+	serv_cmd.sin_addr.s_addr = INADDR_ANY; //listen on any nic
+	serv_cmd.sin_port = htons(cmdPort);
+	returnValue = bind(cmdFD, (struct sockaddr *) &serv_cmd, sizeof(serv_cmd)); //bind socket to nic and port
+	errorLT0(returnValue, "bind system call error for command");
+	listen(cmdFD, 5);
+
+	//setup media port to accept new connections
+	mediaFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
+	errorLT0(mediaFD, "socket system call error for media");
+	bzero((char *) &serv_media, sizeof(serv_media));
+	mediaPort = atoi(argv[2]);
+	serv_media.sin_family = AF_INET;
+	serv_media.sin_addr.s_addr = INADDR_ANY; //listen on any nic
+	serv_media.sin_port = htons(mediaPort);
+	returnValue = bind(mediaFD, (struct sockaddr *) &serv_media, sizeof(serv_media)); //bind socket to nic and port
+	errorLT0(returnValue, "bind system call error for media");
+	listen(mediaFD, 5);
+
+	clilen = sizeof(cli_addr);
+
+	for(i=0; i<MAXCLIENT*2; i++)
+	{
+		clientsd[i] = 0; //zero out all client socket descriptors initially
+		clientssl[i] = (SSL*)0; //zero out pointer addresses
+	}
+
+	//sigpipe is thrown for closing the broken connection. it's gonna happen for a voip server handling mobile clients
+	//what're you gonna do about it... IGNORE IT!!
+	signal(SIGPIPE, SIG_IGN);
+
+	while(true) //forever
+	{
+		cout << "------------------------------------------\n----------------------------------------\n";
+		FD_ZERO(&readfds);
+		FD_SET(cmdFD, &readfds);
+		FD_SET(mediaFD, &readfds);
+		maxsd = (cmdFD > mediaFD) ? cmdFD : mediaFD; //quick 1 liner for determining the bigger sd
+		
+		for(i=0; i<MAXCLIENT*2; i++)
+		{
+			sd = clientsd[i];
+			if(sd > 0)
+			{
+				FD_SET(sd, &readfds);
+			}
+			if(sd > maxsd)
+			{
+				maxsd = sd;
+			}
+		}
+
+		returnValue = select(maxsd+1, &readfds, NULL, NULL, NULL);
+		errorLT0(returnValue, "select system call error");
+		cout << "select has " << returnValue << " sockets ready\n";
+		
+		//check for a new incoming connection on command port
+		if(FD_ISSET(cmdFD, &readfds))
+		{
+			incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
+			errorLT0(incomingCmd, "accept system call error for command");
+
+			//setup ssl connection
+			SSL *connssl = SSL_new(sslcontext);
+			SSL_set_fd(connssl, incomingCmd);
+			returnValue = SSL_accept(connssl);
+			errorEQ0(returnValue, "non fatal error creating ssl connection on command");
+			errorLT0(returnValue, "fatal error creating ssl connection on command");
+			cout << "new socket descriptor of " << incomingCmd << " from " << inet_ntoa(cli_addr.sin_addr) << "\n";
+
+			//add the new socket descriptor to the client array
+			for(i=0; i<MAXCLIENT*2; i++)
+			{
+				if(clientsd[i] == 0)
+				{
+					cout << "client array spot " << i << " filled with new socket " << incomingCmd << "\n";
+					clientsd[i] = incomingCmd;
+					clientssl[i] = connssl;
+					sdinfo[incomingCmd] = SOCKCMD;
+					break;
+				}
+			}
+		}
+
+		//check for a new incoming connection on media port
+		if(FD_ISSET(mediaFD, &readfds))
+		{
+			incomingMedia = accept(mediaFD, (struct sockaddr *) &cli_addr, &clilen);
+			errorLT0(incomingMedia, "accept system call error for media");
+
+			//setup ssl connection
+			SSL *connssl = SSL_new(sslcontext);
+			SSL_set_fd(connssl, incomingMedia);
+			returnValue = SSL_accept(connssl);
+			errorEQ0(returnValue, "non fatal error creating ssl connection on media");
+			errorLT0(returnValue, "fatal error creating ssl connection on media");
+			cout << "new socket descriptor of " << incomingMedia << " from " << inet_ntoa(cli_addr.sin_addr) << "\n";
+
+			//add the new socket descriptor to the client array
+			for(i=0; i<MAXCLIENT*2; i++)
+			{
+				if(clientsd[i] == 0)
+				{
+					cout << "client array spot " << i << " filled with new socket " << incomingMedia << "\n";
+					clientsd[i] = incomingMedia;
+					clientssl[i] = connssl;
+					sdinfo[incomingMedia] = SOCKMEDIANEW;
+					break;
+				}
+			}
+		}
+
+		//check for data on an existing connection
+		for(i=0; i<MAXCLIENT*2; i++)
+		{//figure out if it's a command, or voice data. handle appropirately
+
+			if(clientsd[i] != 0 && FD_ISSET(clientsd[i], &readfds))
+			{
+				//when a client disconnects, for some reason, the socket is marked as having "stuff" on it.
+				//however that "stuff" is no good for ssl, so use eventful boolean to indicate if there was
+				//any ssl work done for this actively marked socket descriptor. if not, drop the socket.
+				bool waiting = true, eventful=false;
+				bzero(buffer,MAXCMD+1);
+
+				do
+				{//wait for the entire ssl record to come in first before doing something
+					returnValue = SSL_read(clientssl[i], buffer, MAXCMD);
+					int sslerr = SSL_get_error(clientssl[i], returnValue);
+					switch (sslerr)
+					{
+						case SSL_ERROR_NONE:
+							cout << "ssl buffer ready\n";
+							waiting = false;
+							eventful = true; //an ssl operation completed this round, something did happen
+							break;
+						//other cases when necessary. right now only no error signals a successful read
+					}
+				} while(waiting && SSL_pending(clientssl[i]));
+
+				//check whether this flagged socket descriptor was of any use this round. if not it's dead
+				if(!eventful)
+				{
+					cout << "socket " << i << " is dead. remove it\n";
+					removeClient(i);
+				}
+				else
+				{
+					int sdstate = sdinfo[clientsd[i]];
+					if(sdstate == SOCKCMD)
+					{
+						cout << "processing command port from client\n";
+						vector<string> *commandContents = parse(buffer);
+						try
+						{
+							long now = time(NULL);
+							long timestamp = 0;
+							timestamp = stol(commandContents->at(0)); //catch is for this
+							int fivemins = 60*5;
+							cout<< "time difference: " << now-timestamp << "\n";
+							if(abs(now - timestamp) < fivemins)
+							{//only bother processing the command if the timestamp was valid
+								if(commandContents->at(1) == "login") //you can do string comparison like this in c++
+								{
+									cout << "attempting login of " << commandContents->at(2) << " : " << commandContents->at(3) << "\n";
+									long sessionid = postgres->authenticate(commandContents->at(2), commandContents->at(3));
+									if(sessionid >= 0)
+									{
+										cout << "successful login with new sessionid " << sessionid << "\n";
+										postgres->setFd(sessionid, clientsd[i], COMMAND);
+										string resp = to_string(now) + "|resp|login|" + to_string(sessionid);
+										bzero(buffer, MAXCMD+1);
+										memcpy(buffer, resp.c_str(), resp.size());
+										SSL_write(clientssl[i], buffer, resp.size());
+									}
+									else
+									{//incorrect login credentials. give no hints, just disconnect
+										cout << "bad login\n";
+										removeClient(i);
+									}
+							
+								}
+
+								//variables written from touma calling zapper perspective
+								//command will come from touma's cmd fd
+								else if (commandContents->at(1) == "call")
+								{//timestamp|call|zapper|toumaid
+								
+									string zapper = commandContents->at(2);
+									string touma = postgres->userFromCmdFd(clientsd[i/*command is coming from touma's cmd fd*/]);
+									long sessionid = stol(commandContents->at(3));
+
+									if(postgres->verifySessionid(sessionid, clientsd[i]))
+									{
+										cout << "attempting to start call from " << postgres->userFromSessionid(sessionid) << " to " << zapper << "\n";
+
+										//find out if touma and zapper have media fds
+										int zapperMediaFd = postgres->userFd(zapper, MEDIA);
+										int toumaMediaFd = postgres->userFd(touma, MEDIA);
+										if((zapperMediaFd != EGENERIC) && (toumaMediaFd != EGENERIC))
+										{
+											//setup the media fd statuses
+											int zapperMediaIndex = fdIndex(zapperMediaFd);
+											int toumaMediaIndex = fdIndex(toumaMediaFd);
+											sdinfo[zapperMediaFd] = INITWAITING + toumaMediaIndex;
+											sdinfo[toumaMediaFd] = INITWAITING + zapperMediaIndex;
+
+											//tell touma that zapper is being rung
+											cout << zapper << " is online, initiate a call\n";
+											string notifyTouma = to_string(now) + "|ring|available" + zapper;
+											bzero(buffer, MAXCMD+1);
+											memcpy(buffer, notifyTouma.c_str(), notifyTouma.size());
+											SSL_write(clientssl[i], buffer, notifyTouma.size());
+												
+											//tell zapper touma wants to call her
+											string notifyzapper = to_string(now) + "|ring|incoming" + touma;
+											int zapperCmdFd = postgres->userFd(zapper, COMMAND);
+											int zapperCmdIndex = fdIndex(zapperCmdFd);
+											bzero(buffer, MAXCMD+1);
+											memcpy(buffer, notifyzapper.c_str(), notifyzapper.size());
+											SSL_write(clientssl[zapperCmdIndex], buffer, notifyzapper.size());
+										}
+										else
+										{//not online
+											string na = to_string(now) + "|ring|notavailable|" + zapper;
+											bzero(buffer, MAXCMD+1);
+											memcpy(buffer, na.c_str(), na.size());
+											SSL_write(clientssl[i], buffer, na.size());
+										}
+									}
+									else
+									{
+										cout << "invalid sessionid attempting call initiate\n";
+										removeClient(i);
+									}
+								}
+								else if (commandContents->at(1) == "lookup")
+								{
+									cout << "processing lookup command\n";
+									long sessionid = stol(commandContents->at(3));
+									if(postgres->verifySessionid(sessionid, clientsd[i]))
+									{
+										string exists = (postgres->doesUserExist(commandContents->at(2))) ? "exists" : "doesntexist";
+										string resp = to_string(now) + "|resp|lookup|" + exists;
+										bzero(buffer, MAXCMD+1);
+										memcpy(buffer, resp.c_str(), resp.size());
+										SSL_write(clientssl[i], buffer, resp.size());
+									}
+									else
+									{
+										cout << "invalid sessionid attempting to do a user lookup\n";
+										removeClient(i);
+									}
+								}
+
+								//variables written when zapper accepets touma's call
+								//command will come from zapper's cmd fd
+								else if (commandContents->at(1) == "accept")
+								{//timestamp|accept|touma|zapperid
+									long sessionid = stol(commandContents->at(3));
+									string zapper = postgres->userFromSessionid(sessionid);
+									string touma = commandContents->at(2);
+									if(isRealCall(zapper, touma))
+									{
+										int zapperMediaFd = postgres->userFd(zapper, MEDIA);
+										int zapperMediaIndex = fdIndex(zapperMediaFd);
+										int toumaMediaFd = postgres->userFd(touma, MEDIA);
+										int toumaMediaIndex = fdIndex(toumaMediaFd);
+										sdinfo[zapperMediaFd] = toumaMediaIndex;
+										sdinfo[toumaMediaFd] = zapperMediaIndex;
+
+										//tell touma zapper accepted his call request										
+										//	AND confirm to touma, it's zapper he's being connected with
+										int toumaCmdFd = postgres->userFd(touma, COMMAND);
+										int toumaCmdIndex = fdIndex(toumaCmdFd);
+										string toumaresp = to_string(now) + "|call|start|" + zapper;
+										bzero(buffer, MAXCMD + 1);
+										memcpy(buffer, toumaresp.c_str(), toumaresp.size());
+										SSL_write(clientssl[toumaCmdIndex], buffer, toumaresp.size());
+
+										//confirm to zapper she's being connected to touma
+										//	you already know zapperCmdIndex... it's this one "i" because the accept call from touma would've come from her
+										string zapperresp = to_string(now) + "|call|start|" + touma;
+										bzero(buffer, MAXCMD + 1);
+										memcpy(buffer, zapperresp.c_str(), zapperresp.size());
+										SSL_write(clientssl[i], buffer, zapperresp.size());
+									}
+									else
+									{
+										removeClient(i);
+									}
+
+								}
+								//variables modeled after setup touma calling zapper for easier readability
+								//reject command would come from zapper's cmd fd
+								else if (commandContents->at(1) == "reject")
+								{//timestamp|reject|touma|sessionid
+									long sessionid = stol(commandContents->at(3));
+									string zapper = postgres->userFromSessionid(sessionid);
+									string touma = commandContents->at(2);
+
+									if(isRealCall(zapper, touma))
+									{
+										//set touma's and zapper's media socket state back to idle
+										int toumaMediaFd = postgres->userFd(touma, MEDIA);
+										int zapperMediaFd = postgres->userFd(zapper, MEDIA);
+										sdinfo[toumaMediaFd] = SOCKMEDIAIDLE;
+										sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
+
+										//tell touma his call was rejected
+										string resp = to_string(now) + "|call|reject|" + zapper;
+										bzero(buffer, MAXCMD + 1);
+										memcpy(buffer, resp.c_str(), resp.size());
+										int toumaCmdIndex = fdIndex(postgres->userFd(touma, COMMAND));
+										SSL_write(clientssl[toumaCmdIndex], buffer, resp.size());
+									}
+									else
+									{
+										removeClient(i);
+									}
+
+								}
+								//variables modled after setup touma calling zapper for easier readability
+								//end could come from either of them
+								else if (commandContents->at(1) == "end")
+								{
+									//timestamp|end|touma|zappersid : zapper wants to end the call with touma
+									//timestamp|end|zapper|toumasid : touma wants to end the call with zapper
+
+									long sessionid = stol(commandContents->at(3));
+									string wants2End = postgres->userFromSessionid(sessionid);
+									string stillTalking = commandContents->at(2);
+
+									if(isRealCall(wants2End, stillTalking))
+									{
+										//set touma's and zapper's media socket state back to idle
+										int endMediaFd = postgres->userFd(wants2End, MEDIA);
+										int talkingMediaFd = postgres->userFd(stillTalking, MEDIA);
+										sdinfo[endMediaFd] = SOCKMEDIAIDLE;
+										sdinfo[talkingMediaFd] = SOCKMEDIAIDLE;
+
+										//tell the one still talking, it's time to hang up
+										string resp = to_string(now) + "|call|end|" + wants2End;
+										bzero(buffer, MAXCMD + 1);
+										memcpy(buffer, resp.c_str(), resp.size());
+										int talkingCmdFd = postgres->userFd(stillTalking, COMMAND);
+										int talkingCmdIndex = fdIndex(talkingCmdFd);
+										SSL_write(clientssl[talkingCmdIndex], buffer, resp.size());
+									}
+									else
+									{
+										removeClient(i);
+									}
+								}
+								else //commandContents[1] is not a known command... something fishy???
+								{
+									cout << "unknown command of: " << commandContents->at(1) << "\n";
+									removeClient(i);
+								}
+							}
+							else
+							{//timestamp was outside +-5mins window of error. disconnect on assumption of replay
+								cout << "timestamp outside +- 5mins window of error: " << abs(now - timestamp)/60 << "\n";
+								removeClient(i);
+							}
+						}
+						catch(invalid_argument &badarg)
+						{//timestamp couldn't be parsed. assume someone is trying something fishy
+							cout << "can't get timestamp from command: " << badarg.what() << "\n";
+							removeClient(i);
+							delete commandContents;
+						}
+						catch(out_of_range &exrange)
+						{
+							cout << "client sent a misformed command\n";
+							removeClient(i);
+						}
+						delete commandContents;
+					}
+					else if(sdstate == SOCKMEDIANEW)
+					{
+						cout << "going to try and associate new media socket with an existing client\n";
+						vector<string> *commandContents = parse(buffer);
+						try
+						{
+							long now = time(NULL);
+							long timestamp = stol(commandContents->at(0));
+							long fivemins = 60*5;
+							if(abs(now - timestamp) < fivemins)
+							{//besides presenting the right sessionid to associate with the user (which could be a lucky guess)
+							 //	try and match the ip address of the media and command. not a 100% guarantee still but if this
+							 //	fails, that is at least another way to figure out something isn't right.
+								
+								// https://stackoverflow.com/questions/20472072/c-socket-get-ip-adress-from-filedescriptor-returned-from-accept
+								struct sockaddr_in thisfd;
+								socklen_t thisfdSize = sizeof(struct sockaddr_in);
+								getpeername(clientsd[i], (struct sockaddr*) &thisfd, &thisfdSize);
+								int thisfdip = thisfd.sin_addr.s_addr;
+
+								long sessionid = stol(commandContents->at(1));
+								string intendedUser = postgres->userFromSessionid(sessionid);
+								if(intendedUser != "")
+								{
+									int cmdfd = postgres->userFd(intendedUser, COMMAND);
+									if(cmdfd != EGENERIC)
+									{
+										struct sockaddr_in cmdFdInfo;
+										socklen_t cmdInfoSize = sizeof(struct sockaddr_in);
+										getpeername(cmdfd, (struct sockaddr*) &cmdFdInfo, &cmdInfoSize);
+										int cmdip = cmdFdInfo.sin_addr.s_addr;
+										if(thisfdip == cmdip)
+										{
+											postgres->setFd(sessionid, clientsd[i], MEDIA);
+											sdinfo[clientsd[i]] = SOCKMEDIAIDLE;									
+										}
+										else
+										{//valid timestamp, valid sessionid, sessionid has command fd... but the media port association came from a different ip than the command fd...??? HOW??? all requests come from a cell phone app with 1 ip...
+											cout << "SOMETHING IS REALLY WRONG. with a valid timestamp, sessionid, and a command fd associated with the sessionid, the request to associate the media fd is coming from another ip???\n";
+											removeClient(i);
+										}
+									}
+									else
+									{//with a valid timestamp, valid sessionid, the user somehow doesn't already have a command fd... either something is wrong with the program or someone has correctly guessed a sessionid
+										cout << "SOMETHING IS WRONG!!! valid timestamp and sessionid but no commandfd???\n";
+										removeClient(i);
+									}
+								}
+								else
+								{
+									cout << "erroneous sessionid sent... brute force???\n";
+									removeClient(i);
+								}
+							}
+							else
+							{
+								cout << "invalid timestamp for associate media socket with client\n";
+								removeClient(i);
+							}
+						}
+						catch(invalid_argument &badarg)
+						{
+							cout << "can't get timestamp when trying establish which client a media socket should go to\n";
+							removeClient(i);
+						}
+						catch(out_of_range &exrange)
+						{
+							cout << "client sent a misformed media port association request\n";
+							removeClient(i);
+						}
+						delete commandContents;
+					}
+					else if(sdstate == SOCKMEDIAIDLE || sdstate > 100)
+					{
+						if(sdstate == SOCKMEDIAIDLE)
+						{
+							cout << "received data on an established media socket. ignore it\n";
+						}
+						else //if(sdstate > 100)
+						{
+							cout << "received data on a media socket waiting for a call accept\n";
+						}
+					}
+					else if(sdstate > 0) //in call
+					{
+						SSL_write(clientssl[sdstate], buffer, MAXCMD);
+					}
+				} //if eventful
+			}// if FD_ISSET : figure out command or voice and handle appropriately
+		}// for loop going through the fd set
+	}
+
+	//ok to leak memory for now. just starting out
+
+/*
+	//write to socket
+	n = SSL_write(connSSL, "I got your message", 18);
+	errorLT0(n, "error on SSL socket write");
+	close(newsockfd);
+	close(sockfd);
+
+	//shutdown openssl
+	ERR_free_strings();
+	EVP_cleanup();
+	SSL_shutdown(connSSL);
+	SSL_free(connSSL);
+*/
+	return 0; 
+}
+
+//use a vector to prevent reading out of bounds
+vector<string>* parse(char command[])
+{
+//timestamp|login|username|passwd
+//timestamp|call|otheruser|sessionid
+//timestamp|lookup|user|sessionid
+//timestamp|reject|user|sessionid
+//timestamp|accept|user|sessionid
+//timestamp|end|user|sessionid
+
+//timestamp|sessionid : for registering media port
+	cout << "command raw: " << command << "\n";
+	char *token;
+	int i = 0;
+	vector<string> *result = new vector<string>();
+	token = strtok(command, "|");
+	while(token != NULL && i < 4)
+	{
+		result->push_back(string(token));
+		token = strtok(NULL, "|");
+		i++;
+	}
+	return result;
+}
+
+void removeClient(int index)
+{
+	sdinfo.erase(clientsd[index]);
+	SSL_shutdown(clientssl[index]);
+	shutdown(clientsd[index], 2);
+	clientsd[index] = 0;
+	clientssl[index] = NULL;
+}
+
+//common index shared in clientsd, clientssl array for the fd
+int fdIndex(int fd)
+{
+	for(int i=0; i<MAXCLIENT*2; i++)
+	{
+		if(clientsd[i] == fd)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+//before doing an accept, reject, end command check to see if it's for a real call
+//	or someone trying to get smart with the server
+bool isRealCall(string persona, string personb)
+{
+	PGUtils *postgres = PGUtils::getInstance();
+	string prefix =  "call between " + persona + " && " + personb + ": ";
+
+	//check if A and B even have media FDs
+	int afd = postgres->userFd(persona, MEDIA);
+	int bfd = postgres->userFd(personb, MEDIA);
+	if(afd == EGENERIC)
+	{
+		cout << prefix << persona << " doesn't even have a media fd\n";
+		return false;
+	}
+	if(bfd == EGENERIC)
+	{
+		cout << prefix << personb << " doesn't even have a media fd\n";
+		return false;
+	}
+
+	int astatus = sdinfo[afd];
+	int bindex = fdIndex(bfd);
+	if(!((astatus == INITWAITING + bindex) || (astatus == bindex)))
+	{//apparently A isn't waiting for a call with B to start
+		cout << prefix << persona << " isn't expecting a call from or in a call with " << personb;
+		return false;
+	}
+
+	int bstatus = sdinfo[bfd];
+	int aindex = fdIndex(afd);
+	if(!((bstatus == INITWAITING + aindex) || (bstatus == aindex)))
+	{//apparently B isn't waiting for a call with A to start
+		cout << prefix << personb << " isn't expecting a call from or in a call with" << persona;
+		return false;
+	}
+
+	//A and B both have a mediafds and are both mutually waiting for a call to start between them
+	cout << prefix << "is a real call\n";
+	return true;	
+}
+
+
+
+
+
+
+
