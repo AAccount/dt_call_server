@@ -281,9 +281,9 @@ int main(int argc, char *argv[])
 					}
 #endif
 					vector<string> commandContents = parse(bufferCmd);
-					string command = commandContents.at(1);
 					try
 					{
+						string command = commandContents.at(1);
 						long now = time(NULL);
 						long timestamp = stol(commandContents.at(0)); //catch is for this
 						long fivemins = 60*5;
