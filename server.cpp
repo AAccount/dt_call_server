@@ -541,6 +541,17 @@ int main(int argc, char *argv[])
 				{//timestamp|sessionid (of the user this media fd should be registered/associated to)
 
 					cout << "going to try and associate new media socket with an existing client\n";
+
+#ifdef JAVA1BYTE
+					//workaround for jclient sending first byte of a command separately
+					//after the intial login
+					string bufferString(bufferMedia);
+					if(bufferString == "G")
+					{
+						cout << "Got a G cap for media sd " << sd << "\n";
+						goto skipfd;
+					}
+#endif
 					vector<string> commandContents = parse(bufferMedia);
 					try
 					{
