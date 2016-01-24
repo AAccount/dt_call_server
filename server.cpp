@@ -408,7 +408,7 @@ int main(int argc, char *argv[])
 								goto invalidcmd;
 							}
 							string exists = (postgres->doesUserExist(who)) ? "exists" : "doesntexist";
-							string resp = to_string(now) + "|resp|lookup|" + exists + "\n";
+							string resp = to_string(now) + "|lookup|" + who + "|" + exists + "\n";
 							write2Client(resp, sdssl);
 							cout << "lookup of " << who << ": " << resp;
 						}
