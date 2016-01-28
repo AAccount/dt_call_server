@@ -520,6 +520,8 @@ int main(int argc, char *argv[])
 #endif
 						//call timeout: zapper hasn't answer touma's call request in the 1 minute ring time
 						//cancel the call
+						//nothing has to be sent to touma because his phone will automatically take care of itself
+						//	to back back to the home screen
 						else if(command =="timeout")
 						{
 							string zapper = commandContents.at(2);
