@@ -518,6 +518,28 @@ int main(int argc, char *argv[])
 							goto breakout;
 						}
 #endif
+						//call timeout: zapper hasn't answer touma's call request in the 1 minute ring time
+						//cancel the call
+						else if(command =="timeout")
+						{
+							string zapper = commandContents.at(2);
+							long sessionid = stol(commandContents.at(3));
+							string touma = postgres->userFromSessionid(sessionid);
+							cout << zapper << " has taken over a minute to answer " << touma << "'s call. timeout\n";
+
+							if(!isRealCall(touma, zapper))
+							{
+								removals.push_back(sd);
+								goto invalidcmd;
+							}
+
+							//tell zapper that time's up for answering touma's call
+							string resp = to_string(now) + "|ring|timeout|" + touma;
+							int zapperCmdFd = postgres->userFd(zapper, COMMAND);
+							SSL *zapperCmdSsl = clientssl[zapperCmdFd];
+							write2Client(resp, zapperCmdSsl);
+							cout << "sending timeout to " << zapper << ": " << resp << "\n";
+						}
 						else //commandContents[1] is not a known command... something fishy???
 						{
 							string unknown = commandContents.at(1);
@@ -737,6 +759,7 @@ vector<string> parse(char command[])
 //timestamp|lookup|user|sessionid
 //timestamp|reject|user|sessionid
 //timestamp|accept|user|sessionid
+//timestamp|timeout|user|sessionid
 //timestamp|end|user|sessionid
 
 //timestamp|sessionid : for registering media port
