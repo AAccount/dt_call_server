@@ -559,7 +559,7 @@ int main(int argc, char *argv[])
 						cout << "client sent a misformed command\n";
 						removals.push_back(sd);
 					}
-					invalidcmd:; //bad timestamp, invalid sessionid, not real call... etc. if the command could not be processed just remove the vector from heap
+					invalidcmd:; //bad timestamp, invalid sessionid, not real call... etc.
 				}
 				else if(sdstate == SOCKMEDIANEW)
 				{//timestamp|sessionid (of the user this media fd should be registered/associated to)
@@ -672,16 +672,29 @@ int main(int argc, char *argv[])
 				}
 				else if(sdstate > 0) //in call
 				{
+					//when in call your sdstate is the media socket descriptor of the person you're calling
 #ifdef JCALLDIAG
 					cout << "received call data: " << bufferMedia << "\n";
 #endif
-					if(clientssl.count(sdstate) > 0)
+					if(clientssl.count(sdstate) > 0) //the other person's media sd doesn't exist
 					{
 						SSL *recepient = clientssl[sdstate];
 						SSL_write(recepient, bufferMedia, MAXMEDIA);
 					}
 					else
 					{
+						//call drop logic: example of touma calling zapper and touma's connection dies
+						//if touma's connetion dies during the current round of "select", zapper's kb of
+						//media will just be lost in the above if block. it won't reach this else block yet
+						//because touma will still have a media port
+						//
+						//if touma's connection died during a previous round of select, you cannot send
+						//timestamp|call|end|touma to zapper because touma's file/socket descriptor records have
+						//been removed form the database. at the present, the state of zapper'd media fd = touma media fd.
+						//because the record has been removed, you can't do postgres->userFromFd(zapper_mediafd_state, MEDIA)
+						//to find out she's in a call with touma. 
+						//therefore you have to send a different command... the call drop command
+
 						//reset the media connection state
 						string user = postgres->userFromFd(sd, MEDIA);
 						sdinfo[sd] = SOCKMEDIAIDLE;
