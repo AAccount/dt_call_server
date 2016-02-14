@@ -535,6 +535,12 @@ int main(int argc, char *argv[])
 								goto invalidcmd;
 							}
 
+							//set touma's and zapper's media socket state back to idle
+							int toumaMediaFd = postgres->userFd(touma, MEDIA);
+							int zapperMediaFd = postgres->userFd(zapper, MEDIA);
+							sdinfo[toumaMediaFd] = SOCKMEDIAIDLE;
+							sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
+
 							//tell zapper that time's up for answering touma's call
 							string resp = to_string(now) + "|ring|timeout|" + touma;
 							int zapperCmdFd = postgres->userFd(zapper, COMMAND);
