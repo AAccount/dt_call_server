@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	PGUtils *postgres = PGUtils::getInstance();
 	
 	int cmdFD, incomingCmd, cmdPort; //command port stuff
-	int mediaFD, incomingMedia, mediaPort; //media port stuff
+	int mediaFD, incomingMedia, mediaPort, mediaRead; //media port stuff
 	int returnValue; //error handling
 	int maxsd, sd; //select related vars
 	SSL *sdssl; //used for iterating through the ordered map
@@ -242,10 +242,16 @@ int main(int argc, char *argv[])
 				}
 				else
 				{
+					mediaRead = 0;
 					bzero(bufferMedia, MAXMEDIA+1);
 					do
-					{//wait for the entire ssl record to come in first before doing something
-						returnValue = SSL_read(sdssl, bufferMedia, MAXMEDIA);
+					{//wait for the media chunk to come in first before doing something
+						returnValue = SSL_read(sdssl, bufferMedia, MAXMEDIA-mediaRead);
+						cout << "returnValue: " << returnValue << "\n";
+						if(returnValue > 0)
+						{
+							mediaRead = mediaRead + returnValue;
+						}
 						int sslerr = SSL_get_error(sdssl, returnValue);
 						switch (sslerr)
 						{
@@ -680,12 +686,12 @@ int main(int argc, char *argv[])
 				{
 					//when in call your sdstate is the media socket descriptor of the person you're calling
 #ifdef JCALLDIAG
-					cout << "received call data: " << bufferMedia << "\n";
+					cout << "received " << mediaRead << " bytes of call data: " << bufferMedia << "\n";
 #endif
 					if(clientssl.count(sdstate) > 0) //the other person's media sd doesn't exist
 					{
 						SSL *recepient = clientssl[sdstate];
-						SSL_write(recepient, bufferMedia, MAXMEDIA);
+						SSL_write(recepient, bufferMedia, mediaRead);
 					}
 					else
 					{
@@ -915,7 +921,7 @@ bool isRealCall(string persona, string personb)
 void write2Client(string response, SSL *respSsl)
 {
 	int length = response.size();
-	char serverOut[length+1];
+	char serverOut[length+1]; //make sure the amount written out represents the response string and isn't response + tons of 0 padding
 	bzero(serverOut, length+1);
 	memcpy(serverOut, response.c_str(), length);
 
@@ -938,8 +944,8 @@ void write2Client(string response, SSL *respSsl)
 	{
 		PGUtils *postgres = PGUtils::getInstance();
 		int socket = SSL_get_fd(respSsl);
-		string didntReceive = postgres->userFromFd(socket, MEDIA);
-		cout << "Dropping kilobyte of media for: " << didntReceive << "\n";
+		string didntReceive = postgres->userFromFd(socket, COMMAND);
+		cout << "Couldn't send command to: " << didntReceive << "\n";
 	}
 }
 

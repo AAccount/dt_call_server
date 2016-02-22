@@ -1,5 +1,5 @@
 #define MAXCMD 100 //how many characters a command with params can be 
-#define MAXMEDIA 1024 //how much media is transferred between users at a time
+#define MAXMEDIA 4096 //how much media is transferred between users at a time
 
 //which fd to set
 #define COMMAND 1
