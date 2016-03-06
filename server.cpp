@@ -242,12 +242,11 @@ int main(int argc, char *argv[])
 				}
 				else
 				{
-					mediaRead = 0;
+					mediaRead = 0; //to know how much media is ACTUALLY received. don't always assume MAXMEDIA amount was received
 					bzero(bufferMedia, MAXMEDIA+1);
 					do
 					{//wait for the media chunk to come in first before doing something
 						returnValue = SSL_read(sdssl, bufferMedia, MAXMEDIA-mediaRead);
-						cout << "returnValue: " << returnValue << "\n";
 						if(returnValue > 0)
 						{
 							mediaRead = mediaRead + returnValue;
@@ -301,7 +300,6 @@ int main(int argc, char *argv[])
 							long mins = timeDifference/60;
 							long seconds = timeDifference - mins*60;
 							cout << "timestamp " << mins << ":" << seconds << " outside 5min window of error\n";
-							removals.push_back(sd);
 							goto invalidcmd;
 						}
 
@@ -314,15 +312,21 @@ int main(int argc, char *argv[])
 							int oldcmd = postgres->userFd(username, COMMAND);
 							if(oldcmd > 4)
 							{//remove old SSL structs to prevent memory leak
-								cout << "previous sockets/SSL* exists, will remove\n";
-								removals.push_back(sd);
+								cout << "previous command socket/SSL* exists, will remove\n";
+								removals.push_back(oldcmd);
+							}
+
+							int oldmedia = postgres->userFd(username, MEDIA);
+							if(oldmedia > 4)
+							{//remove old SSL structs to prevent memory leak
+								cout << "previous meida socket/SSL* exists, will remove\n";
+								removals.push_back(oldmedia);
 							}
 
 							long sessionid = postgres->authenticate(username, plaintext);
 							if(sessionid < 0)
 							{//incorrect login credentials. give no hints, just disconnect
 								cout << "bad login, error code: " << sessionid << "\n";
-								removals.push_back(sd);
 								goto invalidcmd;
 							}
 
@@ -343,7 +347,6 @@ int main(int argc, char *argv[])
 							if(!postgres->verifySessionid(sessionid, sd))
 							{
 								cout << touma << " has an INVALID SESSION ID. refusing to start call\n";
-								removals.push_back(sd);
 								goto invalidcmd;
 							}
 
@@ -410,7 +413,6 @@ int main(int argc, char *argv[])
 							if(!postgres->verifySessionid(sessionid, sd))
 							{
 								cout << "invalid sessionid attempting to do a user lookup\n";
-								removals.push_back(sd);
 								goto invalidcmd;
 							}
 							string exists = (postgres->doesUserExist(who)) ? "exists" : "doesntexist";
@@ -428,7 +430,6 @@ int main(int argc, char *argv[])
 							string touma = commandContents.at(2);
 							if(!isRealCall(zapper, touma))
 							{
-								removals.push_back(sd);
 								goto invalidcmd;
 							}
 
@@ -462,7 +463,6 @@ int main(int argc, char *argv[])
 
 							if(!isRealCall(zapper, touma))
 							{
-								removals.push_back(sd);
 								goto invalidcmd;
 							}
 
@@ -493,7 +493,6 @@ int main(int argc, char *argv[])
 
 							if(!isRealCall(wants2End, stillTalking))
 							{
-								removals.push_back(sd);
 								goto invalidcmd;
 							}
 
@@ -537,7 +536,6 @@ int main(int argc, char *argv[])
 
 							if(!isRealCall(touma, zapper))
 							{
-								removals.push_back(sd);
 								goto invalidcmd;
 							}
 
@@ -558,18 +556,15 @@ int main(int argc, char *argv[])
 						{
 							string unknown = commandContents.at(1);
 							cout << "unknown command of: " << unknown << "\n";
-							removals.push_back(sd);
 						}
 					}
 					catch(invalid_argument &badarg)
 					{//timestamp couldn't be parsed. assume someone is trying something fishy
 						cout << "can't get timestamp from command: " << badarg.what() << "\n";
-						removals.push_back(sd);
 					}
 					catch(out_of_range &exrange)
 					{
 						cout << "client sent a misformed command\n";
-						removals.push_back(sd);
 					}
 					invalidcmd:; //bad timestamp, invalid sessionid, not real call... etc.
 				}
@@ -601,7 +596,6 @@ int main(int argc, char *argv[])
 							long mins = timeDifference/60;
 							long seconds = timeDifference - mins*60;
 							cout << "timestamp " << mins << ":" << seconds << " outside 5min window of error\n";
-							removals.push_back(sd);
 							goto skipreg;
 						}
 
@@ -611,7 +605,6 @@ int main(int argc, char *argv[])
 						if(intendedUser == "")
 						{
 							cout << "erroneous sessionid sent... brute force???\n";
-							removals.push_back(sd);
 							goto skipreg;
 						}
 						cout << "According to the session id, the media socket is for: " << intendedUser << "\n";
@@ -621,7 +614,6 @@ int main(int argc, char *argv[])
 						if(cmdfd < 0)
 						{//with a valid timestamp, valid sessionid, there is no cmd fd for this user??? how??? you must log in through a cmd fd to get a sessionid
 							cout << "SOMETHING IS WRONG!!! valid timestamp and sessionid but " << intendedUser << " has no command fd\n";
-							removals.push_back(sd);
 							goto skipreg;
 						}
 
@@ -645,7 +637,6 @@ int main(int argc, char *argv[])
 						if(thisfdip != cmdip)
 						{//valid timestamp, valid sessionid, sessionid has command fd... but the media port association came from a different ip than the command fd...??? HOW??? all requests come from a cell phone app with 1 ip...
 							cout << "SOMETHING IS REALLY WRONG. with a valid timestamp, sessionid, and a command fd associated with the sessionid, the request to associate the media fd is coming from another ip???\n";
-							removals.push_back(sd);
 							goto skipreg;
 						}
 						postgres->setFd(sessionid, sd, MEDIA);
@@ -655,12 +646,10 @@ int main(int argc, char *argv[])
 					catch(invalid_argument &badarg)
 					{
 						cout << "can't get timestamp when trying establish which client a media socket should go to\n";
-						removals.push_back(sd);
 					}
 					catch(out_of_range &exrange)
 					{
 						cout << "client sent a misformed media port association request\n";
-						removals.push_back(sd);
 					}
 
 					skipreg:; //skip media fd registration. something didn't check out ok.
@@ -717,7 +706,6 @@ int main(int argc, char *argv[])
 						if(sessionid < 0)
 						{
 							cout << "How?? " << user << "'s call was dropped but " << user << " had no sessionid to begin with\n";
-							removals.push_back(sd);
 							goto skipfd;
 						}
 						string drop = to_string(now) + "|call|drop|" + to_string(sessionid) + "\n";
@@ -734,13 +722,13 @@ int main(int argc, char *argv[])
 		skipfd:; //fd was dead. removed it. go on to the next one
 		}// for loop going through the fd set
 
-		//now that all fds are finished inspecting, remove any of them that raised suspicions or are dead.
+		//now that all fds are finished inspecting, remove any of them that are dead.
 		//don't mess with the map contents while the iterator is live.
 		//removing while runnning causes segfaults because if the removed item gets iterated over after removal
 		//it's no longer there so you get a segfault
 		if(removals.size() > 0)
 		{
-			cout << "Removing " << removals.size() << " suspicious sockets\n";
+			cout << "Removing " << removals.size() << " dead/leftover sockets\n";
 			vector<int>::iterator rmit;
 			for(rmit = removals.begin(); rmit != removals.end(); ++rmit)
 			{
