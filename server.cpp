@@ -94,6 +94,11 @@ int main(int argc, char *argv[])
 	returnValue = SSL_CTX_use_certificate_file(sslcontext, "/home/Daniel/Documents/untitled_folder/public.pem", SSL_FILETYPE_PEM);
 	errorLT0(returnValue, "error retrieving server's public key");
 
+	//socket read timeout option
+	struct timeval timeout;
+	timeout.tv_sec = 5;
+	timeout.tv_usec = 0;
+
 	//setup command port to accept new connections
 	cmdFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
 	errorLT0(cmdFD, "socket system call error for command");
@@ -104,6 +109,8 @@ int main(int argc, char *argv[])
 	serv_cmd.sin_port = htons(cmdPort);
 	returnValue = bind(cmdFD, (struct sockaddr *) &serv_cmd, sizeof(serv_cmd)); //bind socket to nic and port
 	errorLT0(returnValue, "bind system call error for command");
+	returnValue = setsockopt(cmdFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+	errorLT0(returnValue, "can't set socket timeout option");
 	listen(cmdFD, 5);
 
 	//setup media port to accept new connections
@@ -116,6 +123,8 @@ int main(int argc, char *argv[])
 	serv_media.sin_port = htons(mediaPort);
 	returnValue = bind(mediaFD, (struct sockaddr *) &serv_media, sizeof(serv_media)); //bind socket to nic and port
 	errorLT0(returnValue, "bind system call error for media");
+	returnValue = setsockopt(mediaFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+	errorLT0(returnValue, "can't set socket timeout option");
 	listen(mediaFD, 5);
 
 	clilen = sizeof(cli_addr);
@@ -300,6 +309,8 @@ int main(int argc, char *argv[])
 							long mins = timeDifference/60;
 							long seconds = timeDifference - mins*60;
 							cout << "timestamp " << mins << ":" << seconds << " outside 5min window of error\n";
+							string invalid = to_string(now) + "|resp|invalid|command\n";
+							write2Client(invalid, sdssl);
 							goto invalidcmd;
 						}
 
@@ -327,6 +338,8 @@ int main(int argc, char *argv[])
 							if(sessionid < 0)
 							{//incorrect login credentials. give no hints, just disconnect
 								cout << "bad login, error code: " << sessionid << "\n";
+								string invalid = to_string(now) + "|resp|invalid|command\n";
+								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
 
@@ -347,6 +360,8 @@ int main(int argc, char *argv[])
 							if(!postgres->verifySessionid(sessionid, sd))
 							{
 								cout << touma << " has an INVALID SESSION ID. refusing to start call\n";
+								string invalid = to_string(now) + "|resp|invalid|command\n";
+								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
 
@@ -357,6 +372,8 @@ int main(int argc, char *argv[])
 							if(toumaMediaFd < 0)
 							{
 								cout << touma << " is trying to make a call without a media fd??\n";
+								string invalid = to_string(now) + "|resp|invalid|command\n";
+								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
 
@@ -413,6 +430,8 @@ int main(int argc, char *argv[])
 							if(!postgres->verifySessionid(sessionid, sd))
 							{
 								cout << "invalid sessionid attempting to do a user lookup\n";
+								string invalid = to_string(now) + "|resp|invalid|command\n";
+								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
 							string exists = (postgres->doesUserExist(who)) ? "exists" : "doesntexist";
@@ -430,6 +449,8 @@ int main(int argc, char *argv[])
 							string touma = commandContents.at(2);
 							if(!isRealCall(zapper, touma))
 							{
+								string invalid = to_string(now) + "|resp|invalid|command\n";
+								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
 
@@ -463,6 +484,8 @@ int main(int argc, char *argv[])
 
 							if(!isRealCall(zapper, touma))
 							{
+								string invalid = to_string(now) + "|resp|invalid|command\n";
+								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
 
@@ -493,6 +516,8 @@ int main(int argc, char *argv[])
 
 							if(!isRealCall(wants2End, stillTalking))
 							{
+								string invalid = to_string(now) + "|resp|invalid|command\n";
+								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
 
@@ -536,6 +561,8 @@ int main(int argc, char *argv[])
 
 							if(!isRealCall(touma, zapper))
 							{
+								string invalid = to_string(now) + "|resp|invalid|command\n";
+								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
 
@@ -561,10 +588,16 @@ int main(int argc, char *argv[])
 					catch(invalid_argument &badarg)
 					{//timestamp couldn't be parsed. assume someone is trying something fishy
 						cout << "can't get timestamp from command: " << badarg.what() << "\n";
+						long now = time(NULL);
+						string invalid = to_string(now) + "|resp|invalid|command\n";
+						write2Client(invalid, sdssl);
 					}
 					catch(out_of_range &exrange)
 					{
 						cout << "client sent a misformed command\n";
+						long now = time(NULL);
+						string invalid = to_string(now) + "|resp|invalid|command\n";
+						write2Client(invalid, sdssl);
 					}
 					invalidcmd:; //bad timestamp, invalid sessionid, not real call... etc.
 				}
