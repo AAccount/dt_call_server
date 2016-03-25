@@ -14,7 +14,6 @@
 #include <openssl/err.h>
 
 #include "const.h"
-#include "error.h" //TODO: get rid of this and do it better
 #include "server.hpp"
 #include "pgutils.hpp"
 
@@ -77,11 +76,11 @@ int main(int argc, char *argv[])
 
 	//set ssl properties
 	SSL_CTX *sslcontext = SSL_CTX_new(TLSv1_method());
-#ifdef __i386__
-	errorEQ0((int)sslcontext, "error creating ssl connection properties"); //TODONE: set ifdef for 32 bit
-#else //x64
-	errorEQ0((long long)sslcontext, "error creating ssl connection properties");
-#endif
+	if(&sslcontext <= 0)
+	{
+		perror("ssl initialization problem");
+		return 1;
+	}
 	//TODO: check how ideal const char *ciphers is
 	//https://github.com/deadtrickster/cl-dropbox/blob/master/src/ssl.lisp
 	const char *ciphers = "DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:AES256-GCM-SHA384:AES256-SHA256:AES256-SHA:AES128-GCM-SHA256:AES128-SHA256:AES128-SHA";
@@ -90,9 +89,17 @@ int main(int argc, char *argv[])
 	SSL_CTX_set_options(sslcontext, SSL_OP_NO_TLSv1_1);
 	SSL_CTX_set_options(sslcontext, SSL_OP_SINGLE_DH_USE);
 	returnValue= SSL_CTX_use_PrivateKey_file(sslcontext, "/home/Daniel/Documents/untitled_folder/private.pem", SSL_FILETYPE_PEM);
-	errorLT0(returnValue, "error retrieving server's private key");
+	if(returnValue <= 0)
+	{
+		perror("cannot access private key");
+		return 1;
+	}
 	returnValue = SSL_CTX_use_certificate_file(sslcontext, "/home/Daniel/Documents/untitled_folder/public.pem", SSL_FILETYPE_PEM);
-	errorLT0(returnValue, "error retrieving server's public key");
+	if(returnValue <= 0)
+	{
+		perror("cannot access public key");
+		return 1;
+	}
 
 	//socket read timeout option
 	struct timeval timeout;
@@ -101,30 +108,54 @@ int main(int argc, char *argv[])
 
 	//setup command port to accept new connections
 	cmdFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
-	errorLT0(cmdFD, "socket system call error for command");
+	if(cmdFD <= 0)
+	{
+		perror("cannot establish command socket");
+		return 1;
+	}
 	bzero((char *) &serv_cmd, sizeof(serv_cmd));
 	cmdPort = atoi(argv[1]);
 	serv_cmd.sin_family = AF_INET;
 	serv_cmd.sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	serv_cmd.sin_port = htons(cmdPort);
 	returnValue = bind(cmdFD, (struct sockaddr *) &serv_cmd, sizeof(serv_cmd)); //bind socket to nic and port
-	errorLT0(returnValue, "bind system call error for command");
+	if(returnValue <= 0)
+	{
+		perror("cannot bind command socket to a nic");
+		return 1;
+	}
 	returnValue = setsockopt(cmdFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	errorLT0(returnValue, "can't set socket timeout option");
+	if(returnValue <= 0)
+	{
+		perror("cannot set command socket options");
+		return 1;
+	}
 	listen(cmdFD, 5);
 
 	//setup media port to accept new connections
 	mediaFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
-	errorLT0(mediaFD, "socket system call error for media");
+	if(mediaFD <= 0)
+	{
+		perror("cannot establish media socket");
+		return 1;
+	}
 	bzero((char *) &serv_media, sizeof(serv_media));
 	mediaPort = atoi(argv[2]);
 	serv_media.sin_family = AF_INET;
 	serv_media.sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	serv_media.sin_port = htons(mediaPort);
 	returnValue = bind(mediaFD, (struct sockaddr *) &serv_media, sizeof(serv_media)); //bind socket to nic and port
-	errorLT0(returnValue, "bind system call error for media");
+	if(returnValue <= 0)
+	{
+		perror("cannot bind media socket to a nic");
+		return 1;
+	}
 	returnValue = setsockopt(mediaFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	errorLT0(returnValue, "can't set socket timeout option");
+	if(returnValue <= 0)
+	{
+		perror("cannot set media socket options");
+		return 1;
+	}
 	listen(mediaFD, 5);
 
 	clilen = sizeof(cli_addr);
@@ -154,14 +185,22 @@ int main(int argc, char *argv[])
 		}
 
 		returnValue = select(maxsd+1, &readfds, NULL, NULL, NULL);
-		errorLT0(returnValue, "select system call error");
+		if(returnValue <= 0)
+		{
+			perror("select system call error");
+			return 1;
+		}
 		cout << "select has " << returnValue << " sockets ready\n";
 		
 		//check for a new incoming connection on command port
 		if(FD_ISSET(cmdFD, &readfds))
 		{
 			incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
-			errorLT0(incomingCmd, "accept system call error for command");
+			if(incomingCmd <= 0)
+			{
+				perror("accept system call error for command");
+				return 1;
+			}
 
 			//setup ssl connection
 			SSL *connssl = SSL_new(sslcontext);
@@ -190,8 +229,11 @@ int main(int argc, char *argv[])
 		if(FD_ISSET(mediaFD, &readfds))
 		{
 			incomingMedia = accept(mediaFD, (struct sockaddr *) &cli_addr, &clilen);
-			errorLT0(incomingMedia, "accept system call error for media");
-
+			if(incomingMedia <= 0)
+			{
+				perror("accept system call error for media");
+				return 1;
+			}
 			//setup ssl connection
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingMedia);
@@ -955,7 +997,7 @@ void write2Client(string response, SSL *respSsl)
 		{
 			finished = true;
 		}
-		else if(errValue = SSL_ERROR_WANT_WRITE)
+		else if(errValue == SSL_ERROR_WANT_WRITE)
 		{
 			retries--;
 		}
