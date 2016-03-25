@@ -11,10 +11,7 @@ OPENSSL = -lssl -lcrypto
 PQXX =  -lpqxx -lpq
 
 server: server.o pgutils.o
-	g++ -o $@ pgutils.o ${PQXX} server.o ${OPENSSL} ${MATH} error.c error.h
-
-client: client.c
-	g++ ${CFLAGS} -o $@ client.c error.h error.c ${OPENSSL}
+	g++ -o $@ pgutils.o ${PQXX} server.o ${OPENSSL} ${MATH}
 
 testdb: testdb.cpp pgutils.o
 	g++ ${CFLAGS} -o $@ testdb.cpp pgutils.o ${PQXX}
@@ -23,7 +20,7 @@ pgutils.o : pgutils.cpp pgutils.hpp
 	g++ ${CFLAGS} -c pgutils.cpp pgutils.hpp ${PQXX}
 
 server.o : server.cpp server.hpp
-	g++ ${CFLAGS} -c server.cpp server.hpp error.h error.c const.h ${OPENSSL} ${MATH}
+	g++ ${CFLAGS} -c server.cpp server.hpp const.h ${OPENSSL} ${MATH}
 
 clean:
 	rm client server testdb *.o *.gch
