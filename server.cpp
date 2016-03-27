@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 
 	//setup command port to accept new connections
 	cmdFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
-	if(cmdFD <= 0)
+	if(cmdFD < 0)
 	{
 		perror("cannot establish command socket");
 		return 1;
@@ -119,13 +119,13 @@ int main(int argc, char *argv[])
 	serv_cmd.sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	serv_cmd.sin_port = htons(cmdPort);
 	returnValue = bind(cmdFD, (struct sockaddr *) &serv_cmd, sizeof(serv_cmd)); //bind socket to nic and port
-	if(returnValue <= 0)
+	if(returnValue < 0)
 	{
 		perror("cannot bind command socket to a nic");
 		return 1;
 	}
 	returnValue = setsockopt(cmdFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	if(returnValue <= 0)
+	if(returnValue < 0)
 	{
 		perror("cannot set command socket options");
 		return 1;
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 
 	//setup media port to accept new connections
 	mediaFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
-	if(mediaFD <= 0)
+	if(mediaFD < 0)
 	{
 		perror("cannot establish media socket");
 		return 1;
@@ -145,13 +145,13 @@ int main(int argc, char *argv[])
 	serv_media.sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	serv_media.sin_port = htons(mediaPort);
 	returnValue = bind(mediaFD, (struct sockaddr *) &serv_media, sizeof(serv_media)); //bind socket to nic and port
-	if(returnValue <= 0)
+	if(returnValue < 0)
 	{
 		perror("cannot bind media socket to a nic");
 		return 1;
 	}
 	returnValue = setsockopt(mediaFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	if(returnValue <= 0)
+	if(returnValue < 0)
 	{
 		perror("cannot set media socket options");
 		return 1;
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 		}
 
 		returnValue = select(maxsd+1, &readfds, NULL, NULL, NULL);
-		if(returnValue <= 0)
+		if(returnValue < 0)
 		{
 			perror("select system call error");
 			return 1;
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 		if(FD_ISSET(cmdFD, &readfds))
 		{
 			incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
-			if(incomingCmd <= 0)
+			if(incomingCmd < 0)
 			{
 				perror("accept system call error for command");
 				return 1;
@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
 		if(FD_ISSET(mediaFD, &readfds))
 		{
 			incomingMedia = accept(mediaFD, (struct sockaddr *) &cli_addr, &clilen);
-			if(incomingMedia <= 0)
+			if(incomingMedia < 0)
 			{
 				perror("accept system call error for media");
 				return 1;
