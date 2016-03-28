@@ -20,3 +20,6 @@
 
 //call related stuff
 #define INITWAITING 100
+
+//java 1 byte ignored character
+#define JBYTE "D"

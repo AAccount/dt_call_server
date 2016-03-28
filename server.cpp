@@ -330,9 +330,9 @@ int main(int argc, char *argv[])
 					//workaround for jclient sending first byte of a command separately
 					//after the intial login
 					string bufferString(bufferCmd);
-					if(bufferString == "G")
+					if(bufferString == JBYTE)
 					{
-						cout << "Got a G cap for sd " << sd << "\n";
+						cout << "Got a " << JBYTE << " cap for media sd " << sd << "\n";
 						goto skipfd;
 					}
 #endif
@@ -652,9 +652,9 @@ int main(int argc, char *argv[])
 					//workaround for jclient sending first byte of a command separately
 					//after the intial login
 					string bufferString(bufferMedia);
-					if(bufferString == "G")
+					if(bufferString == JBYTE)
 					{
-						cout << "Got a G cap for media sd " << sd << "\n";
+						cout << "Got a " << JBYTE << " cap for media sd " << sd << "\n";
 						goto skipfd;
 					}
 #endif
