@@ -898,7 +898,7 @@ void removeClient(int sd)
 
 	cout << "removing " << uname << "'s socket descriptors (cmd, media): (" << cmd << "," << media << ")\n";
 
-	//if for weird reason the user was just a media port with no cmd don't freak out and crash over no command fd
+	//if for weird reasons the user was just a media port with no cmd don't freak out and crash over no command fd
 	if(cmd > 4) //0 stdin, 1 stdout, 2 stderr, 3 command receive, 4, media receive
 	{
 		if(sdinfo.count(cmd) > 0)
@@ -921,6 +921,33 @@ void removeClient(int sd)
 	{
 		if(sdinfo.count(media) > 0)
 		{
+			//using the standard model: touma is in a call with zapper. touma's connection dies. when it's time
+			//	to remove touma's media fd, tell zapper the call dropped otherwise there will be awkward silence
+			int zapperMedia = sdinfo[media];
+			if(zapperMedia > 4)
+			{
+				string touma = postgres->userFromFd(media, MEDIA);
+				string zapper = postgres->userFromFd(zapperMedia, MEDIA);
+				sdinfo[zapperMedia] = SOCKMEDIAIDLE;
+				cout << touma << "'s media port is dead. notifying " << zapper << " of call drop\n";
+
+				//get the timestamp
+				long now = time(NULL);
+				long sessionid = postgres->userSessionId(zapper);
+				if(sessionid < 0)
+				{
+					cout << "How?? " << zapper << "'s call was dropped but " << zapper << " had no sessionid to begin with\n";
+					goto skipnotify;
+				}
+				string drop = to_string(now) + "|call|drop|" + to_string(sessionid) + "\n";
+						
+				//write to the person who got dropped's command fd that the call was dropped
+				int zapperCmd = postgres->userFd(zapper, COMMAND);
+				SSL *cmdSsl = clientssl[zapperCmd];
+				write2Client(drop, cmdSsl);
+				cout << zapper << "'s call was dropped: " << drop;
+			}
+			skipnotify:;
 			sdinfo.erase(media);
 		}
 		
