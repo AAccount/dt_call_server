@@ -9,7 +9,7 @@ PQXX =  -lpqxx -lpq
 UNAME=$(shell uname -s)
 ifeq ($(UNAME),Linux)
  OPTFLAGS = -O3 -march=native -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
- CFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJCALLDIAG -DJSTOPMEDIA
+ CFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
  CC = g++
 endif
 ifeq ($(UNAME),FreeBSD)

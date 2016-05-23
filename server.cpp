@@ -202,6 +202,15 @@ int main(int argc, char *argv[])
 				return 1;
 			}
 
+			//https://tls.mbed.org/discussions/bug-report-issues/ssl_write-and-ssl_read-timeout
+			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
+			returnValue = setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+			if(returnValue < 0)
+			{
+				perror("cannot set timeout for incoming command socket");
+				return 1;
+			}
+
 			//setup ssl connection
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingCmd);
@@ -234,6 +243,15 @@ int main(int argc, char *argv[])
 				perror("accept system call error for media");
 				return 1;
 			}
+
+			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
+			returnValue = setsockopt(incomingMedia, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+			if(returnValue < 0)
+			{
+				perror("cannot set timeout for incoming media socket");
+				return 1;
+			}
+
 			//setup ssl connection
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingMedia);
