@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 			if(incomingCmd < 0)
 			{
 				perror("accept system call error for command");
-				return 1;
+				goto skipNewCmd;
 			}
 
 			//https://tls.mbed.org/discussions/bug-report-issues/ssl_write-and-ssl_read-timeout
@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
 			if(returnValue < 0)
 			{
 				perror("cannot set timeout for incoming command socket");
-				return 1;
+				goto skipNewCmd;
 			}
 
 			//setup ssl connection
@@ -233,6 +233,7 @@ int main(int argc, char *argv[])
 				sdinfo[incomingCmd] = SOCKCMD;
 			}
 		}
+		skipNewCmd:;
 
 		//check for a new incoming connection on media port
 		if(FD_ISSET(mediaFD, &readfds))
@@ -241,7 +242,7 @@ int main(int argc, char *argv[])
 			if(incomingMedia < 0)
 			{
 				perror("accept system call error for media");
-				return 1;
+				goto skipNewMedia;
 			}
 
 			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
@@ -249,7 +250,7 @@ int main(int argc, char *argv[])
 			if(returnValue < 0)
 			{
 				perror("cannot set timeout for incoming media socket");
-				return 1;
+				goto skipNewMedia;
 			}
 
 			//setup ssl connection
@@ -273,6 +274,7 @@ int main(int argc, char *argv[])
 				sdinfo[incomingMedia] = SOCKMEDIANEW;
 			}
 		}
+		skipNewMedia:;
 
 		//check for data on an existing connection
 		//reuse the same iterator variable (reinitialize it too)
