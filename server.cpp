@@ -23,19 +23,19 @@
 #include <map> //self balancing tree used as a table
 #include <vector>
 
-//TODONE: handle dropped calls: causes segmentation fault
-//TODONE: check ssl_write actually worked: write2Client gives 10 tries to write if failed
-//TODO: maybe put the write2Client on a separate thread??
-//TODONE: check for memory leaks with a suicide command: leaks seem to come from openssl context and opening certs for context. nothing that will make a real impact
-//TODONE: work out something better than a 1kb maxcmd for media and command: 2 separate sized buffers
-
 using namespace std;
 
 //using goto in general to avoid excessive indentation and else statements
+
 //information on what each socket descriptor is (command, media) and what it's supposed to be doing if it's a media socket
 unordered_map<int, int> sdinfo; 
-//associates socket descriptors to their ssl structs. originally implemented as 2 arrays
+//associates socket descriptors to their ssl structs
 map<int, SSL*>clientssl;
+//fail counts of each socket descriptor. if there are too many fails then remove the socket.
+//most likely to be used by media sockets during calls. media socket gets reset after a call anyways
+//so any fails are going to come from the current call
+unordered_map<int, int> failCount;
+volatile bool alarmKilled = false;
 
 int main(int argc, char *argv[])
 {
@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
 	
 	struct sockaddr_in serv_cmd, serv_media, cli_addr;
 	fd_set readfds;
+	fd_set writefds;
 
 	if (argc < 3)
 	{
@@ -103,7 +104,7 @@ int main(int argc, char *argv[])
 
 	//socket read timeout option
 	struct timeval timeout;
-	timeout.tv_sec = 5;
+	timeout.tv_sec = SOCKETTIMEOUT;
 	timeout.tv_usec = 0;
 
 	//setup command port to accept new connections
@@ -130,7 +131,7 @@ int main(int argc, char *argv[])
 		perror("cannot set command socket options");
 		return 1;
 	}
-	listen(cmdFD, 5);
+	listen(cmdFD, MAXLISTENWAIT);
 
 	//setup media port to accept new connections
 	mediaFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
@@ -156,13 +157,20 @@ int main(int argc, char *argv[])
 		perror("cannot set media socket options");
 		return 1;
 	}
-	listen(mediaFD, 5);
+	listen(mediaFD, MAXLISTENWAIT);
 
 	clilen = sizeof(cli_addr);
 
 	//sigpipe is thrown for closing the broken connection. it's gonna happen for a voip server handling mobile clients
 	//what're you gonna do about it... IGNORE IT!!
 	signal(SIGPIPE, SIG_IGN);
+	signal(SIGALRM, alarm_handler);
+
+	//write select timeout
+	struct timeval writeTimeout;
+	writeTimeout.tv_sec = 0;
+	writeTimeout.tv_usec = WSELECTTIMEOUT;
+
 
 	while(true) //forever
 	{
@@ -170,6 +178,7 @@ int main(int argc, char *argv[])
 		FD_ZERO(&readfds);
 		FD_SET(cmdFD, &readfds);
 		FD_SET(mediaFD, &readfds);
+		FD_ZERO(&writefds);
 		maxsd = (cmdFD > mediaFD) ? cmdFD : mediaFD; //quick 1 liner for determining the bigger sd
 
 		//http://www.cplusplus.com/reference/map/map/begin/
@@ -178,20 +187,33 @@ int main(int argc, char *argv[])
 		{
 			sd = it->first;			
 			FD_SET(sd, &readfds);
+			FD_SET(sd, &writefds);
 			if(sd > maxsd)
 			{
 				maxsd = sd;
 			}
 		}
 
+		//wait for somebody to send something to the server
 		returnValue = select(maxsd+1, &readfds, NULL, NULL, NULL);
 		if(returnValue < 0)
 		{
 			perror("select system call error");
 			return 1;
 		}
-		cout << "select has " << returnValue << " sockets ready\n";
+		cout << "select has " << returnValue << " sockets ready for reading\n";
 		
+		//now that someone has sent something, check all the sockets to see which ones are writable
+		//give a 0.1second time to check. don't want the request to involve an unwritable socket and
+		//stall the whole server
+		returnValue = select(maxsd+1, NULL, &writefds, NULL, &writeTimeout);
+		if(returnValue < 0)
+		{
+			perror("select system call error");
+			return 1;
+		}
+		cout << "select has " << returnValue << " sockets ready for writing\n";
+
 		//check for a new incoming connection on command port
 		if(FD_ISSET(cmdFD, &readfds))
 		{
@@ -231,6 +253,7 @@ int main(int argc, char *argv[])
 				cout << "new socket descriptor of " << incomingCmd << " from " << inet_ntoa(cli_addr.sin_addr) << "\n";
 				clientssl[incomingCmd] = connssl;
 				sdinfo[incomingCmd] = SOCKCMD;
+				failCount[incomingCmd] = 0;
 			}
 		}
 		skipNewCmd:;
@@ -261,7 +284,7 @@ int main(int argc, char *argv[])
 			//in case something happened before the incoming connection can be made ssl
 			if(returnValue <= 0)
 			{
-				cout << "Problem initializaing new media tls connection.\n";
+				cout << "Problem initializing new media tls connection.\n";
 				SSL_shutdown(connssl);
 				SSL_free(connssl);
 				shutdown(incomingMedia, 2);
@@ -272,6 +295,7 @@ int main(int argc, char *argv[])
 				cout << "new socket descriptor of " << incomingMedia << " from " << inet_ntoa(cli_addr.sin_addr) << "\n";
 				clientssl[incomingMedia] = connssl;
 				sdinfo[incomingMedia] = SOCKMEDIANEW;
+				failCount[incomingMedia] = 0;
 			}
 		}
 		skipNewMedia:;
@@ -287,6 +311,8 @@ int main(int argc, char *argv[])
 			sdssl = it->second;
 			if(FD_ISSET(sd, &readfds))
 			{
+				cout << "socket descriptor: " << sd << " was marked as set\n";
+
 				//when a client disconnects, for some reason, the socket is marked as having "stuff" on it.
 				//however that "stuff" is no good for ssl, so use eventful boolean to indicate if there was
 				//any ssl work done for this actively marked socket descriptor. if not, drop the socket.
@@ -297,8 +323,10 @@ int main(int argc, char *argv[])
 				if(isCmdSocket)
 				{
 					bzero(bufferCmd, MAXCMD+1);
+					alarm(ALARMTIMEOUT);
 					do
 					{//wait for the entire ssl record to come in first before doing something
+
 						returnValue = SSL_read(sdssl, bufferCmd, MAXCMD);
 						int sslerr = SSL_get_error(sdssl, returnValue);
 						switch (sslerr)
@@ -310,11 +338,19 @@ int main(int argc, char *argv[])
 							//other cases when necessary. right now only no error signals a successful read
 						}
 					} while(waiting && SSL_pending(sdssl));
+					alarm(0);
+					if(alarmKilled)
+					{
+						alarmKilled = false;
+						cout << "Alarm timeout killed SSL read of command socket\n";
+					}
 				}
 				else
 				{
 					mediaRead = 0; //to know how much media is ACTUALLY received. don't always assume MAXMEDIA amount was received
+
 					bzero(bufferMedia, MAXMEDIA+1);
+					alarm(ALARMTIMEOUT);
 					do
 					{//wait for the media chunk to come in first before doing something
 						returnValue = SSL_read(sdssl, bufferMedia, MAXMEDIA-mediaRead);
@@ -332,6 +368,12 @@ int main(int argc, char *argv[])
 							//other cases when necessary. right now only no error signals a successful read
 						}
 					} while(waiting && SSL_pending(sdssl));
+					alarm(0);
+					if(alarmKilled)
+					{
+						alarmKilled = false;
+						cout << "Alarm killed SSL read of media socket\n";
+					}
 				}
 
 				//check whether this flagged socket descriptor was of any use this round. if not it's dead
@@ -348,7 +390,7 @@ int main(int argc, char *argv[])
 					cout << "command raw from " << sd << ": " << bufferCmd << "\n";
 #ifdef JAVA1BYTE
 					//workaround for jclient sending first byte of a command separately
-					//after the intial login
+					//after the initial login
 					string bufferString(bufferCmd);
 					if(bufferString == JBYTE)
 					{
@@ -772,10 +814,28 @@ int main(int argc, char *argv[])
 #ifdef JCALLDIAG
 					cout << "received " << mediaRead << " bytes of call data: " << bufferMedia << "\n";
 #endif
-					if(clientssl.count(sdstate) > 0) //the other person's media sd doesn't exist
+					if(clientssl.count(sdstate) > 0) //the other person's media sd does exist
 					{
-						SSL *recepient = clientssl[sdstate];
-						SSL_write(recepient, bufferMedia, mediaRead);
+						if(FD_ISSET(sdstate, &writefds))
+						{//only send if the socket's buffer has place
+							SSL *recepient = clientssl[sdstate];
+							SSL_write(recepient, bufferMedia, mediaRead);
+						}
+						else
+						{//if there is no place, just drop the 32bytes of voice
+						 //a backlog of voice will cause a call lag. better to ask again and say "didn't catch that"
+							cout << "sending to socket " << sdstate << " failed because it is busy\n";
+							int fails = failCount[sdstate]++;
+							failCount[sdstate] = fails++;
+							if(fails > FAILMAX)
+							{
+								cout << "too many fails. removing this socket";
+								removeClient(sdstate);
+								//on the next round if(clientssl.count(sdstate)) will fail and go to
+								//the else which will send the call drop. waiting for the next round to
+								//avoid copying and pasting identical code
+							}
+						}
 					}
 					else
 					{
@@ -804,7 +864,7 @@ int main(int argc, char *argv[])
 							goto skipfd;
 						}
 						string drop = to_string(now) + "|call|drop|" + to_string(sessionid) + "\n";
-						
+
 						//write to the person who got dropped's command fd that the call was dropped
 						int commandfd = postgres->userFd(user, COMMAND);
 						SSL *cmdSsl = clientssl[commandfd];
@@ -836,6 +896,7 @@ int main(int argc, char *argv[])
 			}
 			removals.clear();
 		}
+		cout << "_____________________________________\n_________________________________\n";
 	}
 
 #ifdef MEMCHECK
@@ -926,6 +987,11 @@ void removeClient(int sd)
 			sdinfo.erase(cmd);
 		}
 		
+		if(failCount.count(cmd > 0))
+		{
+			failCount.erase(cmd);
+		}
+
 		if(clientssl.count(cmd) > 0)
 		{
 			SSL_shutdown(clientssl[cmd]);
@@ -941,36 +1007,14 @@ void removeClient(int sd)
 	{
 		if(sdinfo.count(media) > 0)
 		{
-			//using the standard model: touma is in a call with zapper. touma's connection dies. when it's time
-			//	to remove touma's media fd, tell zapper the call dropped otherwise there will be awkward silence
-			int zapperMedia = sdinfo[media];
-			if(zapperMedia > 4)
-			{
-				string touma = postgres->userFromFd(media, MEDIA);
-				string zapper = postgres->userFromFd(zapperMedia, MEDIA);
-				sdinfo[zapperMedia] = SOCKMEDIAIDLE;
-				cout << touma << "'s media port is dead. notifying " << zapper << " of call drop\n";
-
-				//get the timestamp
-				long now = time(NULL);
-				long sessionid = postgres->userSessionId(zapper);
-				if(sessionid < 0)
-				{
-					cout << "How?? " << zapper << "'s call was dropped but " << zapper << " had no sessionid to begin with\n";
-					goto skipnotify;
-				}
-				string drop = to_string(now) + "|call|drop|" + to_string(sessionid) + "\n";
-						
-				//write to the person who got dropped's command fd that the call was dropped
-				int zapperCmd = postgres->userFd(zapper, COMMAND);
-				SSL *cmdSsl = clientssl[zapperCmd];
-				write2Client(drop, cmdSsl);
-				cout << zapper << "'s call was dropped: " << drop;
-			}
-			skipnotify:;
 			sdinfo.erase(media);
 		}
 		
+		if(failCount.count(cmd > 0))
+		{
+			failCount.erase(cmd);
+		}
+
 		if(clientssl.count(media) > 0)
 		{
 			SSL_shutdown(clientssl[media]);
@@ -1059,6 +1103,9 @@ void write2Client(string response, SSL *respSsl)
 	}
 }
 
-
+void alarm_handler(int signum)
+{
+	alarmKilled = true;
+}
 
 

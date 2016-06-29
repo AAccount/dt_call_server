@@ -9,12 +9,12 @@ PQXX =  -lpqxx -lpq
 UNAME=$(shell uname -s)
 ifeq ($(UNAME),Linux)
  OPTFLAGS = -O3 -march=native -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
- CFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
+ CFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA -DJCALLDIAG
  CC = g++
 endif
 ifeq ($(UNAME),FreeBSD)
  OPTFLAGS = -O3 -march=native -Werror -DJAVA1BYTE -DJSTOPMEDIA
- CFLAGS = -g -Werror -DJAVA1BYTE -DJCALLDIAG -DJSTOPMEDIA
+ CFLAGS = -g -Werror -DJAVA1BYTE -DJCALLDIAG -DJSTOPMEDIA -DJCALLDIAG
  INC = -I /usr/local/include
  LIB = -L /usr/local/lib
  CC = clang++

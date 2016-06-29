@@ -1,5 +1,8 @@
 #define MAXCMD 100 //how many characters a command with params can be 
-#define MAXMEDIA 4096 //how much media is transferred between users at a time
+#define MAXMEDIA 64 //how much media is transferred between users at a time
+					//media buffer must be larger than media frame (amr in this case) or it won't work
+					//example: amr encodes 32 bytes, making the buffer 64 bytes
+#define MAXLISTENWAIT 5
 
 //which fd to set
 #define COMMAND 1
@@ -23,3 +26,11 @@
 
 //java 1 byte ignored character
 #define JBYTE "D"
+
+//timeouts
+#define ALARMTIMEOUT 3 //seconds
+#define SOCKETTIMEOUT 2 //seconds
+#define WSELECTTIMEOUT 100000 //microseconds
+
+//maximum amount of times a socket can write fail before killing
+#define FAILMAX 10
