@@ -1208,6 +1208,8 @@ string trim (string str)
 
 	size_t beginning = str.find_first_not_of(" \r\n\t");
 
+	//if there is a comment then start looking BEFORE the comment otherwise find_last_not_of
+	//will "OK" the comment characters and fail to trim
 	size_t comment = str.find('#');
 	size_t ending;
 	if(comment != string::npos)
