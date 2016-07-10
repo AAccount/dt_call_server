@@ -9,3 +9,4 @@ void removeClient(int sd); //remove a client's command and media or only media d
 bool isRealCall(string persona, string personb); //verify the call is real and not a malicious hand crafted command
 void write2Client(string response, SSL *respSsl);
 void alarm_handler(int signum);
+string trim (string str);

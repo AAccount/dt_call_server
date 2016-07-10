@@ -22,6 +22,7 @@
 #include <unordered_map> //hash table
 #include <map> //self balancing tree used as a table
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
@@ -46,8 +47,8 @@ int main(int argc, char *argv[])
 	//you MUST establish the postgres utilities instance variable here or get a segmentation inside on c->prepare
 	PGUtils *postgres = PGUtils::getInstance();
 	
-	int cmdFD, incomingCmd, cmdPort; //command port stuff
-	int mediaFD, incomingMedia, mediaPort, mediaRead; //media port stuff
+	int cmdFD, incomingCmd, cmdPort = 1991; //command port stuff
+	int mediaFD, incomingMedia, mediaPort = 2001, mediaRead; //media port stuff
 	int returnValue; //error handling
 	int maxsd, sd; //select related vars
 	SSL *sdssl; //used for iterating through the ordered map
@@ -60,15 +61,106 @@ int main(int argc, char *argv[])
 	int suicideSocket;
 #endif
 	
+
+	//read program options from a config file
+	bool gotPublicKey = false, gotPrivateKey = false, gotCiphers = false, gotCmdPort = false, gotMediaPort = false;
+	string publicKeyFile;
+	string privateKeyFile;
+	string ciphers = "DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:AES256-GCM-SHA384:AES256-SHA256:AES256-SHA:AES128-GCM-SHA256:AES128-SHA256:AES128-SHA";
+	ifstream conffile(CONFFILE);
+	string line;
+
+	while(getline(conffile, line))
+	{
+		//skip blank lines and comment lines
+		if(line.length() == 0 || line.at(0) == '#')
+		{
+			continue;
+		}
+
+		//read the variable and its value
+		string var, value;
+		stringstream ss(line);
+		getline(ss, var, '=');
+		getline(ss, value, '=');
+
+		//cleanup the surrounding whitespace and strip the end of line comment
+		var = trim(var);
+		value = trim(value);
+
+		//if there is no value then go on to the next line
+		if(value == "")
+		{
+			continue;
+		}
+
+		if(var == "command")
+		{
+			cmdPort = atoi(value.c_str());
+			gotCmdPort = true;
+			continue;
+		}
+		else if (var == "media")
+		{
+			mediaPort = atoi(value.c_str());
+			gotMediaPort = true;
+			continue;
+		}
+		else if (var == "public")
+		{
+			publicKeyFile = value;
+			gotPublicKey = true;
+			continue;
+		}
+		else if (var == "private")
+		{
+			privateKeyFile = value;
+			gotPrivateKey = true;
+			continue;
+		}
+		else if (var == "ciphers")
+		{
+			ciphers = value;
+			gotCiphers = true;
+			continue;
+		}
+		else
+		{
+			cout << "unknown variable parsed\n";
+		}
+	}
+
+	//at the minimum a public and private key must be specified. everything else has a default value
+	if (!gotPublicKey || !gotPrivateKey)
+	{
+		if(!gotPublicKey)
+		{
+			cout << "Your did not specify a PUBLIC key pem in: " << CONFFILE << "\n";
+		}
+		if(!gotPublicKey)
+		{
+			cout << "Your did not specify a PRIVATE key pem in: " << CONFFILE << "\n";
+		}
+		exit(1);
+	}
+
+	//warn of default values if they're being used
+	if(!gotCmdPort)
+	{
+		cout << "Using default command port of: " << cmdPort << "\n";
+	}
+	if(!gotMediaPort)
+	{
+		cout << "Using default media port of: " << mediaPort << "\n";
+	}
+	if(!gotCiphers)
+	{
+		cout << "Using default ciphers (no ECDHE): " << ciphers << "\n";
+	}
+
 	struct sockaddr_in serv_cmd, serv_media, cli_addr;
 	fd_set readfds;
 	fd_set writefds;
-
-	if (argc < 3)
-	{
-		cout << "Must provide command AND media port\n";
-		exit(1);
-	}
 
 	//openssl setup
 	SSL_load_error_strings();
@@ -84,18 +176,17 @@ int main(int argc, char *argv[])
 	}
 	//TODO: check how ideal const char *ciphers is
 	//https://github.com/deadtrickster/cl-dropbox/blob/master/src/ssl.lisp
-	const char *ciphers = "DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:AES256-GCM-SHA384:AES256-SHA256:AES256-SHA:AES128-GCM-SHA256:AES128-SHA256:AES128-SHA";
-	SSL_CTX_set_cipher_list(sslcontext, ciphers);
+	SSL_CTX_set_cipher_list(sslcontext, ciphers.c_str());
 	SSL_CTX_set_options(sslcontext, SSL_OP_NO_TLSv1);
 	SSL_CTX_set_options(sslcontext, SSL_OP_NO_TLSv1_1);
 	SSL_CTX_set_options(sslcontext, SSL_OP_SINGLE_DH_USE);
-	returnValue= SSL_CTX_use_PrivateKey_file(sslcontext, "/home/Daniel/Documents/untitled_folder/private.pem", SSL_FILETYPE_PEM);
+	returnValue= SSL_CTX_use_PrivateKey_file(sslcontext, privateKeyFile.c_str(), SSL_FILETYPE_PEM);
 	if(returnValue <= 0)
 	{
 		perror("cannot access private key");
 		return 1;
 	}
-	returnValue = SSL_CTX_use_certificate_file(sslcontext, "/home/Daniel/Documents/untitled_folder/public.pem", SSL_FILETYPE_PEM);
+	returnValue = SSL_CTX_use_certificate_file(sslcontext, publicKeyFile.c_str(), SSL_FILETYPE_PEM);
 	if(returnValue <= 0)
 	{
 		perror("cannot access public key");
@@ -115,7 +206,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	bzero((char *) &serv_cmd, sizeof(serv_cmd));
-	cmdPort = atoi(argv[1]);
 	serv_cmd.sin_family = AF_INET;
 	serv_cmd.sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	serv_cmd.sin_port = htons(cmdPort);
@@ -141,7 +231,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	bzero((char *) &serv_media, sizeof(serv_media));
-	mediaPort = atoi(argv[2]);
 	serv_media.sin_family = AF_INET;
 	serv_media.sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	serv_media.sin_port = htons(mediaPort);
@@ -304,7 +393,7 @@ int main(int argc, char *argv[])
 		//reuse the same iterator variable (reinitialize it too)
 		vector<int> removals;
 		for(it = clientssl.begin(); it != clientssl.end(); ++it)
-		{//figure out if it's a command, or voice data. handle appropirately
+		{//figure out if it's a command, or voice data. handle appropriately
 
 			//get the socket descriptor and associated ssl struct from the iterator round
 			sd = it->first;
@@ -1108,4 +1197,27 @@ void alarm_handler(int signum)
 	alarmKilled = true;
 }
 
+//https://stackoverflow.com/questions/1798112/removing-leading-and-trailing-spaces-from-a-string
+string trim (string str)
+{//
+	//nothing to trim in a blank string
+	if(str.length() == 0)
+	{
+		return str;
+	}
 
+	size_t beginning = str.find_first_not_of(" \r\n\t");
+
+	size_t comment = str.find('#');
+	size_t ending;
+	if(comment != string::npos)
+	{
+		ending = str.find_last_not_of(" #\r\n\t", comment); //strip off the comment
+	}
+	else
+	{
+		ending = str.find_last_not_of(" #\r\n\t"); //strip off the comment
+	}
+	size_t range = ending-beginning+1;
+	return str.substr(beginning, range);
+}
