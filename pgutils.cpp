@@ -7,14 +7,13 @@
 #include "const.h"
 #include "pgutils.hpp"
 
+#include "dblog.hpp"
+
 using namespace std;
 using namespace pqxx;
 
 //declare all static variables
 PGUtils* PGUtils::instance;
-#ifdef MEMCHECK
-int PGUtils::counter = 1;
-#endif
 
 //constructor
 PGUtils::PGUtils()
@@ -33,13 +32,13 @@ PGUtils* PGUtils::getInstance() //don't need to declare static again
 	return instance;
 }
 
-long PGUtils::authenticate(string username, string password)
+unsigned long PGUtils::authenticate(string username, string password)
 {//TODO: remove error specifics like no user etc and turn it into "authentication failure" or similar
 
 	//sql statements
 	const string hash = "select saltedhash from users where username=$1";
 	const string auth = "select count(*) from users where username=$1 and saltedhash=crypt($2, $3)";
-	const string timestamp = "update users set sessionid=$1 where username=$2";
+	const string setsession = "update users set sessionid=$1 where username=$2";
 
 	//get the salted hash for verification
 	dbconn.prepare("hash", hash);
@@ -81,20 +80,15 @@ long PGUtils::authenticate(string username, string password)
 */
 	//pqxx truncates random strings... randomly. very annoying. not sure how to work around.
 	//use large random number instead
-#ifdef MEMCHECK
-	long sessionid = counter; //get around valgrind sigill for rdrand on 5960X haswell
-	counter++;
-#else
 	random_device rd;
 	mt19937 mt(rd());
 	uniform_int_distribution<unsigned long> dist (0, 9223372036854775807);
 	long sessionid = dist(mt);
-#endif
 	try
 	{
-		dbconn.prepare("timestamp", timestamp);
+		dbconn.prepare("setsession", setsession);
 		work setTimestamp(dbconn);
-		setTimestamp.prepared("timestamp")(sessionid)(username).exec();
+		setTimestamp.prepared("setsession")(sessionid)(username).exec();
 		setTimestamp.commit();
 	}
 	catch(exception &e)
@@ -106,7 +100,7 @@ long PGUtils::authenticate(string username, string password)
 	return sessionid;
 }
 
-void PGUtils::setFd(long sessionid, int fd, int which)
+void PGUtils::setFd(unsigned long sessionid, int fd, int which)
 {
 	const string setCmd = "update users set commandfd=$1 where sessionid=$2";
 	const string setMedia = "update users set mediafd=$1 where sessionid=$2";
@@ -143,7 +137,7 @@ void PGUtils::clearSession(string username)
 
 //make ABSOLUTELY SURE this can't be called before verifying the user's sessionid to avoid scripted
 //	lookups of who is in the database
-bool PGUtils::verifySessionid(long sessionid, int fd)
+bool PGUtils::verifySessionid(unsigned long sessionid, int fd)
 {
 	const string verify = "select count(*) from users where commandfd=$1 and sessionid=$2";
 
@@ -191,7 +185,7 @@ string PGUtils::userFromFd(int fd, int which)
 	return "EPARAM";
 }
 
-string PGUtils::userFromSessionid(long sessionid)
+string PGUtils::userFromSessionid(unsigned long sessionid)
 {
 	const string userFromSession = "select username from users where sessionid=$1";
 	
@@ -267,7 +261,7 @@ bool PGUtils::doesUserExist(string name)
 	return false;
 }
 
-long PGUtils::userSessionId(string uname)
+unsigned long PGUtils::userSessionId(string uname)
 {
 	const string querySess = "select sessionid from users where username=$1";
 	dbconn.prepare("querySess", querySess);
@@ -280,15 +274,22 @@ long PGUtils::userSessionId(string uname)
 	return EPARAM;
 }
 
-#ifdef MEMCHECK
 void PGUtils::killInstance()
 {
 	delete instance;
 }
-#endif
 
 
+void PGUtils::insertLog(DBLog dbl)
+{
+	const string ins = "insert into logs (ts, tag, message, type, ip, who, relatedkey) values ($1, $2, $3, $4, $5, $6, $7)";
+	dbconn.prepare("ins", ins);
+	work wIns(dbconn);
+	wIns.prepared("ins")(dbl.getTimestamp())(dbl.getTag())(dbl.getMessage())(dbl.getType())(dbl.getIp())(dbl.getUser())(dbl.getRelatedKey()).exec();
+	wIns.commit();
 
+	cout << dbl.getTag() << ": " << dbl.getMessage() << "\n";
+}
 
 
 

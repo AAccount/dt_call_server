@@ -20,8 +20,8 @@ ifeq ($(UNAME),FreeBSD)
  CC = clang++
 endif
 
-server: server.o pgutils.o
-	${CC} -o $@ pgutils.o ${PQXX} server.o ${OPENSSL} ${MATH} ${INC} ${LIB}
+server: server.o pgutils.o dblog.o
+	${CC} -o $@ pgutils.o ${PQXX} server.o dblog.o ${OPENSSL} ${MATH} ${INC} ${LIB}
 
 testdb: testdb.cpp pgutils.o
 	${CC} ${CFLAGS} -o $@ testdb.cpp pgutils.o ${PQXX} ${INC} ${LIB}
@@ -31,6 +31,9 @@ pgutils.o : pgutils.cpp pgutils.hpp
 
 server.o : server.cpp server.hpp
 	${CC} ${CFLAGS} -c server.cpp ${INC}
+
+dblog.o: dblog.cpp dblog.hpp
+	${CC} ${CFLAGS} -c dblog.cpp ${INC}
 
 clean:
 	rm client server testdb *.o *.gch

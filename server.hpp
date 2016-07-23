@@ -10,3 +10,4 @@ bool isRealCall(string persona, string personb); //verify the call is real and n
 void write2Client(string response, SSL *respSsl);
 void alarm_handler(int signum);
 string trim (string str);
+string ipFromSd(int sd);
