@@ -2,7 +2,7 @@
 
 using namespace std;
 
-DBLog::DBLog(int cid, long cts, string ctag, string cmessage, string cuser, int ctype, string cip, unsigned long crelatedKey)
+DBLog::DBLog(int cid, long cts, string ctag, string cmessage, string cuser, string ctype, string cip, unsigned long crelatedKey)
 {
 	id = cid;
 	timestamp = cts;
@@ -14,7 +14,7 @@ DBLog::DBLog(int cid, long cts, string ctag, string cmessage, string cuser, int 
 	relatedKey = crelatedKey;
 }
 
-DBLog::DBLog(string ctag, string cmessage, string cuser, int ctype, string cip, unsigned long crelatedKey)
+DBLog::DBLog(string ctag, string cmessage, string cuser, string ctype, string cip, unsigned long crelatedKey)
 {
 	id = 0; //log that isn't in the db yet
 	timestamp = time(NULL);
@@ -51,7 +51,7 @@ string DBLog::getUser()
 	return user;
 }
 
-int DBLog::getType()
+string DBLog::getType()
 {
 	return type;
 }
