@@ -47,6 +47,7 @@ private:
 
 public:
 	DBLog(int cid, long cts, std::string ctag, std::string cmessage, std::string user, std::string type, std::string ip, unsigned long relatedKey);
+	DBLog(long cts, std::string ctag, std::string cmessage, std::string user, std::string type, std::string ip, unsigned long relatedKey);
 	DBLog(std::string ctag, std::string cmessage, std::string user, std::string type, std::string ip, unsigned long relatedKey);
 
 	int getId();

@@ -1,5 +1,5 @@
 ﻿select
-  to_timestamp(ts) as ts,
+  to_timestamp(ts/1000) as tsreadable,
   tag,
   message,
   type,
@@ -7,3 +7,4 @@
   who,
   relatedkey
 from logs
+order by ts desc;

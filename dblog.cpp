@@ -14,6 +14,17 @@ DBLog::DBLog(int cid, long cts, string ctag, string cmessage, string cuser, stri
 	relatedKey = crelatedKey;
 }
 
+DBLog::DBLog(long cts, string ctag, string cmessage, string cuser, string ctype, string cip, unsigned long crelatedKey)
+{
+	timestamp = cts;
+	tag = ctag;
+	message=cmessage;
+	user = cuser;
+	type = ctype;
+	ip = cip;
+	relatedKey = crelatedKey;
+}
+
 DBLog::DBLog(string ctag, string cmessage, string cuser, string ctype, string cip, unsigned long crelatedKey)
 {
 	id = 0; //log that isn't in the db yet
