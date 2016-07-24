@@ -1012,7 +1012,7 @@ int main(int argc, char *argv[])
 
 					skipreg:; //skip media fd registration. something didn't check out ok.
 				}
-				else if(sdstate >= SOCKMEDIAIDLE)
+				else if(sdstate == INITWAITING || sdstate >= INITWAITING)
 				{
 					if(sdstate == SOCKMEDIAIDLE)
 					{
