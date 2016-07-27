@@ -1,7 +1,47 @@
 --install contrib and then create extension IN THE DATABASE for pgcrypt
-drop table if exists users;
-drop table if exists logs;
 
+-- drop tables in order to prevent foreign key complaining
+drop table if exists logs;
+DROP TABLE IF EXISTS logtype;
+DROP TABLE IF EXISTS tag;
+drop table if exists users;
+
+--reference tables
+--log type reference
+CREATE TABLE logtype
+(
+	typeid serial primary key,
+	typename text not null
+);
+insert into logtype (typeid, typename) values (1, 'inbound');
+insert into logtype (typeid, typename) values (2, 'outbound');
+insert into logtype (typeid, typename) values (3, 'error');
+insert into logtype (typeid, typename) values (4, 'system');
+
+--tag name reference
+CREATE TABLE tag
+(
+	tagid serial primary key,
+	tagname text not null
+);
+insert into tag (tagid, tagname) values (1, 'init');
+insert into tag (tagid, tagname) values (2, 'incoming command socket');
+insert into tag (tagid, tagname) values (3, 'incoming media socket');
+insert into tag (tagid, tagname) values (4, 'alarm killed');
+insert into tag (tagid, tagname) values (5, 'socket died');
+insert into tag (tagid, tagname) values (6, 'bad command');
+insert into tag (tagid, tagname) values (7, 'login');
+insert into tag (tagid, tagname) values (8, 'place call');
+insert into tag (tagid, tagname) values (9, 'lookup');
+insert into tag (tagid, tagname) values (10, 'accept');
+insert into tag (tagid, tagname) values (11, 'reject');
+insert into tag (tagid, tagname) values (12, 'call end');
+insert into tag (tagid, tagname) values (13, 'call timeout');
+insert into tag (tagid, tagname) values (14, 'new media socket');
+insert into tag (tagid, tagname) values (15, 'media socket event');
+
+-- data tables
+-- user table
 create table users
 (
 	username text primary key,
@@ -15,28 +55,28 @@ insert into users (username, saltedhash) values ('righthand', crypt('unlucky',ge
 insert into users (username, saltedhash) values ('libprohibited', crypt('feedme',gen_salt('bf')));
 insert into users (username, saltedhash) values ('zapper', crypt('railgun',gen_salt('bf')));
 
---order must match the #defines in log.hpp
-DROP TYPE IF EXISTS logtype;
-CREATE TYPE logtype AS ENUM ('inbound', 'outbound', 'error', 'system');
+
 CREATE TABLE logs
 (
   id serial,
   ts bigint NOT NULL DEFAULT 0,
-  tag text NOT NULL,
+  tag int,
   message text NOT NULL,
-  type logtype,
+  type int,
   ip text,
   who text,
   relatedKey bigint,
-  CONSTRAINT "Primary Key" PRIMARY KEY (id)
+  CONSTRAINT "Primary Key" PRIMARY KEY (id),
+  CONSTRAINT "Tag Foreign Key" FOREIGN KEY (tag) REFERENCES tag(tagid),
+  CONSTRAINT "Log Type Foreign Key" FOREIGN KEY (type) REFERENCES logtype(typeid)
 );
 
 CREATE INDEX "Tag Grouping"
   ON logs
   USING btree
-  (tag COLLATE pg_catalog."default");
+  (tag);
 
-CREATE INDEX "Timestamp Sorter"
+CREATE INDEX "Log Type Grouping"
   ON logs
   USING btree
-  (ts DESC NULLS LAST);
+  (type);

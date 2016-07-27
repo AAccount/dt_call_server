@@ -2,7 +2,7 @@
 
 using namespace std;
 
-DBLog::DBLog(int cid, long cts, string ctag, string cmessage, string cuser, string ctype, string cip, unsigned long crelatedKey)
+DBLog::DBLog(int cid, long cts, int ctag, string cmessage, string cuser, int ctype, string cip, unsigned long crelatedKey)
 {
 	id = cid;
 	timestamp = cts;
@@ -14,23 +14,12 @@ DBLog::DBLog(int cid, long cts, string ctag, string cmessage, string cuser, stri
 	relatedKey = crelatedKey;
 }
 
-DBLog::DBLog(long cts, string ctag, string cmessage, string cuser, string ctype, string cip, unsigned long crelatedKey)
+DBLog::DBLog(long cts, int ctag, string cmessage, string cuser, int ctype, string cip, unsigned long crelatedKey)
 {
+	id = 0; //new log, won't have an id yet. initialize to clear out old data
 	timestamp = cts;
 	tag = ctag;
 	message=cmessage;
-	user = cuser;
-	type = ctype;
-	ip = cip;
-	relatedKey = crelatedKey;
-}
-
-DBLog::DBLog(string ctag, string cmessage, string cuser, string ctype, string cip, unsigned long crelatedKey)
-{
-	id = 0; //log that isn't in the db yet
-	timestamp = time(NULL);
-	tag = ctag;
-	message = cmessage;
 	user = cuser;
 	type = ctype;
 	ip = cip;
@@ -47,7 +36,7 @@ long DBLog::getTimestamp()
 	return timestamp;
 }
 
-string DBLog::getTag()
+int DBLog::getTag()
 {
 	return tag;
 }
@@ -62,7 +51,7 @@ string DBLog::getUser()
 	return user;
 }
 
-string DBLog::getType()
+int DBLog::getType()
 {
 	return type;
 }
