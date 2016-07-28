@@ -288,7 +288,56 @@ void PGUtils::insertLog(DBLog dbl)
 	wIns.prepared("ins")(dbl.getTimestamp())(dbl.getTag())(dbl.getMessage())(dbl.getType())(dbl.getIp())(dbl.getUser())(dbl.getRelatedKey()).exec();
 	wIns.commit();
 
-	cout << dbl.getTag() << ": " << dbl.getMessage() << "\n";
+	string tagString = "(tag)";
+	switch(dbl.getTag())
+	{
+		case TAG_INIT:
+			tagString = "init";
+			break;
+		case TAG_INCOMINGCMD:
+			tagString = "incoming command socket";
+			break;
+		case TAG_INCOMINGMEDIA:
+			tagString = "incoming media socket";
+			break;
+		case TAG_ALARM:
+			tagString = "alarm killed";
+			break;
+		case TAG_DEADSOCK:
+			tagString = "socked died";
+			break;
+		case TAG_BADCMD:
+			tagString = "bad command";
+			break;
+		case TAG_LOGIN:
+			tagString = "login";
+			break;
+		case TAG_CALL:
+			tagString = "place call";
+			break;
+		case TAG_LOOKUP:
+			tagString = "lookup";
+			break;
+		case TAG_ACCEPT:
+			tagString = "accept";
+			break;
+		case TAG_REJECT:
+			tagString = "reject";
+			break;
+		case TAG_END:
+			tagString = "call end";
+			break;
+		case TAG_TIMEOUT:
+			tagString = "call timeout";
+			break;
+		case TAG_MEDIANEW:
+			tagString = "new media socket";
+			break;
+		case TAG_MEDIACALL:
+			tagString = "media socket event";
+			break;
+	}
+	cout << tagString << ": " << dbl.getMessage() << "\n";
 }
 
 

@@ -1,4 +1,5 @@
 ﻿select
+  id,
   to_timestamp(ts/1000) as tsreadable,
   ta.tagname as tag,
   message,
