@@ -1,6 +1,7 @@
 #ifndef PGUTILS_H
 #define PGUTILS_H
 
+#include <unordered_map> //hash table
 #include <pqxx/pqxx>
 #include "const.h"
 #include "dblog.hpp"
@@ -31,6 +32,7 @@ class PGUtils
 		PGUtils();
 		connection dbconn; //db connection
 		static PGUtils *instance;
+		unordered_map<int, string> tagNames;
 };
 
 #endif //PGUTILS_H

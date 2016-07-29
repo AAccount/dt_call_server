@@ -3,6 +3,7 @@
 #include <pqxx/pqxx>
 #include <random>
 #include <iostream>
+#include <unordered_map> //hash table
 
 #include "const.h"
 #include "pgutils.hpp"
@@ -288,54 +289,25 @@ void PGUtils::insertLog(DBLog dbl)
 	wIns.prepared("ins")(dbl.getTimestamp())(dbl.getTag())(dbl.getMessage())(dbl.getType())(dbl.getIp())(dbl.getUser())(dbl.getRelatedKey()).exec();
 	wIns.commit();
 
+	//use in memory hash table of tag id --> tag name so tag names only have to be written down once: in the db
+	const string getTag = "select tagname from tag where tagid=$1";
 	string tagString = "(tag)";
-	switch(dbl.getTag())
+	int tagId = dbl.getTag();
+	if(tagNames.count(tagId) == 0)
 	{
-		case TAG_INIT:
-			tagString = "init";
-			break;
-		case TAG_INCOMINGCMD:
-			tagString = "incoming command socket";
-			break;
-		case TAG_INCOMINGMEDIA:
-			tagString = "incoming media socket";
-			break;
-		case TAG_ALARM:
-			tagString = "alarm killed";
-			break;
-		case TAG_DEADSOCK:
-			tagString = "socked died";
-			break;
-		case TAG_BADCMD:
-			tagString = "bad command";
-			break;
-		case TAG_LOGIN:
-			tagString = "login";
-			break;
-		case TAG_CALL:
-			tagString = "place call";
-			break;
-		case TAG_LOOKUP:
-			tagString = "lookup";
-			break;
-		case TAG_ACCEPT:
-			tagString = "accept";
-			break;
-		case TAG_REJECT:
-			tagString = "reject";
-			break;
-		case TAG_END:
-			tagString = "call end";
-			break;
-		case TAG_TIMEOUT:
-			tagString = "call timeout";
-			break;
-		case TAG_MEDIANEW:
-			tagString = "new media socket";
-			break;
-		case TAG_MEDIACALL:
-			tagString = "media socket event";
-			break;
+		//only do the db lookup if necessary. should help performance
+		dbconn.prepare("getTag", getTag);
+		work wTag(dbconn);
+		result dbresult = wTag.prepared("getTag")(tagId).exec();
+		if(dbresult.size() > 0)
+		{
+			tagString = dbresult[0][0].as<string>();
+			tagNames[tagId] = tagString;
+		}
+	}
+	else
+	{
+		tagString = tagNames[tagId];
 	}
 	cout << tagString << ": " << dbl.getMessage() << "\n";
 }
