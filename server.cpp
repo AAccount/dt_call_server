@@ -1175,6 +1175,21 @@ vector<string> parse(char command[])
 		token = strtok(NULL, "|");
 		i++;
 	}
+#ifdef JAVA1BYTE
+	try
+	{
+		string timestamp = result.at(0);
+		size_t notjbyte = timestamp.find_first_not_of(JBYTE.at(0));
+		if(notjbyte != string::npos)
+		{
+			result.at(0) = timestamp.substr(notjbyte);
+		}
+	}
+	catch (out_of_range &oorange)
+	{
+		//nothing you can really do if the vector result has nothing. just don't crap out
+	}
+#endif
 	return result;
 }
 
