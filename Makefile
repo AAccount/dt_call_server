@@ -1,7 +1,7 @@
 #JAVA1BYTE: workaround for java sending the first byte over a socket separately on the second and subsequent writes
 #JCALLDIAG: show the call contents as text for jclient. won't show anything meaningful in a real call
 #JSTOPMEDIA: for removeClient, only remove both command and media if the given socket descriptor was a command. currently media is being killed and restarted by jclient to stop the 2 media r/w threads. you don't want to be kicked out by having the command socket closed because you're using THE ONLY known workaround for stopping a blocking thread in java
-#MEMCHECK: respond to the "suicide" command which causes the server to shutdown. useful for checking memory leaks
+#VERBOSE: print out a summary of what happened every single select call. (the old cout, pre dblog, debugging output)
 MATH = -lm
 OPENSSL = -lssl -lcrypto
 PQXX =  -lpqxx -lpq

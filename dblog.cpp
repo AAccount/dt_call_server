@@ -43,6 +43,14 @@ int DBLog::getTag()
 
 string DBLog::getMessage()
 {
+#ifndef VERBOSE
+//strip newlines from the message for more pleasant terminal output
+	size_t length = message.length();
+	if(message.at(length-1) == '\n')
+	{
+		message = message.substr(0, length-1);
+	}
+#endif
 	return message;
 }
 

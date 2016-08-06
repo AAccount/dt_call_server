@@ -294,7 +294,9 @@ int main(int argc, char *argv[])
 
 	while(true) //forever
 	{
+#ifdef VERBOSE
 		cout << "------------------------------------------\n----------------------------------------\n";
+#endif
 		FD_ZERO(&readfds);
 		FD_SET(cmdFD, &readfds);
 		FD_SET(mediaFD, &readfds);
@@ -323,8 +325,9 @@ int main(int argc, char *argv[])
 			perror(error.c_str());
 			return 1;
 		}
+#ifdef VERBOSE
 		cout << "select has " << returnValue << " sockets ready for reading\n";
-		
+#endif
 		//now that someone has sent something, check all the sockets to see which ones are writable
 		//give a 0.1second time to check. don't want the request to involve an unwritable socket and
 		//stall the whole server
@@ -336,8 +339,9 @@ int main(int argc, char *argv[])
 			perror(error.c_str());
 			return 1;
 		}
+#ifdef VERBOSE
 		cout << "select has " << returnValue << " sockets ready for writing\n";
-
+#endif
 		//check for a new incoming connection on command port
 		if(FD_ISSET(cmdFD, &readfds))
 		{
@@ -451,8 +455,9 @@ int main(int argc, char *argv[])
 			sdssl = it->second;
 			if(FD_ISSET(sd, &readfds))
 			{
+#ifdef VERBOSE
 				cout << "socket descriptor: " << sd << " was marked as set\n";
-
+#endif
 				//when a client disconnects, for some reason, the socket is marked as having "stuff" on it.
 				//however that "stuff" is no good for ssl, so use eventful boolean to indicate if there was
 				//any ssl work done for this actively marked socket descriptor. if not, drop the socket.
@@ -551,7 +556,10 @@ int main(int argc, char *argv[])
 					string bufferString(bufferCmd);
 					if(bufferString == JBYTE)
 					{
+#ifdef VERBOSE
 						cout << "Got a " << JBYTE << " cap for media sd " << sd << "\n";
+#endif
+
 						goto skipfd;
 					}
 #endif
@@ -596,14 +604,18 @@ int main(int argc, char *argv[])
 							int oldcmd = postgres->userFd(username, COMMAND);
 							if(oldcmd > 4)
 							{//remove old SSL structs to prevent memory leak
+#ifdef VERBOSE
 								cout << "previous command socket/SSL* exists, will remove\n";
+#endif
 								removals.push_back(oldcmd);
 							}
 
 							int oldmedia = postgres->userFd(username, MEDIA);
 							if(oldmedia > 4)
 							{//remove old SSL structs to prevent memory leak
+#ifdef VERBOSE
 								cout << "previous meida socket/SSL* exists, will remove\n";
+#endif
 								removals.push_back(oldmedia);
 							}
 
@@ -921,14 +933,15 @@ int main(int argc, char *argv[])
 				}
 				else if(sdstate == SOCKMEDIANEW)
 				{//timestamp|sessionid (of the user this media fd should be registered/associated to)
-
 #ifdef JAVA1BYTE
 					//workaround for jclient sending first byte of a command separately
 					//after the initial login
 					string bufferString(bufferMedia);
 					if(bufferString == JBYTE)
 					{
+#ifdef VERBOSE
 						cout << "Got a " << JBYTE << " cap for media sd " << sd << "\n";
+#endif
 						goto skipfd;
 					}
 #endif
@@ -1017,6 +1030,7 @@ int main(int argc, char *argv[])
 				}
 				else if(sdstate == INITWAITING || sdstate >= INITWAITING)
 				{
+#ifdef VERBOSE
 					if(sdstate == SOCKMEDIAIDLE)
 					{
 						cout << "received data on an established media socket. ignore it\n";
@@ -1031,6 +1045,8 @@ int main(int argc, char *argv[])
 						cout << "Got : " << bufferMedia << "\n";
 #endif
 					}
+#endif //VERBOSE
+
 				}
 				else if(sdstate > 0) //in call
 				{
@@ -1038,8 +1054,10 @@ int main(int argc, char *argv[])
 					//not avoiding duplicate code of generating log stuff: ip, user, related key because
 					//sending media will occur many times/sec. don't want to go through all the trouble of generating
 					//logging related stuff if it's never going to be used most of the time.
+#ifdef VERBOSE
 #ifdef JCALLDIAG
 					cout << "received " << mediaRead << " bytes of call data: " << bufferMedia << "\n";
+#endif
 #endif
 					if(clientssl.count(sdstate) > 0) //the other person's media sd does exist
 					{
@@ -1123,7 +1141,9 @@ int main(int argc, char *argv[])
 		//it's no longer there so you get a segfault
 		if(removals.size() > 0)
 		{
+#ifdef VERBOSE
 			cout << "Removing " << removals.size() << " dead/leftover sockets\n";
+#endif
 			vector<int>::iterator rmit;
 			for(rmit = removals.begin(); rmit != removals.end(); ++rmit)
 			{
@@ -1135,7 +1155,9 @@ int main(int argc, char *argv[])
 			}
 			removals.clear();
 		}
+#ifdef VERBOSE
 		cout << "_____________________________________\n_________________________________\n";
+#endif
 	}
 
 	//stop postgres
@@ -1179,7 +1201,7 @@ vector<string> parse(char command[])
 	try
 	{
 		string timestamp = result.at(0);
-		size_t notjbyte = timestamp.find_first_not_of(JBYTE.at(0));
+		size_t notjbyte = timestamp.find_first_not_of(JBYTE[0]);
 		if(notjbyte != string::npos)
 		{
 			result.at(0) = timestamp.substr(notjbyte);
@@ -1223,7 +1245,9 @@ void removeClient(int sd)
 	}
 #endif
 
+#ifdef VERBOSE
 	cout << "removing " << uname << "'s socket descriptors (cmd, media): (" << cmd << "," << media << ")\n";
+#endif
 
 	//if for weird reasons the user was just a media port with no cmd don't freak out and crash over no command fd
 	if(cmd > 4) //0 stdin, 1 stdout, 2 stderr, 3 command receive, 4, media receive
@@ -1288,31 +1312,41 @@ bool isRealCall(string persona, string personb)
 	int bfd = postgres->userFd(personb, MEDIA);
 	if(afd < 0)
 	{
+#ifdef VERBOSE
 		cout << prefix << persona << " doesn't even have a media fd\n";
+#endif
 		return false;
 	}
 	if(bfd < 0)
 	{
+#ifdef VERBOSE
 		cout << prefix << personb << " doesn't even have a media fd\n";
+#endif
 		return false;
 	}
 
 	int astatus = sdinfo[afd];
 	if(!((astatus == INITWAITING + bfd) || (astatus == bfd)))
 	{//apparently A isn't waiting for a call with B to start
+#ifdef VERBOSE
 		cout << prefix << persona << " isn't expecting a call from or in a call with " << personb;
+#endif
 		return false;
 	}
 
 	int bstatus = sdinfo[bfd];
 	if(!((bstatus == INITWAITING + afd) || (bstatus == afd)))
 	{//apparently B isn't waiting for a call with A to start
+#ifdef VERBOSE
 		cout << prefix << personb << " isn't expecting a call from or in a call with" << persona;
+#endif
 		return false;
 	}
 
 	//A and B both have a mediafds and are both mutually waiting for a call to start between them
+#ifdef VERBOSE
 	cout << prefix << "is a real call\n";
+#endif
 	return true;	
 }
 
@@ -1345,7 +1379,9 @@ void write2Client(string response, SSL *respSsl)
 		PGUtils *postgres = PGUtils::getInstance();
 		int socket = SSL_get_fd(respSsl);
 		string didntReceive = postgres->userFromFd(socket, COMMAND);
+#ifdef VERBOSE
 		cout << "Couldn't send command to: " << didntReceive << "\n";
+#endif
 	}
 }
 

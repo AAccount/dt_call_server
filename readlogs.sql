@@ -10,5 +10,6 @@
 from logs as l
 join logtype as t on l.type = t.typeid
 join tag as ta on l.tag = ta.tagid
-order by ts desc;
- 
+where id > 1170
+order by ts desc
+--log 1314 
