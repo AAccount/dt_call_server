@@ -158,12 +158,12 @@ int main(int argc, char *argv[])
 	//warn of default values if they're being used
 	if(!gotCmdPort)
 	{
-		string message =  "Using default command port of: " + cmdPort;
+		string message =  "Using default command port of: " + to_string(cmdPort);
 		postgres->insertLog(DBLog(millisNow(), TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
 	}
 	if(!gotMediaPort)
 	{
-		string message= "Using default media port of: " + mediaPort;
+		string message= "Using default media port of: " + to_string(mediaPort);
 		postgres->insertLog(DBLog(millisNow(), TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
 	}
 	if(!gotCiphers)
