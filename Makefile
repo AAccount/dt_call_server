@@ -8,20 +8,20 @@ PQXX =  -lpqxx -lpq
 
 UNAME=$(shell uname -s)
 ifeq ($(UNAME),Linux)
- OPTFLAGS = -O3 -march=native -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
- CFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA -DJCALLDIAG
+ CFLAGS = -O3 -march=native -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
+ DBGFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA -DJCALLDIAG
  CC = g++
 endif
 ifeq ($(UNAME),FreeBSD)
- OPTFLAGS = -O3 -march=native -Werror -DJAVA1BYTE -DJSTOPMEDIA
- CFLAGS = -g -Werror -DJAVA1BYTE -DJCALLDIAG -DJSTOPMEDIA -DJCALLDIAG
+ CFLAGS = -O3 -march=native -Werror -DJAVA1BYTE -DJSTOPMEDIA
+ DBGFLAGS = -g -Werror -DJAVA1BYTE -DJCALLDIAG -DJSTOPMEDIA -DJCALLDIAG
  INC = -I /usr/local/include
  LIB = -L /usr/local/lib
  CC = clang++
 endif
 
 server: server.o pgutils.o dblog.o
-	${CC} -o $@ pgutils.o ${PQXX} server.o dblog.o ${OPENSSL} ${MATH} ${INC} ${LIB}
+	${CC} -o dtoperator pgutils.o ${PQXX} server.o dblog.o ${OPENSSL} ${MATH} ${INC} ${LIB}
 
 testdb: testdb.cpp pgutils.o
 	${CC} ${CFLAGS} -o $@ testdb.cpp pgutils.o ${PQXX} ${INC} ${LIB}
@@ -36,5 +36,5 @@ dblog.o: dblog.cpp dblog.hpp
 	${CC} ${CFLAGS} -c dblog.cpp ${INC}
 
 clean:
-	rm client server testdb *.o *.gch
+	rm client dtoperator testdb *.o *.gch
 
