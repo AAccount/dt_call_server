@@ -83,7 +83,7 @@ unsigned long PGUtils::authenticate(string username, string password)
 	//use large random number instead
 	random_device rd;
 	mt19937 mt(rd());
-	uniform_int_distribution<unsigned long> dist (0, 9223372036854775807);
+	uniform_int_distribution<unsigned long> dist (0, (unsigned long)9223372036854775807);
 	long sessionid = dist(mt);
 	try
 	{

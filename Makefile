@@ -6,12 +6,14 @@ MATH = -lm
 OPENSSL = -lssl -lcrypto
 PQXX =  -lpqxx -lpq
 
-UNAME=$(shell uname -s)
+UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
+ LEGACYCFLAGS = -O3 -march=pentium4 -m32 -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
  CFLAGS = -O3 -march=native -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
  DBGFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA -DJCALLDIAG
  CC = g++
 endif
+
 ifeq ($(UNAME),FreeBSD)
  CFLAGS = -O3 -march=native -Werror -DJAVA1BYTE -DJSTOPMEDIA
  DBGFLAGS = -g -Werror -DJAVA1BYTE -DJCALLDIAG -DJSTOPMEDIA -DJCALLDIAG
@@ -21,7 +23,7 @@ ifeq ($(UNAME),FreeBSD)
 endif
 
 server: server.o pgutils.o dblog.o
-	${CC} -o dtoperator pgutils.o ${PQXX} server.o dblog.o ${OPENSSL} ${MATH} ${INC} ${LIB}
+	${CC} ${CFLAGS} -o dtoperator pgutils.o ${PQXX} server.o dblog.o ${OPENSSL} ${MATH} ${INC} ${LIB}
 
 testdb: testdb.cpp pgutils.o
 	${CC} ${CFLAGS} -o $@ testdb.cpp pgutils.o ${PQXX} ${INC} ${LIB}
