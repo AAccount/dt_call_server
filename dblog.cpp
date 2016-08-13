@@ -2,7 +2,7 @@
 
 using namespace std;
 
-DBLog::DBLog(int cid, long cts, int ctag, string cmessage, string cuser, int ctype, string cip, unsigned long crelatedKey)
+DBLog::DBLog(int cid, uint64_t cts, int ctag, string cmessage, string cuser, int ctype, string cip, uint64_t crelatedKey)
 {
 	id = cid;
 	timestamp = cts;
@@ -14,7 +14,7 @@ DBLog::DBLog(int cid, long cts, int ctag, string cmessage, string cuser, int cty
 	relatedKey = crelatedKey;
 }
 
-DBLog::DBLog(long cts, int ctag, string cmessage, string cuser, int ctype, string cip, unsigned long crelatedKey)
+DBLog::DBLog(uint64_t cts, int ctag, string cmessage, string cuser, int ctype, string cip, uint64_t crelatedKey)
 {
 	id = 0; //new log, won't have an id yet. initialize to clear out old data
 	timestamp = cts;
@@ -31,7 +31,7 @@ int DBLog::getId()
 	return id;
 }
 
-long DBLog::getTimestamp()
+uint64_t DBLog::getTimestamp()
 {
 	return timestamp;
 }
@@ -69,7 +69,7 @@ string DBLog::getIp()
 	return ip;
 }
 
-unsigned long DBLog::getRelatedKey()
+uint64_t DBLog::getRelatedKey()
 {
 	return relatedKey;
 }

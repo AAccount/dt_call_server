@@ -33,7 +33,7 @@ PGUtils* PGUtils::getInstance() //don't need to declare static again
 	return instance;
 }
 
-unsigned long PGUtils::authenticate(string username, string password)
+uint64_t PGUtils::authenticate(string username, string password)
 {//TODO: remove error specifics like no user etc and turn it into "authentication failure" or similar
 
 	//sql statements
@@ -83,8 +83,8 @@ unsigned long PGUtils::authenticate(string username, string password)
 	//use large random number instead
 	random_device rd;
 	mt19937 mt(rd());
-	uniform_int_distribution<unsigned long> dist (0, (unsigned long)9223372036854775807);
-	long sessionid = dist(mt);
+	uniform_int_distribution<uint64_t> dist (0, (uint64_t)9223372036854775807);
+	uint64_t sessionid = dist(mt);
 	try
 	{
 		dbconn.prepare("setsession", setsession);
@@ -101,7 +101,7 @@ unsigned long PGUtils::authenticate(string username, string password)
 	return sessionid;
 }
 
-void PGUtils::setFd(unsigned long sessionid, int fd, int which)
+void PGUtils::setFd(uint64_t sessionid, int fd, int which)
 {
 	const string setCmd = "update users set commandfd=$1 where sessionid=$2";
 	const string setMedia = "update users set mediafd=$1 where sessionid=$2";
@@ -138,7 +138,7 @@ void PGUtils::clearSession(string username)
 
 //make ABSOLUTELY SURE this can't be called before verifying the user's sessionid to avoid scripted
 //	lookups of who is in the database
-bool PGUtils::verifySessionid(unsigned long sessionid, int fd)
+bool PGUtils::verifySessionid(uint64_t sessionid, int fd)
 {
 	const string verify = "select count(*) from users where commandfd=$1 and sessionid=$2";
 
@@ -186,7 +186,7 @@ string PGUtils::userFromFd(int fd, int which)
 	return "EPARAM";
 }
 
-string PGUtils::userFromSessionid(unsigned long sessionid)
+string PGUtils::userFromSessionid(uint64_t sessionid)
 {
 	const string userFromSession = "select username from users where sessionid=$1";
 	
@@ -262,7 +262,7 @@ bool PGUtils::doesUserExist(string name)
 	return false;
 }
 
-unsigned long PGUtils::userSessionId(string uname)
+uint64_t PGUtils::userSessionId(string uname)
 {
 	const string querySess = "select sessionid from users where username=$1";
 	dbconn.prepare("querySess", querySess);

@@ -14,17 +14,17 @@ class PGUtils
 	public:
 		static PGUtils* getInstance();
 		//db set/write functions
-		unsigned long authenticate(string username, string password);
-		void setFd(unsigned long sessionid, int fd, int which);
+		uint64_t authenticate(string username, string password);
+		void setFd(uint64_t sessionid, int fd, int which);
 		void clearSession(string username);
 		//db verification functions
-		bool verifySessionid(unsigned long sessionid, int fd);
+		bool verifySessionid(uint64_t sessionid, int fd);
 		bool doesUserExist(string name);
 		//db lookup functions
 		string userFromFd(int fd, int which);
-		string userFromSessionid(unsigned long sessionid);
+		string userFromSessionid(uint64_t sessionid);
 		int userFd(string user, int which);
-		unsigned long userSessionId(string uname);
+		uint64_t userSessionId(string uname);
 		void killInstance();
 		//log related functions
 		void insertLog(DBLog l);

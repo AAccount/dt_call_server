@@ -51,8 +51,8 @@ int main(int argc, char *argv[])
 	//setup random number generator for the log relation key (a random number that related logs can use)
 	random_device rd;
 	mt19937 mt(rd());
-	uniform_int_distribution<unsigned long> dist (0, (unsigned long)9223372036854775807);
-	unsigned long initkey = dist(mt);
+	uniform_int_distribution<uint64_t> dist (0, (uint64_t)9223372036854775807);
+	uint64_t initkey = dist(mt);
 
 	//you MUST establish the postgres utilities instance variable here or get a segmentation inside on c->prepare
 	PGUtils *postgres = PGUtils::getInstance();
@@ -137,20 +137,24 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			cout << "unknown variable parsed\n";
+			string unknown = "unknown variable parsed: " + line;
+			postgres->insertLog(DBLog(millisNow(), TAG_INIT, unknown, SELF, SYSTEMLOG, SELFIP, initkey));
 		}
 	}
 
 	//at the minimum a public and private key must be specified. everything else has a default value
 	if (!gotPublicKey || !gotPrivateKey)
 	{
+		string conffile = CONFFILE;
 		if(!gotPublicKey)
 		{
-			cout << "Your did not specify a PUBLIC key pem in: " << CONFFILE << "\n";
+			string error = "Your did not specify a PUBLIC key pem in: " + conffile + "\n";
+			postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		}
 		if(!gotPublicKey)
 		{
-			cout << "Your did not specify a PRIVATE key pem in: " << CONFFILE << "\n";
+			string error = "Your did not specify a PRIVATE key pem in: " + conffile + "\n";
+			postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		}
 		exit(1);
 	}
@@ -345,7 +349,7 @@ int main(int argc, char *argv[])
 		//check for a new incoming connection on command port
 		if(FD_ISSET(cmdFD, &readfds))
 		{
-			unsigned long relatedKey = dist(mt);
+			uint64_t relatedKey = dist(mt);
 			incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
 			if(incomingCmd < 0)
 			{
@@ -364,6 +368,8 @@ int main(int argc, char *argv[])
 				string error = "cannot set timeout for incoming command socket from " + ip;
 				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
 				perror(error.c_str());
+				shutdown(incomingCmd, 2);
+				close(incomingCmd);
 				goto skipNewCmd;
 			}
 
@@ -397,7 +403,7 @@ int main(int argc, char *argv[])
 		//check for a new incoming connection on media port
 		if(FD_ISSET(mediaFD, &readfds))
 		{
-			unsigned long relatedKey = dist(mt);
+			uint64_t relatedKey = dist(mt);
 			incomingMedia = accept(mediaFD, (struct sockaddr *) &cli_addr, &clilen);
 			if(incomingMedia < 0)
 			{
@@ -415,6 +421,8 @@ int main(int argc, char *argv[])
 				string error = "cannot set timeout for incoming media socket from " + ip;
 				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
 				perror(error.c_str());
+				shutdown(incomingMedia, 2);
+				close(incomingMedia);
 				goto skipNewMedia;
 			}
 
@@ -463,7 +471,7 @@ int main(int argc, char *argv[])
 				//any ssl work done for this actively marked socket descriptor. if not, drop the socket.
 				bool waiting = true, eventful=false;
 				bool isCmdSocket = (sdinfo[sd] == SOCKCMD);
-				unsigned long sslReadKey = dist(mt);
+				uint64_t sslReadKey = dist(mt);
 
 				//read into the appropriate buffer
 				if(isCmdSocket)
@@ -566,25 +574,32 @@ int main(int argc, char *argv[])
 					string originalBufferCmd = to_string(bufferCmd); //save original command string before it gets mutilated by strtok
 					vector<string> commandContents = parse(bufferCmd);
 					string ip = ipFromSd(sd);
-					unsigned long cmdRelatedKey = dist(mt);
-					long now = time(NULL);
+					uint64_t cmdRelatedKey = dist(mt);
+					time_t now = time(NULL);
 
 					try
 					{
 						string command = commandContents.at(1);
-						long timestamp = stol(commandContents.at(0)); //catch is for this
-						long maxError = 60*MARGIN_OF_ERROR;
-						long timeDifference = abs(now - timestamp);
+						uint64_t timestamp = stoul(commandContents.at(0)); //catch is for this
+						uint64_t maxError = 60*MARGIN_OF_ERROR;
+						uint64_t timeDifference = abs(now - timestamp);
 						if(timeDifference > maxError)
 						{
 							//only bother processing the command if the timestamp was valid
 
 							//prepare the error log
-							long mins = timeDifference/60;
-							long seconds = timeDifference - mins*60;
-							string error = "command received was outside the "+to_string(MARGIN_OF_ERROR)+" minute margin of error: " + to_string(mins)+":"+to_string(seconds);
-							error = error + "(" + originalBufferCmd + ")";
+							uint64_t mins = timeDifference/60;
+							uint64_t seconds = timeDifference - mins*60;
+							string error = "command received was outside the "+to_string(MARGIN_OF_ERROR)+" minute margin of error: " + to_string(mins)+"mins, "+to_string(seconds) + "seconds";
 							string user = postgres->userFromFd(sd, COMMAND);
+							if(originalBufferCmd.find("login") == string::npos)
+							{//don't accidentally leak passwords for bad login timestamps
+								error = error + " (" + originalBufferCmd + ")";
+							}
+							else
+							{
+								error = error + commandContents.at(0) + "|login|" + user + "|????????"; //never store plain text passwords ANYWHERE
+							}
 							postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, error, user, ERRORLOG, ip, cmdRelatedKey));
 
 							//send the rejection to the client
@@ -619,7 +634,7 @@ int main(int argc, char *argv[])
 								removals.push_back(oldmedia);
 							}
 
-							long sessionid = postgres->authenticate(username, plaintext);
+							uint64_t sessionid = postgres->authenticate(username, plaintext);
 							if(sessionid < 0)
 							{
 								//for administration purposes record what went wrong
@@ -634,12 +649,13 @@ int main(int argc, char *argv[])
 								}
 								else
 								{
-									error = "dtoperator program error";
+									error = "dtoperator program error: " + to_string(sessionid);
 								}
 								postgres->insertLog(DBLog(millisNow(), TAG_LOGIN, error, username, ERRORLOG, ip, cmdRelatedKey));
 
 								//for the user however, give no hints about what went wrong in case of brute force
 								string invalid = to_string(now) + "|resp|invalid|command\n";
+								postgres->insertLog(DBLog(millisNow(), TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, cmdRelatedKey));
 								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
@@ -656,7 +672,7 @@ int main(int argc, char *argv[])
 						else if (command == "call")
 						{//timestamp|call|zapper|toumaid
 
-							long sessionid = stol(commandContents.at(3));
+							uint64_t sessionid = stoul(commandContents.at(3));
 							string zapper = commandContents.at(2);
 							string touma = postgres->userFromSessionid(sessionid);
 							postgres->insertLog(DBLog(millisNow(), TAG_CALL, originalBufferCmd, touma, INBOUNDLOG, ip, cmdRelatedKey));
@@ -736,7 +752,7 @@ int main(int argc, char *argv[])
 						else if (command == "lookup")
 						{
 							string who = commandContents.at(2);
-							long sessionid = stol(commandContents.at(3));
+							uint64_t sessionid = stoul(commandContents.at(3));
 							string from = postgres->userFromSessionid(sessionid);
 							postgres->insertLog(DBLog(millisNow(), TAG_LOOKUP, originalBufferCmd, from, INBOUNDLOG, ip, cmdRelatedKey));
 
@@ -760,7 +776,7 @@ int main(int argc, char *argv[])
 						//command will come from zapper's cmd fd
 						else if (command == "accept")
 						{//timestamp|accept|touma|zapperid
-							long sessionid = stol(commandContents.at(3));
+							uint64_t sessionid = stoul(commandContents.at(3));
 							string zapper = postgres->userFromSessionid(sessionid);
 							string touma = commandContents.at(2);
 							postgres->insertLog(DBLog(millisNow(), TAG_ACCEPT, originalBufferCmd, zapper, INBOUNDLOG, ip, cmdRelatedKey));
@@ -799,7 +815,7 @@ int main(int argc, char *argv[])
 						//reject command would come from zapper's cmd fd
 						else if (command == "reject")
 						{//timestamp|reject|touma|sessionid
-							long sessionid = stol(commandContents.at(3));
+							uint64_t sessionid = stoul(commandContents.at(3));
 							string zapper = postgres->userFromSessionid(sessionid);
 							string touma = commandContents.at(2);
 							postgres->insertLog(DBLog(millisNow(), TAG_REJECT, originalBufferCmd, zapper, INBOUNDLOG, ip, cmdRelatedKey));
@@ -829,14 +845,14 @@ int main(int argc, char *argv[])
 							postgres->insertLog(DBLog(millisNow(), TAG_REJECT, resp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), cmdRelatedKey));
 						}
 
-						//variables modled after setup touma calling zapper for easier readability
+						//variables modeled after setup touma calling zapper for easier readability
 						//end could come from either of them
 						else if (command == "end")
 						{
 							//timestamp|end|touma|zappersid : zapper wants to end the call with touma
 							//timestamp|end|zapper|toumasid : touma wants to end the call with zapper
 
-							long sessionid = stol(commandContents.at(3));
+							uint64_t sessionid = stoul(commandContents.at(3));
 							string wants2End = postgres->userFromSessionid(sessionid);
 							string stillTalking = commandContents.at(2);
 							postgres->insertLog(DBLog(millisNow(), TAG_END, originalBufferCmd, wants2End, INBOUNDLOG, ip, cmdRelatedKey));
@@ -872,7 +888,7 @@ int main(int argc, char *argv[])
 						else if(command =="timeout")
 						{
 							string zapper = commandContents.at(2);
-							long sessionid = stol(commandContents.at(3));
+							uint64_t sessionid = stoul(commandContents.at(3));
 							string touma = postgres->userFromSessionid(sessionid);
 							postgres->insertLog(DBLog(millisNow(), TAG_TIMEOUT, originalBufferCmd, touma, INBOUNDLOG, ip, cmdRelatedKey));
 
@@ -910,7 +926,7 @@ int main(int argc, char *argv[])
 						string user = postgres->userFromFd(sd, COMMAND);
 						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip, cmdRelatedKey));
 
-						string error =  "INVALID ARGUMENT EXCEPTION: stol (string to long) could not parse timestamp";
+						string error =  "INVALID ARGUMENT EXCEPTION: stoul (string too long) could not parse timestamp";
 						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, error, user, ERRORLOG, ip, cmdRelatedKey));
 
 						string invalid = to_string(now) + "|resp|invalid|command\n";
@@ -946,25 +962,25 @@ int main(int argc, char *argv[])
 					}
 #endif
 					string ip = ipFromSd(sd);
-					unsigned long mediaRelatedKey = dist(mt);
+					uint64_t mediaRelatedKey = dist(mt);
 					//need to write the string to the db before it gets mutilated by strtok in parse(bufferMedia)
 					postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, to_string(bufferMedia), DONTKNOW, INBOUNDLOG, ip, mediaRelatedKey));
 					vector<string> commandContents = parse(bufferMedia);
 
 					try
 					{
-						long sessionid = stol(commandContents.at(1));
+						uint64_t sessionid = stoul(commandContents.at(1));
 						string intendedUser = postgres->userFromSessionid(sessionid);
 
 						//check timestamp is ok
-						long now = time(NULL);
-						long timestamp = stol(commandContents.at(0));
-						long fivemins = 60*5;
-						long timeDifference = abs(now - timestamp);
+						time_t now = time(NULL);
+						uint64_t timestamp = stoul(commandContents.at(0));
+						uint64_t fivemins = 60*5;
+						uint64_t timeDifference = abs(now - timestamp);
 						if(timeDifference > fivemins)
 						{
-							long mins = timeDifference/60;
-							long seconds = timeDifference - mins*60;
+							uint64_t mins = timeDifference/60;
+							uint64_t seconds = timeDifference - mins*60;
 							string error = "timestamp " + to_string(mins) + ":" + to_string(seconds) + " outside 5min window of error";
 							postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, mediaRelatedKey));
 							goto skipreg;
@@ -1028,7 +1044,7 @@ int main(int argc, char *argv[])
 
 					skipreg:; //skip media fd registration. something didn't check out ok.
 				}
-				else if(sdstate == INITWAITING || sdstate >= INITWAITING)
+				else if(sdstate >= INITWAITING)
 				{
 #ifdef VERBOSE
 					if(sdstate == SOCKMEDIAIDLE)
@@ -1074,7 +1090,7 @@ int main(int argc, char *argv[])
 							string ip = ipFromSd(sdstate); //log the ip of the socket that can't be written to
 							string user = postgres->userFromFd(sdstate, MEDIA); //log who couldn't be sent media
 							string error = "couldn't write to media socket because it was not ready. failed " + to_string(fails) + " times";
-							unsigned long callMediaKey = dist(mt);
+							uint64_t callMediaKey = dist(mt);
 							postgres->insertLog(DBLog(millisNow(), TAG_MEDIACALL, error, user, ERRORLOG, ip, callMediaKey));
 
 							fails++;
@@ -1106,15 +1122,15 @@ int main(int argc, char *argv[])
 
 						//logging related stuff
 						string ip = ipFromSd(sd);
-						unsigned long callRelatedKey = dist(mt);
+						uint64_t callRelatedKey = dist(mt);
 
 						//reset the media connection state
 						string user = postgres->userFromFd(sd, MEDIA);
 						sdinfo[sd] = SOCKMEDIAIDLE;
 
 						//drop the call for the user
-						long now = time(NULL);
-						long sessionid = postgres->userSessionId(user);
+						time_t now = time(NULL);
+						uint64_t sessionid = postgres->userSessionId(user);
 						if(sessionid < 0)
 						{
 							string error = "call was dropped but the user had no session id?? possible bug";
@@ -1426,7 +1442,7 @@ string ipFromSd(int sd)
 }
 
 //https://stackoverflow.com/questions/3756323/getting-the-current-time-in-milliseconds
-long millisNow()
+uint64_t millisNow()
 {
 	struct timespec now;
 	clock_gettime(CLOCK_REALTIME, &now);

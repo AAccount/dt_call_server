@@ -27,4 +27,4 @@ string trim (string str);
 string ipFromSd(int sd);
 
 //get the time now in milliseconds
-long millisNow();
+uint64_t millisNow();

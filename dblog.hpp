@@ -38,26 +38,26 @@ class DBLog
 {
 private:
 	int id;
-	long timestamp;
+	uint64_t timestamp;
 	int tag;
 	std::string message;
 	std::string user;
 	int type;
 	std::string ip;
-	unsigned long relatedKey;
+	uint64_t relatedKey;
 
 public:
-	DBLog(int cid, long cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, unsigned long relatedKey);
-	DBLog(long cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, unsigned long relatedKey);
+	DBLog(int cid, uint64_t cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, uint64_t relatedKey);
+	DBLog(uint64_t cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, uint64_t relatedKey);
 
 	int getId();
-	long getTimestamp();
+	uint64_t getTimestamp();
 	int getTag();
 	std::string getMessage();
 	std::string getUser();
 	int getType();
 	std::string getIp();
-	unsigned long getRelatedKey();
+	uint64_t getRelatedKey();
 };
 
 #endif //DBLOG_H
