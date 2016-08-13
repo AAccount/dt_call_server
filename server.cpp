@@ -580,7 +580,7 @@ int main(int argc, char *argv[])
 					try
 					{
 						string command = commandContents.at(1);
-						uint64_t timestamp = stoul(commandContents.at(0)); //catch is for this
+						uint64_t timestamp = (uint64_t)stoull(commandContents.at(0)); //catch is for this
 						uint64_t maxError = 60*MARGIN_OF_ERROR;
 						uint64_t timeDifference = abs(now - timestamp);
 						if(timeDifference > maxError)
@@ -672,7 +672,7 @@ int main(int argc, char *argv[])
 						else if (command == "call")
 						{//timestamp|call|zapper|toumaid
 
-							uint64_t sessionid = stoul(commandContents.at(3));
+							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
 							string zapper = commandContents.at(2);
 							string touma = postgres->userFromSessionid(sessionid);
 							postgres->insertLog(DBLog(millisNow(), TAG_CALL, originalBufferCmd, touma, INBOUNDLOG, ip, cmdRelatedKey));
@@ -752,7 +752,7 @@ int main(int argc, char *argv[])
 						else if (command == "lookup")
 						{
 							string who = commandContents.at(2);
-							uint64_t sessionid = stoul(commandContents.at(3));
+							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
 							string from = postgres->userFromSessionid(sessionid);
 							postgres->insertLog(DBLog(millisNow(), TAG_LOOKUP, originalBufferCmd, from, INBOUNDLOG, ip, cmdRelatedKey));
 
@@ -776,7 +776,7 @@ int main(int argc, char *argv[])
 						//command will come from zapper's cmd fd
 						else if (command == "accept")
 						{//timestamp|accept|touma|zapperid
-							uint64_t sessionid = stoul(commandContents.at(3));
+							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
 							string zapper = postgres->userFromSessionid(sessionid);
 							string touma = commandContents.at(2);
 							postgres->insertLog(DBLog(millisNow(), TAG_ACCEPT, originalBufferCmd, zapper, INBOUNDLOG, ip, cmdRelatedKey));
@@ -815,7 +815,7 @@ int main(int argc, char *argv[])
 						//reject command would come from zapper's cmd fd
 						else if (command == "reject")
 						{//timestamp|reject|touma|sessionid
-							uint64_t sessionid = stoul(commandContents.at(3));
+							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
 							string zapper = postgres->userFromSessionid(sessionid);
 							string touma = commandContents.at(2);
 							postgres->insertLog(DBLog(millisNow(), TAG_REJECT, originalBufferCmd, zapper, INBOUNDLOG, ip, cmdRelatedKey));
@@ -852,7 +852,7 @@ int main(int argc, char *argv[])
 							//timestamp|end|touma|zappersid : zapper wants to end the call with touma
 							//timestamp|end|zapper|toumasid : touma wants to end the call with zapper
 
-							uint64_t sessionid = stoul(commandContents.at(3));
+							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
 							string wants2End = postgres->userFromSessionid(sessionid);
 							string stillTalking = commandContents.at(2);
 							postgres->insertLog(DBLog(millisNow(), TAG_END, originalBufferCmd, wants2End, INBOUNDLOG, ip, cmdRelatedKey));
@@ -888,7 +888,7 @@ int main(int argc, char *argv[])
 						else if(command =="timeout")
 						{
 							string zapper = commandContents.at(2);
-							uint64_t sessionid = stoul(commandContents.at(3));
+							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
 							string touma = postgres->userFromSessionid(sessionid);
 							postgres->insertLog(DBLog(millisNow(), TAG_TIMEOUT, originalBufferCmd, touma, INBOUNDLOG, ip, cmdRelatedKey));
 
@@ -926,7 +926,7 @@ int main(int argc, char *argv[])
 						string user = postgres->userFromFd(sd, COMMAND);
 						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip, cmdRelatedKey));
 
-						string error =  "INVALID ARGUMENT EXCEPTION: stoul (string too long) could not parse timestamp";
+						string error =  "INVALID ARGUMENT EXCEPTION: (uint64_t)stoull (string too long) could not parse timestamp";
 						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, error, user, ERRORLOG, ip, cmdRelatedKey));
 
 						string invalid = to_string(now) + "|resp|invalid|command\n";
@@ -969,12 +969,12 @@ int main(int argc, char *argv[])
 
 					try
 					{
-						uint64_t sessionid = stoul(commandContents.at(1));
+						uint64_t sessionid = (uint64_t)stoull(commandContents.at(1));
 						string intendedUser = postgres->userFromSessionid(sessionid);
 
 						//check timestamp is ok
 						time_t now = time(NULL);
-						uint64_t timestamp = stoul(commandContents.at(0));
+						uint64_t timestamp = (uint64_t)stoull(commandContents.at(0));
 						uint64_t fivemins = 60*5;
 						uint64_t timeDifference = abs(now - timestamp);
 						if(timeDifference > fivemins)
@@ -1038,7 +1038,7 @@ int main(int argc, char *argv[])
 					}
 					catch(out_of_range &exrange)
 					{
-						string error = "client sent a misformed media port association request";
+						string error = "client sent a misformed media port association request, out of range exception";
 						postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, error, DONTKNOW, ERRORLOG, ip, mediaRelatedKey));
 					}
 
