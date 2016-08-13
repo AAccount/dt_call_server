@@ -8,9 +8,9 @@ PQXX =  -lpqxx -lpq
 
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
- LEGACYCFLAGS = -O3 -march=pentium4 -m32 -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
+ LEGACYDBGCFLAGS = -g -m32 -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
  CFLAGS = -O3 -march=native -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
- DBGFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA -DJCALLDIAG
+ DBGCFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA -DJCALLDIAG
  CC = g++
 endif
 
