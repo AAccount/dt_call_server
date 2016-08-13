@@ -1,0 +1,11 @@
+create group for program
+create user with nologin shell for program
+create postgres user for program
+create database
+create extension INSIDE the database
+grant user with database permissions
+import sample/real data
+(if fedora --> debian) recompile in debian, copy exe
+copy systemd service
+leave root as the owner of the exe and configs,certificates but allow program's user account to read. that way if the program gets hacked, the account it's running under still can't change the certificates or the exe itself. change of certificate should be detected and rejected by aclient though
+open firewall ports

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daniel Tjandra call operator
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/dtoperator
+ExecStop=/usr/bin/killall dtoperator
+User=dtoperator
+
+[Install]
+WantedBy=network.target
