@@ -270,7 +270,7 @@ uint64_t PGUtils::userSessionId(string uname)
 	result dbresult = wQuerySess.prepared("querySess")(uname).exec();
 	if(dbresult.size() > 0)
 	{
-		return dbresult[0][0].as<long>();
+		return dbresult[0][0].as<uint64_t>();
 	}
 	return EPARAM;
 }
