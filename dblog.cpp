@@ -26,6 +26,18 @@ DBLog::DBLog(uint64_t cts, int ctag, string cmessage, string cuser, int ctype, s
 	relatedKey = crelatedKey;
 }
 
+DBLog::DBLog(uint64_t cts, int ctag, string cmessage, int ctype, uint64_t crelatedKey)
+{
+	id = 0;
+	timestamp = cts;
+	tag = ctag;
+	message = cmessage;
+	user = "";
+	type = ctype;
+	ip = "";
+	relatedKey = crelatedKey;
+}
+
 int DBLog::getId()
 {
 	return id;

@@ -3,7 +3,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include <math.h>
 
 #include <sys/types.h> 
 #include <sys/socket.h>
@@ -20,7 +19,9 @@
 #include "server.hpp"
 #include "pgutils.hpp"
 #include "dblog.hpp"
+#include "Utils.hpp"
 
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <unordered_map> //hash table
@@ -57,10 +58,10 @@ int main(int argc, char *argv[])
 	//you MUST establish the postgres utilities instance variable here or get a segmentation inside on c->prepare
 	PGUtils *postgres = PGUtils::getInstance();
 
-	postgres->insertLog(DBLog(millisNow(), TAG_INIT, "starting call operator", SELF, SYSTEMLOG, SELFIP, initkey));
+	postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, "starting call operator", SELF, SYSTEMLOG, SELFIP, initkey));
 
 #ifdef JSTOPMEDIA
-	postgres->insertLog(DBLog(millisNow(), TAG_INIT, "compiled with JSTOPMEDIA flag", SELF, SYSTEMLOG , SELFIP, initkey));
+	postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, "compiled with JSTOPMEDIA flag", SELF, SYSTEMLOG , SELFIP, initkey));
 #endif
 	
 	int cmdFD, incomingCmd, cmdPort = DEFAULTCMD; //command port stuff
@@ -138,7 +139,7 @@ int main(int argc, char *argv[])
 		else
 		{
 			string unknown = "unknown variable parsed: " + line;
-			postgres->insertLog(DBLog(millisNow(), TAG_INIT, unknown, SELF, SYSTEMLOG, SELFIP, initkey));
+			postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, unknown, SELF, SYSTEMLOG, SELFIP, initkey));
 		}
 	}
 
@@ -149,12 +150,12 @@ int main(int argc, char *argv[])
 		if(!gotPublicKey)
 		{
 			string error = "Your did not specify a PUBLIC key pem in: " + conffile + "\n";
-			postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+			postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		}
 		if(!gotPublicKey)
 		{
 			string error = "Your did not specify a PRIVATE key pem in: " + conffile + "\n";
-			postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+			postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		}
 		exit(1);
 	}
@@ -163,17 +164,17 @@ int main(int argc, char *argv[])
 	if(!gotCmdPort)
 	{
 		string message =  "Using default command port of: " + to_string(cmdPort);
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
 	}
 	if(!gotMediaPort)
 	{
 		string message= "Using default media port of: " + to_string(mediaPort);
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
 	}
 	if(!gotCiphers)
 	{
 		string message = "Using default ciphers (no ECDHE): " + ciphers;
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
 	}
 
 	struct sockaddr_in serv_cmd, serv_media, cli_addr;
@@ -190,7 +191,7 @@ int main(int argc, char *argv[])
 	if(&sslcontext <= 0)
 	{
 		string error = "ssl initialization problem";
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
@@ -204,7 +205,7 @@ int main(int argc, char *argv[])
 	if(returnValue <= 0)
 	{
 		string error = "problems with the private key";
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
@@ -212,7 +213,7 @@ int main(int argc, char *argv[])
 	if(returnValue <= 0)
 	{
 		string error = "problems with the public key";
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
@@ -227,7 +228,7 @@ int main(int argc, char *argv[])
 	if(cmdFD < 0)
 	{
 		string error = "cannot establish command socket";
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
@@ -239,7 +240,7 @@ int main(int argc, char *argv[])
 	if(returnValue < 0)
 	{
 		string error = "cannot bind command socket to a nic";
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
@@ -247,7 +248,7 @@ int main(int argc, char *argv[])
 	if(returnValue < 0)
 	{
 		string error = "cannot set command socket options";
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
@@ -258,7 +259,7 @@ int main(int argc, char *argv[])
 	if(mediaFD < 0)
 	{
 		string error = "cannot establish media socket";
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
@@ -270,7 +271,7 @@ int main(int argc, char *argv[])
 	if(returnValue < 0)
 	{
 		string error = "cannot bind media socket to a nic";
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
@@ -278,7 +279,7 @@ int main(int argc, char *argv[])
 	if(returnValue < 0)
 	{
 		string error = "cannot set media socket options";
-		postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
@@ -325,7 +326,7 @@ int main(int argc, char *argv[])
 		if(returnValue < 0)
 		{
 			string error = "read fds select system call error";
-			postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+			postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 			perror(error.c_str());
 			return 1;
 		}
@@ -339,7 +340,7 @@ int main(int argc, char *argv[])
 		if(returnValue < 0)
 		{
 			string error = "write fds select system call error";
-			postgres->insertLog(DBLog(millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+			postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 			perror(error.c_str());
 			return 1;
 		}
@@ -354,7 +355,7 @@ int main(int argc, char *argv[])
 			if(incomingCmd < 0)
 			{
 				string error = "accept system call error";
-				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, DONTKNOW, relatedKey));
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, DONTKNOW, relatedKey));
 				perror(error.c_str());
 				goto skipNewCmd;
 			}
@@ -366,7 +367,7 @@ int main(int argc, char *argv[])
 			if(returnValue < 0)
 			{
 				string error = "cannot set timeout for incoming command socket from " + ip;
-				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
 				perror(error.c_str());
 				shutdown(incomingCmd, 2);
 				close(incomingCmd);
@@ -382,7 +383,7 @@ int main(int argc, char *argv[])
 			if(returnValue <= 0)
 			{
 				string error = "Problem initializing new command tls connection from " + ip;
-				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
 				SSL_shutdown(connssl);
 				SSL_free(connssl);
 				shutdown(incomingCmd, 2);
@@ -392,7 +393,7 @@ int main(int argc, char *argv[])
 			{
 				//add the new socket descriptor to the client self balancing tree
 				string message = "new command socket from " + ip;
-				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGCMD, message, SELF, INBOUNDLOG, ip, relatedKey));
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGCMD, message, SELF, INBOUNDLOG, ip, relatedKey));
 				clientssl[incomingCmd] = connssl;
 				sdinfo[incomingCmd] = SOCKCMD;
 				failCount[incomingCmd] = 0;
@@ -408,7 +409,7 @@ int main(int argc, char *argv[])
 			if(incomingMedia < 0)
 			{
 				string error = "accept system call error";
-				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, DONTKNOW, relatedKey));
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, DONTKNOW, relatedKey));
 				perror(error.c_str());
 				goto skipNewMedia;
 			}
@@ -419,7 +420,7 @@ int main(int argc, char *argv[])
 			if(returnValue < 0)
 			{
 				string error = "cannot set timeout for incoming media socket from " + ip;
-				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
 				perror(error.c_str());
 				shutdown(incomingMedia, 2);
 				close(incomingMedia);
@@ -435,7 +436,7 @@ int main(int argc, char *argv[])
 			if(returnValue <= 0)
 			{
 				string error = "Problem initializing new command tls connection from " + ip;
-				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
 				SSL_shutdown(connssl);
 				SSL_free(connssl);
 				shutdown(incomingMedia, 2);
@@ -444,7 +445,7 @@ int main(int argc, char *argv[])
 			else
 			{
 				string message = "new media socket from " + ip;
-				postgres->insertLog(DBLog(millisNow(), TAG_INCOMINGMEDIA, message, SELF, INBOUNDLOG, ip, relatedKey));
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGMEDIA, message, SELF, INBOUNDLOG, ip, relatedKey));
 				clientssl[incomingMedia] = connssl;
 				sdinfo[incomingMedia] = SOCKMEDIANEW;
 				failCount[incomingMedia] = 0;
@@ -496,10 +497,10 @@ int main(int argc, char *argv[])
 					if(alarmKilled)
 					{
 						alarmKilled = false;
-						string user = postgres->userFromFd(sd, COMMAND);
+						string user = postgres->userFromFd(sd, COMMAND, sslReadKey);
 						string error = "Alarm timeout killed SSL read of command socket";
 						string ip = ipFromSd(sd);
-						postgres->insertLog(DBLog(millisNow(), TAG_ALARM, error, user, ERRORLOG, ip, sslReadKey));
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_ALARM, error, user, ERRORLOG, ip, sslReadKey));
 					}
 				}
 				else
@@ -529,10 +530,10 @@ int main(int argc, char *argv[])
 					if(alarmKilled)
 					{
 						alarmKilled = false;
-						string user = postgres->userFromFd(sd, MEDIA);
+						string user = postgres->userFromFd(sd, MEDIA, sslReadKey);
 						string error = "Alarm killed SSL read of media socket";
 						string ip = ipFromSd(sd);
-						postgres->insertLog(DBLog(millisNow(), TAG_ALARM, error, user, ERRORLOG, ip, sslReadKey));
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_ALARM, error, user, ERRORLOG, ip, sslReadKey));
 					}
 				}
 
@@ -542,15 +543,15 @@ int main(int argc, char *argv[])
 					string user;
 					if(sdinfo[sd] == SOCKCMD)
 					{
-						user = postgres->userFromFd(sd, COMMAND);
+						user = postgres->userFromFd(sd, COMMAND, sslReadKey);
 					}
 					else
 					{
-						user = postgres->userFromFd(sd, MEDIA);
+						user = postgres->userFromFd(sd, MEDIA, sslReadKey);
 					}
 					string ip = ipFromSd(sd);
 					string error = "socket has died";
-					postgres->insertLog(DBLog(millisNow(), TAG_DEADSOCK, error, user, ERRORLOG, ip, sslReadKey));
+					postgres->insertLog(DBLog(Utils::millisNow(), TAG_DEADSOCK, error, user, ERRORLOG, ip, sslReadKey));
 					removals.push_back(sd);
 					goto skipfd;
 				}
@@ -591,7 +592,7 @@ int main(int argc, char *argv[])
 							uint64_t mins = timeDifference/60;
 							uint64_t seconds = timeDifference - mins*60;
 							string error = "command received was outside the "+to_string(MARGIN_OF_ERROR)+" minute margin of error: " + to_string(mins)+"mins, "+to_string(seconds) + "seconds";
-							string user = postgres->userFromFd(sd, COMMAND);
+							string user = postgres->userFromFd(sd, COMMAND, cmdRelatedKey);
 							if(originalBufferCmd.find("login") == string::npos)
 							{//don't accidentally leak passwords for bad login timestamps
 								error = error + " (" + originalBufferCmd + ")";
@@ -600,11 +601,11 @@ int main(int argc, char *argv[])
 							{
 								error = error + commandContents.at(0) + "|login|" + user + "|????????"; //never store plain text passwords ANYWHERE
 							}
-							postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, error, user, ERRORLOG, ip, cmdRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_BADCMD, error, user, ERRORLOG, ip, cmdRelatedKey));
 
 							//send the rejection to the client
 							string invalid = to_string(now) + "|resp|invalid|command\n";
-							write2Client(invalid, sdssl);
+							write2Client(invalid, sdssl, cmdRelatedKey);
 							goto invalidcmd;
 						}
 
@@ -614,9 +615,9 @@ int main(int argc, char *argv[])
 							string plaintext = commandContents.at(3);
 							string ip = ipFromSd(sd);
 							string censoredInput = commandContents.at(0) + "|login|" + username + "|????????"; //never store plain text passwords ANYWHERE
-							postgres->insertLog(DBLog(millisNow(), TAG_LOGIN, censoredInput, username, INBOUNDLOG, ip, cmdRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_LOGIN, censoredInput, username, INBOUNDLOG, ip, cmdRelatedKey));
 
-							int oldcmd = postgres->userFd(username, COMMAND);
+							int oldcmd = postgres->userFd(username, COMMAND, cmdRelatedKey);
 							if(oldcmd > 4)
 							{//remove old SSL structs to prevent memory leak
 #ifdef VERBOSE
@@ -625,7 +626,7 @@ int main(int argc, char *argv[])
 								removals.push_back(oldcmd);
 							}
 
-							int oldmedia = postgres->userFd(username, MEDIA);
+							int oldmedia = postgres->userFd(username, MEDIA, cmdRelatedKey);
 							if(oldmedia > 4)
 							{//remove old SSL structs to prevent memory leak
 #ifdef VERBOSE
@@ -634,37 +635,21 @@ int main(int argc, char *argv[])
 								removals.push_back(oldmedia);
 							}
 
-							uint64_t sessionid = postgres->authenticate(username, plaintext);
-							if(sessionid < 0)
+							uint64_t sessionid = postgres->authenticate(username, plaintext, cmdRelatedKey);
+							if(sessionid == 0)
 							{
-								//for administration purposes record what went wrong
-								string error;
-								if(sessionid == ENOUSER)
-								{
-									error = "user doesn't exist";
-								}
-								else if (sessionid == EPASS)
-								{
-									error = "password was incorrect";
-								}
-								else
-								{
-									error = "dtoperator program error: " + to_string(sessionid);
-								}
-								postgres->insertLog(DBLog(millisNow(), TAG_LOGIN, error, username, ERRORLOG, ip, cmdRelatedKey));
-
 								//for the user however, give no hints about what went wrong in case of brute force
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								postgres->insertLog(DBLog(millisNow(), TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, cmdRelatedKey));
-								write2Client(invalid, sdssl);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, cmdRelatedKey));
+								write2Client(invalid, sdssl, cmdRelatedKey);
 								goto invalidcmd;
 							}
 
 							//record a succesful login and response sent
-							postgres->setFd(sessionid, sd, COMMAND);
+							postgres->setFd(sessionid, sd, COMMAND, cmdRelatedKey);
 							string resp = to_string(now) + "|resp|login|" + to_string(sessionid) + "\n";
-							write2Client(resp, sdssl);
-							postgres->insertLog(DBLog(millisNow(), TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, cmdRelatedKey));
+							write2Client(resp, sdssl, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, cmdRelatedKey));
 						}
 
 						//variables written from touma calling zapper perspective
@@ -674,40 +659,38 @@ int main(int argc, char *argv[])
 
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
 							string zapper = commandContents.at(2);
-							string touma = postgres->userFromSessionid(sessionid);
-							postgres->insertLog(DBLog(millisNow(), TAG_CALL, originalBufferCmd, touma, INBOUNDLOG, ip, cmdRelatedKey));
+							string touma = postgres->userFromSessionid(sessionid, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, originalBufferCmd, touma, INBOUNDLOG, ip, cmdRelatedKey));
 
-							if(!postgres->verifySessionid(sessionid, sd))
+							if(!postgres->verifySessionid(sessionid, sd, cmdRelatedKey))
 							{
 								string error = " INVALID SESSION ID. refusing to start call";
-								postgres->insertLog(DBLog(millisNow(), TAG_CALL, error, touma, ERRORLOG, ip, cmdRelatedKey));
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, error, touma, ERRORLOG, ip, cmdRelatedKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
-								postgres->insertLog(DBLog(millisNow(), TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
+								write2Client(invalid, sdssl, cmdRelatedKey);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
 								goto invalidcmd;
 							}
 
 							//double check touma has a mediafd
-							int toumaMediaFd = postgres->userFd(touma, MEDIA);
-							if(toumaMediaFd < 0)
+							int toumaMediaFd = postgres->userFd(touma, MEDIA, cmdRelatedKey);
+							if(toumaMediaFd == 0)
 							{
-								string error = "trying to make a call without a media fd??";
-								postgres->insertLog(DBLog(millisNow(), TAG_CALL, error, touma, ERRORLOG, ip, cmdRelatedKey));
-
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
-								postgres->insertLog(DBLog(millisNow(), TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
+								write2Client(invalid, sdssl, cmdRelatedKey);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
 								goto invalidcmd;
 							}
 
-							//find out if zapper is online
-							int zapperMediaFd = postgres->userFd(zapper, MEDIA);
-							if(zapperMediaFd < 0)
+							//find out if zapper has both a command and media fd
+							int zapperMediaFd = postgres->userFd(zapper, MEDIA, cmdRelatedKey);
+							int zapperCmdFd = postgres->userFd(zapper, COMMAND, cmdRelatedKey);
+							if(zapperMediaFd == 0 || zapperCmdFd == 0 )
 							{
 								string na = to_string(now) + "|ring|notavailable|" + zapper + "\n";
-								write2Client(na, sdssl);
-								postgres->insertLog(DBLog(millisNow(), TAG_CALL, na, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
+								write2Client(na, sdssl, cmdRelatedKey);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, na, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
 								goto invalidcmd; //while not really an invalid command, there's no point of continuing
 							}
 
@@ -716,8 +699,8 @@ int main(int argc, char *argv[])
 							if(currentState != SOCKMEDIAIDLE)
 							{
 								string busy = to_string(now) + "|ring|busy|" + zapper + "\n";
-								write2Client(busy, sdssl);
-								postgres->insertLog(DBLog(millisNow(), TAG_CALL, busy, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
+								write2Client(busy, sdssl, cmdRelatedKey);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, busy, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
 								goto invalidcmd; //not really invalid either but can't continue any further at this point
 							}
 
@@ -726,9 +709,9 @@ int main(int argc, char *argv[])
 							if(touma == zapper)
 							{
 								string busy = to_string(now) + "|ring|busy|" + zapper + "\n"; //ye olde landline did this
-								write2Client(busy, sdssl);
+								write2Client(busy, sdssl, cmdRelatedKey);
 								busy = "(self dialed) " + busy;
-								postgres->insertLog(DBLog(millisNow(), TAG_CALL, busy, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, busy, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
 								goto invalidcmd; //not really invalid either but can't continue any further at this point
 							}
 
@@ -738,38 +721,37 @@ int main(int argc, char *argv[])
 
 							//tell touma that zapper is being rung
 							string notifyTouma = to_string(now) + "|ring|available|" + zapper + "\n";
-							write2Client(notifyTouma, sdssl);
-							postgres->insertLog(DBLog(millisNow(), TAG_CALL, notifyTouma, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
+							write2Client(notifyTouma, sdssl, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, notifyTouma, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
 			
 							//tell zapper touma wants to call her
 							string notifyZapper = to_string(now) + "|ring|incoming|" + touma + "\n";
-							int zapperCmdFd = postgres->userFd(zapper, COMMAND);
 							SSL *zapperssl = clientssl[zapperCmdFd];
-							write2Client(notifyZapper, zapperssl);
+							write2Client(notifyZapper, zapperssl, cmdRelatedKey);
 							string zapperip = ipFromSd(zapperCmdFd);
-							postgres->insertLog(DBLog(millisNow(), TAG_CALL, notifyZapper, zapper, OUTBOUNDLOG, ip, cmdRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, notifyZapper, zapper, OUTBOUNDLOG, ip, cmdRelatedKey));
 						}
 						else if (command == "lookup")
 						{
 							string who = commandContents.at(2);
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string from = postgres->userFromSessionid(sessionid);
-							postgres->insertLog(DBLog(millisNow(), TAG_LOOKUP, originalBufferCmd, from, INBOUNDLOG, ip, cmdRelatedKey));
+							string from = postgres->userFromSessionid(sessionid, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_LOOKUP, originalBufferCmd, from, INBOUNDLOG, ip, cmdRelatedKey));
 
-							if(!postgres->verifySessionid(sessionid, sd))
+							if(!postgres->verifySessionid(sessionid, sd, cmdRelatedKey))
 							{
 								string error = "invalid sessionid attempting to do a user lookup";
-								postgres->insertLog(DBLog(millisNow(), TAG_LOOKUP, error, from, ERRORLOG, ip, cmdRelatedKey));
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_LOOKUP, error, from, ERRORLOG, ip, cmdRelatedKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
-								postgres->insertLog(DBLog(millisNow(), TAG_LOOKUP, invalid, from, OUTBOUNDLOG, ip, cmdRelatedKey));
+								write2Client(invalid, sdssl, cmdRelatedKey);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_LOOKUP, invalid, from, OUTBOUNDLOG, ip, cmdRelatedKey));
 								goto invalidcmd;
 							}
-							string exists = (postgres->doesUserExist(who)) ? "exists" : "doesntexist";
+							string exists = (postgres->doesUserExist(who, cmdRelatedKey)) ? "exists" : "doesntexist";
 							string resp = to_string(now) + "|lookup|" + who + "|" + exists + "\n";
-							write2Client(resp, sdssl);
-							postgres->insertLog(DBLog(millisNow(), TAG_LOOKUP, resp, from, OUTBOUNDLOG, ip, cmdRelatedKey));
+							write2Client(resp, sdssl, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_LOOKUP, resp, from, OUTBOUNDLOG, ip, cmdRelatedKey));
 						}
 
 						//variables written when zapper accepets touma's call
@@ -777,38 +759,38 @@ int main(int argc, char *argv[])
 						else if (command == "accept")
 						{//timestamp|accept|touma|zapperid
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string zapper = postgres->userFromSessionid(sessionid);
+							string zapper = postgres->userFromSessionid(sessionid, cmdRelatedKey);
 							string touma = commandContents.at(2);
-							postgres->insertLog(DBLog(millisNow(), TAG_ACCEPT, originalBufferCmd, zapper, INBOUNDLOG, ip, cmdRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_ACCEPT, originalBufferCmd, zapper, INBOUNDLOG, ip, cmdRelatedKey));
 
-							if(!isRealCall(zapper, touma))
+							if(!isRealCall(zapper, touma, cmdRelatedKey))
 							{
 								string error = touma + " never made a call request to " + zapper;
-								postgres->insertLog(DBLog(millisNow(), TAG_ACCEPT, error, zapper, ERRORLOG, ip, cmdRelatedKey));
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_ACCEPT, error, zapper, ERRORLOG, ip, cmdRelatedKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
-								postgres->insertLog(DBLog(millisNow(), TAG_ACCEPT, invalid, zapper, OUTBOUNDLOG, ip , cmdRelatedKey));
+								write2Client(invalid, sdssl, cmdRelatedKey);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_ACCEPT, invalid, zapper, OUTBOUNDLOG, ip , cmdRelatedKey));
 								goto invalidcmd;
 							}
 
-							int zapperMediaFd = postgres->userFd(zapper, MEDIA);
-							int toumaMediaFd = postgres->userFd(touma, MEDIA);
+							int zapperMediaFd = postgres->userFd(zapper, MEDIA, cmdRelatedKey);
+							int toumaMediaFd = postgres->userFd(touma, MEDIA, cmdRelatedKey);
 							sdinfo[zapperMediaFd] = toumaMediaFd;
 							sdinfo[toumaMediaFd] = zapperMediaFd;
 
 							//tell touma zapper accepted his call request										
 							//	AND confirm to touma, it's zapper he's being connected with
-							int toumaCmdFd = postgres->userFd(touma, COMMAND);
+							int toumaCmdFd = postgres->userFd(touma, COMMAND, cmdRelatedKey);
 							SSL *toumaCmdSsl = clientssl[toumaCmdFd];
 							string toumaResp = to_string(now) + "|call|start|" + zapper + "\n";
-							write2Client(toumaResp, toumaCmdSsl);
-							postgres->insertLog(DBLog(millisNow(), TAG_ACCEPT, toumaResp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), cmdRelatedKey));
+							write2Client(toumaResp, toumaCmdSsl, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_ACCEPT, toumaResp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), cmdRelatedKey));
 
 							//confirm to zapper she's being connected to touma
 							string zapperResp = to_string(now) + "|call|start|" + touma + "\n";
-							write2Client(zapperResp, sdssl);
-							postgres->insertLog(DBLog(millisNow(), TAG_ACCEPT, zapperResp, zapper, OUTBOUNDLOG, ip, cmdRelatedKey));
+							write2Client(zapperResp, sdssl, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_ACCEPT, zapperResp, zapper, OUTBOUNDLOG, ip, cmdRelatedKey));
 						}
 
 						//variables modeled after setup touma calling zapper for easier readability
@@ -816,33 +798,33 @@ int main(int argc, char *argv[])
 						else if (command == "reject")
 						{//timestamp|reject|touma|sessionid
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string zapper = postgres->userFromSessionid(sessionid);
+							string zapper = postgres->userFromSessionid(sessionid, cmdRelatedKey);
 							string touma = commandContents.at(2);
-							postgres->insertLog(DBLog(millisNow(), TAG_REJECT, originalBufferCmd, zapper, INBOUNDLOG, ip, cmdRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_REJECT, originalBufferCmd, zapper, INBOUNDLOG, ip, cmdRelatedKey));
 
-							if(!isRealCall(zapper, touma))
+							if(!isRealCall(zapper, touma, cmdRelatedKey))
 							{
 								string error = touma + " never made a call request to " + zapper;
-								postgres->insertLog(DBLog(millisNow(), TAG_REJECT, error, zapper, ERRORLOG, ip, cmdRelatedKey));
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_REJECT, error, zapper, ERRORLOG, ip, cmdRelatedKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
-								postgres->insertLog(DBLog(millisNow(), TAG_REJECT, invalid, zapper, OUTBOUNDLOG, ip , cmdRelatedKey));
+								write2Client(invalid, sdssl, cmdRelatedKey);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_REJECT, invalid, zapper, OUTBOUNDLOG, ip , cmdRelatedKey));
 								goto invalidcmd;
 							}
 
 							//set touma's and zapper's media socket state back to idle
-							int toumaMediaFd = postgres->userFd(touma, MEDIA);
-							int zapperMediaFd = postgres->userFd(zapper, MEDIA);
+							int toumaMediaFd = postgres->userFd(touma, MEDIA, cmdRelatedKey);
+							int zapperMediaFd = postgres->userFd(zapper, MEDIA, cmdRelatedKey);
 							sdinfo[toumaMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
 
 							//tell touma his call was rejected
-							int toumaCmdFd = postgres->userFd(touma, COMMAND);
+							int toumaCmdFd = postgres->userFd(touma, COMMAND, cmdRelatedKey);
 							SSL *toumaCmdSsl = clientssl[toumaCmdFd];
 							string resp = to_string(now) + "|call|reject|" + zapper + "\n";
-							write2Client(resp, toumaCmdSsl);
-							postgres->insertLog(DBLog(millisNow(), TAG_REJECT, resp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), cmdRelatedKey));
+							write2Client(resp, toumaCmdSsl, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_REJECT, resp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), cmdRelatedKey));
 						}
 
 						//variables modeled after setup touma calling zapper for easier readability
@@ -853,33 +835,33 @@ int main(int argc, char *argv[])
 							//timestamp|end|zapper|toumasid : touma wants to end the call with zapper
 
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string wants2End = postgres->userFromSessionid(sessionid);
+							string wants2End = postgres->userFromSessionid(sessionid, cmdRelatedKey);
 							string stillTalking = commandContents.at(2);
-							postgres->insertLog(DBLog(millisNow(), TAG_END, originalBufferCmd, wants2End, INBOUNDLOG, ip, cmdRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_END, originalBufferCmd, wants2End, INBOUNDLOG, ip, cmdRelatedKey));
 
-							if(!isRealCall(wants2End, stillTalking))
+							if(!isRealCall(wants2End, stillTalking, cmdRelatedKey))
 							{
 								string error = stillTalking + " isn't in a call with " + wants2End;
-								postgres->insertLog(DBLog(millisNow(), TAG_END, error, wants2End, ERRORLOG, ip, cmdRelatedKey));
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_END, error, wants2End, ERRORLOG, ip, cmdRelatedKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
-								postgres->insertLog(DBLog(millisNow(), TAG_END, invalid, wants2End, OUTBOUNDLOG, ip, cmdRelatedKey));
+								write2Client(invalid, sdssl, cmdRelatedKey);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_END, invalid, wants2End, OUTBOUNDLOG, ip, cmdRelatedKey));
 								goto invalidcmd;
 							}
 
 							//set touma's and zapper's media socket state back to idle
-							int endMediaFd = postgres->userFd(wants2End, MEDIA);
-							int talkingMediaFd = postgres->userFd(stillTalking, MEDIA);
+							int endMediaFd = postgres->userFd(wants2End, MEDIA, cmdRelatedKey);
+							int talkingMediaFd = postgres->userFd(stillTalking, MEDIA, cmdRelatedKey);
 							sdinfo[endMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[talkingMediaFd] = SOCKMEDIAIDLE;
 
 							//tell the one still talking, it's time to hang up
 							string resp = to_string(now) + "|call|end|" + wants2End + "\n";
-							int talkingCmdFd = postgres->userFd(stillTalking, COMMAND);
+							int talkingCmdFd = postgres->userFd(stillTalking, COMMAND, cmdRelatedKey);
 							SSL *talkingCmdSsl = clientssl[talkingCmdFd];
-							write2Client(resp, talkingCmdSsl);
-							postgres->insertLog(DBLog(millisNow(), TAG_END, resp, stillTalking, OUTBOUNDLOG, ipFromSd(talkingCmdFd), cmdRelatedKey));
+							write2Client(resp, talkingCmdSsl, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_END, resp, stillTalking, OUTBOUNDLOG, ipFromSd(talkingCmdFd), cmdRelatedKey));
 						}
 						//call timeout: zapper hasn't answer touma's call request in the 1 minute ring time
 						//cancel the call... YOU MUST tell the server the call is cancelled so it can reset the media fd states
@@ -889,61 +871,61 @@ int main(int argc, char *argv[])
 						{
 							string zapper = commandContents.at(2);
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string touma = postgres->userFromSessionid(sessionid);
-							postgres->insertLog(DBLog(millisNow(), TAG_TIMEOUT, originalBufferCmd, touma, INBOUNDLOG, ip, cmdRelatedKey));
+							string touma = postgres->userFromSessionid(sessionid, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_TIMEOUT, originalBufferCmd, touma, INBOUNDLOG, ip, cmdRelatedKey));
 
-							if(!isRealCall(touma, zapper))
+							if(!isRealCall(touma, zapper, cmdRelatedKey))
 							{
 								string error = touma + " never called " + zapper + " so there is nothing to timeout";
-								postgres->insertLog(DBLog(millisNow(), TAG_TIMEOUT, error, touma, ERRORLOG, ip, cmdRelatedKey));
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_TIMEOUT, error, touma, ERRORLOG, ip, cmdRelatedKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
-								postgres->insertLog(DBLog(millisNow(), TAG_TIMEOUT, invalid, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
+								write2Client(invalid, sdssl, cmdRelatedKey);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_TIMEOUT, invalid, touma, OUTBOUNDLOG, ip, cmdRelatedKey));
 								goto invalidcmd;
 							}
 
 							//set touma's and zapper's media socket state back to idle
-							int toumaMediaFd = postgres->userFd(touma, MEDIA);
-							int zapperMediaFd = postgres->userFd(zapper, MEDIA);
+							int toumaMediaFd = postgres->userFd(touma, MEDIA, cmdRelatedKey);
+							int zapperMediaFd = postgres->userFd(zapper, MEDIA, cmdRelatedKey);
 							sdinfo[toumaMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
 
 							//tell zapper that time's up for answering touma's call
 							string resp = to_string(now) + "|ring|timeout|" + touma;
-							int zapperCmdFd = postgres->userFd(zapper, COMMAND);
+							int zapperCmdFd = postgres->userFd(zapper, COMMAND, cmdRelatedKey);
 							SSL *zapperCmdSsl = clientssl[zapperCmdFd];
-							write2Client(resp, zapperCmdSsl);
-							postgres->insertLog(DBLog(millisNow(), TAG_TIMEOUT, resp, zapper, OUTBOUNDLOG, ipFromSd(zapperCmdFd), cmdRelatedKey));
+							write2Client(resp, zapperCmdSsl, cmdRelatedKey);
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_TIMEOUT, resp, zapper, OUTBOUNDLOG, ipFromSd(zapperCmdFd), cmdRelatedKey));
 						}
 						else //commandContents[1] is not a known command... something fishy???
 						{
-							postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, originalBufferCmd, postgres->userFromFd(sd, COMMAND), INBOUNDLOG, ip, cmdRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_BADCMD, originalBufferCmd, postgres->userFromFd(sd, COMMAND, cmdRelatedKey), INBOUNDLOG, ip, cmdRelatedKey));
 						}
 					}
 					catch(invalid_argument &badarg)
 					{//timestamp couldn't be parsed. assume someone is trying something fishy
-						string user = postgres->userFromFd(sd, COMMAND);
-						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip, cmdRelatedKey));
+						string user = postgres->userFromFd(sd, COMMAND, cmdRelatedKey);
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip, cmdRelatedKey));
 
 						string error =  "INVALID ARGUMENT EXCEPTION: (uint64_t)stoull (string too long) could not parse timestamp";
-						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, error, user, ERRORLOG, ip, cmdRelatedKey));
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_BADCMD, error, user, ERRORLOG, ip, cmdRelatedKey));
 
 						string invalid = to_string(now) + "|resp|invalid|command\n";
-						write2Client(invalid, sdssl);
-						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, cmdRelatedKey));
+						write2Client(invalid, sdssl, cmdRelatedKey);
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, cmdRelatedKey));
 					}
 					catch(out_of_range &exrange)
 					{
-						string user = postgres->userFromFd(sd, COMMAND);
-						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip, cmdRelatedKey));
+						string user = postgres->userFromFd(sd, COMMAND, cmdRelatedKey);
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip, cmdRelatedKey));
 
 						string error = "OUT OF RANGE (vector<string> parsed from command) EXCEPTION: client sent a misformed command";
-						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, error, user, ERRORLOG, ip, cmdRelatedKey));
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_BADCMD, error, user, ERRORLOG, ip, cmdRelatedKey));
 
 						string invalid = to_string(now) + "|resp|invalid|command\n";
-						write2Client(invalid, sdssl);
-						postgres->insertLog(DBLog(millisNow(), TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, cmdRelatedKey));
+						write2Client(invalid, sdssl, cmdRelatedKey);
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, cmdRelatedKey));
 					}
 					invalidcmd:; //bad timestamp, invalid sessionid, not real call... etc.
 				}
@@ -964,13 +946,13 @@ int main(int argc, char *argv[])
 					string ip = ipFromSd(sd);
 					uint64_t mediaRelatedKey = dist(mt);
 					//need to write the string to the db before it gets mutilated by strtok in parse(bufferMedia)
-					postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, to_string(bufferMedia), DONTKNOW, INBOUNDLOG, ip, mediaRelatedKey));
+					postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIANEW, to_string(bufferMedia), DONTKNOW, INBOUNDLOG, ip, mediaRelatedKey));
 					vector<string> commandContents = parse(bufferMedia);
 
 					try
 					{
 						uint64_t sessionid = (uint64_t)stoull(commandContents.at(1));
-						string intendedUser = postgres->userFromSessionid(sessionid);
+						string intendedUser = postgres->userFromSessionid(sessionid, mediaRelatedKey);
 
 						//check timestamp is ok
 						time_t now = time(NULL);
@@ -982,7 +964,7 @@ int main(int argc, char *argv[])
 							uint64_t mins = timeDifference/60;
 							uint64_t seconds = timeDifference - mins*60;
 							string error = "timestamp " + to_string(mins) + ":" + to_string(seconds) + " outside 5min window of error";
-							postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, mediaRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, mediaRelatedKey));
 							goto skipreg;
 						}
 
@@ -990,18 +972,18 @@ int main(int argc, char *argv[])
 						if(intendedUser == "")
 						{
 							string error = "user cannot be identified from session id";
-							postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, mediaRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, mediaRelatedKey));
 							goto skipreg;
 						}
 						string message = "According to the session id, the media socket is for: " + intendedUser;
-						postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, message, intendedUser, INBOUNDLOG, ip, mediaRelatedKey));
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIANEW, message, intendedUser, INBOUNDLOG, ip, mediaRelatedKey));
 
 						//get the user's command fd to do an ip lookup of which ip the command fd is associated with
-						int cmdfd = postgres->userFd(intendedUser, COMMAND);
-						if(cmdfd < 0)
+						int cmdfd = postgres->userFd(intendedUser, COMMAND, mediaRelatedKey);
+						if(cmdfd == 0)
 						{//with a valid timestamp, valid sessionid, there is no cmd fd for this user??? how??? you must log in through a cmd fd to get a sessionid
 							string error = "(possible bug) valid timestamp and sessionid but " + intendedUser + " has no command fd. can't continue association of media socket";
-							postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, mediaRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, mediaRelatedKey));
 							goto skipreg;
 						}
 
@@ -1024,22 +1006,22 @@ int main(int argc, char *argv[])
 							string error = "SOMETHING IS REALLY WRONG. with a valid timestamp, sessionid, and a command fd associated with the sessionid, the request to associate the media fd is coming from another ip???\n";
 							error = error + " last registered from ip address:" + to_string(inet_ntoa(cmdFdInfo.sin_addr)) + "\n";
 							error = error + " is CURRENTLY registering from ip address: " + to_string(inet_ntoa(thisfd.sin_addr));
-							postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, mediaRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, mediaRelatedKey));
 							goto skipreg;
 						}
-						postgres->setFd(sessionid, sd, MEDIA);
+						postgres->setFd(sessionid, sd, MEDIA, mediaRelatedKey);
 						sdinfo[sd] = SOCKMEDIAIDLE;
 
 					}
 					catch(invalid_argument &badarg)
 					{
 						string error = "can't get timestamp when trying establish which client a media socket should go to";
-						postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, error, DONTKNOW, ERRORLOG, ip, mediaRelatedKey));
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIANEW, error, DONTKNOW, ERRORLOG, ip, mediaRelatedKey));
 					}
 					catch(out_of_range &exrange)
 					{
 						string error = "client sent a misformed media port association request, out of range exception";
-						postgres->insertLog(DBLog(millisNow(), TAG_MEDIANEW, error, DONTKNOW, ERRORLOG, ip, mediaRelatedKey));
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIANEW, error, DONTKNOW, ERRORLOG, ip, mediaRelatedKey));
 					}
 
 					skipreg:; //skip media fd registration. something didn't check out ok.
@@ -1087,19 +1069,19 @@ int main(int argc, char *argv[])
 						 //a backlog of voice will cause a call lag. better to ask again and say "didn't catch that"
 
 							int fails = failCount[sdstate];
-							string ip = ipFromSd(sdstate); //log the ip of the socket that can't be written to
-							string user = postgres->userFromFd(sdstate, MEDIA); //log who couldn't be sent media
-							string error = "couldn't write to media socket because it was not ready. failed " + to_string(fails) + " times";
 							uint64_t callMediaKey = dist(mt);
-							postgres->insertLog(DBLog(millisNow(), TAG_MEDIACALL, error, user, ERRORLOG, ip, callMediaKey));
+							string ip = ipFromSd(sdstate); //log the ip of the socket that can't be written to
+							string user = postgres->userFromFd(sdstate, MEDIA, callMediaKey); //log who couldn't be sent media
+							string error = "couldn't write to media socket because it was not ready. failed " + to_string(fails) + " times";
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIACALL, error, user, ERRORLOG, ip, callMediaKey));
 
 							fails++;
 							failCount[sdstate] = fails;
 							if(fails > FAILMAX)
 							{
 								string error = "reached maximum media socket write failure of: " + to_string(FAILMAX);
-								postgres->insertLog(DBLog(millisNow(), TAG_MEDIACALL, error, user, ERRORLOG, ip, callMediaKey));
-								removeClient(sdstate);
+								postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIACALL, error, user, ERRORLOG, ip, callMediaKey));
+								removeClient(sdstate, callMediaKey);
 								//on the next round if(clientssl.count(sdstate)) will fail and go to
 								//the else which will send the call drop. waiting for the next round to
 								//avoid copying and pasting identical code
@@ -1122,28 +1104,28 @@ int main(int argc, char *argv[])
 
 						//logging related stuff
 						string ip = ipFromSd(sd);
-						uint64_t callRelatedKey = dist(mt);
+						uint64_t callMediaKey = dist(mt);
 
 						//reset the media connection state
-						string user = postgres->userFromFd(sd, MEDIA);
+						string user = postgres->userFromFd(sd, MEDIA, callMediaKey);
 						sdinfo[sd] = SOCKMEDIAIDLE;
 
 						//drop the call for the user
 						time_t now = time(NULL);
-						uint64_t sessionid = postgres->userSessionId(user);
-						if(sessionid < 0)
+						uint64_t sessionid = postgres->userSessionId(user, callMediaKey);
+						if(sessionid == 0)
 						{
 							string error = "call was dropped but the user had no session id?? possible bug";
-							postgres->insertLog(DBLog(millisNow(), TAG_MEDIACALL, error, user, ERRORLOG, ip, callRelatedKey));
+							postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIACALL, error, user, ERRORLOG, ip, callMediaKey));
 							goto skipfd;
 						}
 
 						//write to the person who got dropped's command fd that the call was dropped
 						string drop = to_string(now) + "|call|drop|" + to_string(sessionid) + "\n";
-						int commandfd = postgres->userFd(user, COMMAND);
+						int commandfd = postgres->userFd(user, COMMAND, callMediaKey);
 						SSL *cmdSsl = clientssl[commandfd];
-						write2Client(drop, cmdSsl);
-						postgres->insertLog(DBLog(millisNow(), TAG_MEDIACALL, drop, user, OUTBOUNDLOG, ip, callRelatedKey));
+						write2Client(drop, cmdSsl, callMediaKey);
+						postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIACALL, drop, user, OUTBOUNDLOG, ip, callMediaKey));
 					}
 				}
 
@@ -1166,7 +1148,7 @@ int main(int argc, char *argv[])
 				int kickout = *rmit;
 				if(clientssl.count(kickout) > 0)
 				{
-					removeClient(kickout);
+					removeClient(kickout, initkey);
 				}
 			}
 			removals.clear();
@@ -1234,29 +1216,29 @@ vector<string> parse(char command[])
 // sd: a client's socket descriptor
 // to make things easier, this function will attempt to find both the media and cmd fd
 //	for the user to be removed.
-void removeClient(int sd)
+void removeClient(int sd, uint64_t relatedKey)
 {
 	PGUtils *postgres = PGUtils::getInstance();
-	string uname = postgres->userFromFd(sd, COMMAND); //make a lucky guess you got the command fd
+	string uname = postgres->userFromFd(sd, COMMAND, relatedKey); //make a lucky guess you got the command fd
 	int media, cmd;
 
 #ifdef JSTOPMEDIA
 	//make the assumption. if it's right remove both. if it's wrong then... it's still right. remove only the media
 	cmd = sd;
-	media = postgres->userFd(uname, MEDIA);
+	media = postgres->userFd(uname, MEDIA, relatedKey);
 #else
 	/*
 	 * The actual correct method of removing both sockets regardless of what was supplied
 	 */
-	if(uname != "ENOUSER")
+	if(!uname.empty())
 	{//lucky guess was right
 		cmd = sd;
-		media = postgres->userFd(uname, MEDIA);
+		media = postgres->userFd(uname, MEDIA, relatedKey);
 	}
 	else
 	{//lucky guess was wrong. then you got the media fd
-		uname = postgres->userFromFd(sd, MEDIA);
-		cmd = postgres->userFd(uname, COMMAND);
+		uname = postgres->userFromFd(sd, MEDIA, relatedKey);
+		cmd = postgres->userFd(uname, COMMAND, relatedKey);
 		media = sd;
 	}
 #endif
@@ -1313,27 +1295,27 @@ void removeClient(int sd)
 
 	//incase of crash, there will be no entires in the hash table and tree. skip these pairs and just flush out
 	//	the irrelevant db info
-	postgres->clearSession(uname);
+	postgres->clearSession(uname, relatedKey);
 }
 
 //before doing an accept, reject, end command check to see if it's for a real call
 //	or someone trying to get smart with the server
-bool isRealCall(string persona, string personb)
+bool isRealCall(string persona, string personb, uint64_t relatedKey)
 {
 	PGUtils *postgres = PGUtils::getInstance();
 	string prefix =  "call between " + persona + " && " + personb + ": ";
 
 	//check if A and B even have media FDs
-	int afd = postgres->userFd(persona, MEDIA);
-	int bfd = postgres->userFd(personb, MEDIA);
-	if(afd < 0)
+	int afd = postgres->userFd(persona, MEDIA, relatedKey);
+	int bfd = postgres->userFd(personb, MEDIA, relatedKey);
+	if(afd == 0)
 	{
 #ifdef VERBOSE
 		cout << prefix << persona << " doesn't even have a media fd\n";
 #endif
 		return false;
 	}
-	if(bfd < 0)
+	if(bfd == 0)
 	{
 #ifdef VERBOSE
 		cout << prefix << personb << " doesn't even have a media fd\n";
@@ -1368,7 +1350,7 @@ bool isRealCall(string persona, string personb)
 
 
 // write a message to a client
-void write2Client(string response, SSL *respSsl)
+void write2Client(string response, SSL *respSsl, uint64_t relatedKey)
 {
 	int length = response.size();
 	char serverOut[length+1]; //make sure the amount written out represents the response string and isn't response + tons of 0 padding
@@ -1394,7 +1376,7 @@ void write2Client(string response, SSL *respSsl)
 	{
 		PGUtils *postgres = PGUtils::getInstance();
 		int socket = SSL_get_fd(respSsl);
-		string didntReceive = postgres->userFromFd(socket, COMMAND);
+		string didntReceive = postgres->userFromFd(socket, COMMAND, relatedKey);
 #ifdef VERBOSE
 		cout << "Couldn't send command to: " << didntReceive << "\n";
 #endif
@@ -1439,21 +1421,4 @@ string ipFromSd(int sd)
 	socklen_t thisfdSize = sizeof(struct sockaddr_in);
 	getpeername(sd, (struct sockaddr*) &thisfd, &thisfdSize);
 	return to_string(inet_ntoa(thisfd.sin_addr));
-}
-
-//https://stackoverflow.com/questions/3756323/getting-the-current-time-in-milliseconds
-uint64_t millisNow()
-{
-	struct timespec now;
-	clock_gettime(CLOCK_REALTIME, &now);
-
-	//must assign the value to the uint64_t first BEFORE modifying it.
-	//if assign and modification are one shotted, then the result is garbage for 32bit cpus.
-	uint64_t seconds = now.tv_sec;
-	seconds = seconds * 1000;
-	uint64_t nanos = now.tv_nsec;
-	nanos = (uint64_t)nanos/1.0e6;
-
-	uint64_t result = seconds + nanos;
-	return result ;
 }

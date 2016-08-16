@@ -32,6 +32,18 @@
 #define TAG_MEDIANEW 14
 #define TAG_MEDIACALL 15
 
+//postgres utilities tags
+#define TAG_POSTGRES_AUTH 16
+#define TAG_POSTGRES_SETFD 17
+#define TAG_POSTGRES_CLEARSESS 18
+#define TAG_POSTGRES_VERIFYSESS 19
+#define TAG_POSTGRES_USEREXISTS 20
+#define TAG_POSTGRES_UFROMFD 21
+#define TAG_POSTGRES_UFROMSESS 22
+#define TAG_POSTGRES_FDFROMU 23
+#define TAG_POSTGRES_SESSFROMU 24
+#define TAG_POSTGRES_UTHERE 25
+
 #include <string>
 
 class DBLog
@@ -47,8 +59,9 @@ private:
 	uint64_t relatedKey;
 
 public:
-	DBLog(int cid, uint64_t cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, uint64_t relatedKey);
-	DBLog(uint64_t cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, uint64_t relatedKey);
+	DBLog(int cid, uint64_t cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, uint64_t crelatedKey);
+	DBLog(uint64_t cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, uint64_t crelatedKey);
+	DBLog(uint64_t cts, int ctag, std::string cmessage, int type, uint64_t crelatedKey);
 
 	int getId();
 	uint64_t getTimestamp();

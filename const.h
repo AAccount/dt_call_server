@@ -9,13 +9,6 @@
 #define COMMAND 1
 #define MEDIA 2
 
-//errors
-#define EGENERIC -1 //internal error. something went wrong that shouldn't
-#define ENOUSER -2 //no user matches the parameters provided
-#define EPASS -3 //bad password
-#define ENOFD -4 //no file/socket descriptor found for the parameters provided
-#define EPARAM -5 //non sense parameter supplied
-
 //socket state
 // state > 0 : incall with that descriptor
 #define SOCKCMD -1
@@ -37,6 +30,7 @@
 #define FAILMAX 10
 
 //where the configuration file is
+//#define CONFFILE "/etc/dtoperator/dtoperator.conf"
 #define CONFFILE "/home/Daniel/dtoperator"
 #define DEFAULTCMD 1991
 #define DEFAULTMEDIA 2014

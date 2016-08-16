@@ -9,8 +9,8 @@ PQXX =  -lpqxx -lpq
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
  LEGACYDBGCFLAGS = -g -m32 -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
- CFLAGS = -O3 -march=native -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
- DBGCFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA -DJCALLDIAG
+ OPTCFLAGS = -O3 -march=native -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
+ CFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA -DJCALLDIAG
  CC = g++
 endif
 
@@ -22,8 +22,8 @@ ifeq ($(UNAME),FreeBSD)
  CC = clang++
 endif
 
-server: server.o pgutils.o dblog.o
-	${CC} ${CFLAGS} -o dtoperator pgutils.o ${PQXX} server.o dblog.o ${OPENSSL} ${MATH} ${INC} ${LIB}
+server: server.o pgutils.o dblog.o Utils.o
+	${CC} ${CFLAGS} -o dtoperator pgutils.o ${PQXX} server.o dblog.o ${OPENSSL} ${MATH} ${INC} ${LIB} Utils.o
 
 testdb: testdb.cpp pgutils.o
 	${CC} ${CFLAGS} -o $@ testdb.cpp pgutils.o ${PQXX} ${INC} ${LIB}
@@ -36,6 +36,9 @@ server.o : server.cpp server.hpp
 
 dblog.o: dblog.cpp dblog.hpp
 	${CC} ${CFLAGS} -c dblog.cpp ${INC}
+
+Utils.o : Utils.cpp Utils.hpp
+	${CC} ${CFLAGS} -c Utils.cpp ${INC}
 
 clean:
 	rm client dtoperator testdb *.o *.gch
