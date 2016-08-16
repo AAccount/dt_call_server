@@ -39,6 +39,16 @@ insert into tag (tagid, tagname) values (12, 'call end');
 insert into tag (tagid, tagname) values (13, 'call timeout');
 insert into tag (tagid, tagname) values (14, 'new media socket');
 insert into tag (tagid, tagname) values (15, 'media socket event');
+insert into tag (tagid, tagname) values (16, 'postgres authenticate');
+insert into tag (tagid, tagname) values (17, 'postgres setFd');
+insert into tag (tagid, tagname) values (18, 'postgres clearSession');
+insert into tag (tagid, tagname) values (19, 'postgres verifySessionid');
+insert into tag (tagid, tagname) values (20, 'postgres doesUserExist');
+insert into tag (tagid, tagname) values (21, 'postgres userFromFd');
+insert into tag (tagid, tagname) values (22, 'postgres userFromSessionid');
+insert into tag (tagid, tagname) values (23, 'postgres userFd');
+insert into tag (tagid, tagname) values (24, 'postgres userSessionId');
+insert into tag (tagid, tagname) values (25, 'postgres doesUserExist');
 
 -- data tables
 -- user table
@@ -59,13 +69,13 @@ insert into users (username, saltedhash) values ('zapper', crypt('railgun',gen_s
 CREATE TABLE logs
 (
   id serial,
-  ts bigint NOT NULL DEFAULT 0,
-  tag int,
+  ts bigint NOT NULL,
+  tag int NOT NULL,
   message text NOT NULL,
-  type int,
+  type int NOT NULL,
   ip text,
   who text,
-  relatedKey bigint,
+  relatedKey bigint NOT NULL,
   CONSTRAINT "Primary Key" PRIMARY KEY (id),
   CONSTRAINT "Tag Foreign Key" FOREIGN KEY (tag) REFERENCES tag(tagid),
   CONSTRAINT "Log Type Foreign Key" FOREIGN KEY (type) REFERENCES logtype(typeid)
