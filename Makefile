@@ -41,5 +41,5 @@ Utils.o : Utils.cpp Utils.hpp
 	${CC} ${CFLAGS} -c Utils.cpp ${INC}
 
 clean:
-	rm client dtoperator testdb *.o *.gch
+	rm dtoperator testdb *.o *.gch
 

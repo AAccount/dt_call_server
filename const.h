@@ -1,5 +1,4 @@
-#define MAXCMD 100 //how many characters a command with params can be 
-#define MAXMEDIA 1024 //how much media is transferred between users at a time
+#define BUFFERSIZE 1024 //how much media is transferred between users at a time
 					//media buffer must be larger than media frame (amr in this case) or it won't work
 					//example: amr encodes 32 bytes, making the buffer 64 bytes
 #define MAXLISTENWAIT 5
