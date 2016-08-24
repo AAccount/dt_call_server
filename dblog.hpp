@@ -31,6 +31,7 @@
 #define TAG_TIMEOUT 13
 #define TAG_MEDIANEW 14
 #define TAG_MEDIACALL 15
+#define TAG_SSLCMD 26
 
 //postgres utilities tags
 #define TAG_POSTGRES_AUTH 16

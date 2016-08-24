@@ -14,9 +14,6 @@
 #define SOCKMEDIANEW -2
 #define SOCKMEDIAIDLE -3
 
-//call related stuff
-#define INITWAITING 100
-
 //java 1 byte ignored character
 #define JBYTE "D"
 

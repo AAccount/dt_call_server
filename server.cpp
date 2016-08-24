@@ -668,7 +668,6 @@ int main(int argc, char *argv[])
 								goto invalidcmd; //not really invalid either but can't continue any further at this point
 							}
 
-
 							//make sure touma didn't accidentally dial himself
 							if(touma == zapper)
 							{
@@ -680,8 +679,8 @@ int main(int argc, char *argv[])
 							}
 
 							//setup the media fd statuses
-							sdinfo[zapperMediaFd] = INITWAITING + toumaMediaFd;
-							sdinfo[toumaMediaFd] = INITWAITING + zapperMediaFd;
+							sdinfo[zapperMediaFd] = -toumaMediaFd;
+							sdinfo[toumaMediaFd] = -zapperMediaFd;
 
 							//tell touma that zapper is being rung
 							string notifyTouma = to_string(now) + "|ring|available|" + zapper + "\n";
@@ -989,7 +988,7 @@ int main(int argc, char *argv[])
 
 					skipreg:; //skip media fd registration. something didn't check out ok.
 				}
-				else if(sdstate >= INITWAITING)
+				else if(sdstate <= SOCKMEDIAIDLE)
 				{
 #ifdef VERBOSE
 					if(sdstate == SOCKMEDIAIDLE)
@@ -999,7 +998,7 @@ int main(int argc, char *argv[])
 						cout << "Got : " << inputBuffer << "\n";
 #endif
 					}
-					else //if(sdstate > 100)
+					else //if(sdstate < -3)
 					{
 						cout << "received data on a media socket waiting for a call accept\n";
 #ifdef JCALLDIAG
@@ -1285,7 +1284,7 @@ bool isRealCall(string persona, string personb, uint64_t relatedKey)
 	}
 
 	int astatus = sdinfo[afd];
-	if(!((astatus == INITWAITING + bfd) || (astatus == bfd)))
+	if(!((astatus ==  -bfd) || (astatus == bfd)))
 	{//apparently A isn't waiting for a call with B to start
 #ifdef VERBOSE
 		cout << prefix << persona << " isn't expecting a call from or in a call with " << personb;
@@ -1294,7 +1293,7 @@ bool isRealCall(string persona, string personb, uint64_t relatedKey)
 	}
 
 	int bstatus = sdinfo[bfd];
-	if(!((bstatus == INITWAITING + afd) || (bstatus == afd)))
+	if(!((bstatus == -afd) || (bstatus == afd)))
 	{//apparently B isn't waiting for a call with A to start
 #ifdef VERBOSE
 		cout << prefix << personb << " isn't expecting a call from or in a call with" << persona;
@@ -1318,29 +1317,14 @@ void write2Client(string response, SSL *respSsl, uint64_t relatedKey)
 	bzero(serverOut, length+1);
 	memcpy(serverOut, response.c_str(), length);
 
-	int retries = 10;
-	bool finished = false;
-	do
-	{
-		int errValue = SSL_write(respSsl, serverOut, length);
-		if(errValue > 0)
-		{
-			finished = true;
-		}
-		else if(errValue == SSL_ERROR_WANT_WRITE)
-		{
-			retries--;
-		}
-	} while(retries > 0 && !finished);
-
-	if(!finished)
+	int errValue = SSL_write(respSsl, serverOut, length);
+	if(errValue <= 0)
 	{
 		PGUtils *postgres = PGUtils::getInstance();
 		int socket = SSL_get_fd(respSsl);
-		string didntReceive = postgres->userFromFd(socket, COMMAND, relatedKey);
-#ifdef VERBOSE
-		cout << "Couldn't send command to: " << didntReceive << "\n";
-#endif
+		string user = postgres->userFromFd(socket, COMMAND, relatedKey);
+		string error = "ssl_write returned an error of: " + to_string(errValue) + " while trying to write to the COMMAND socket";
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_SSLCMD, error, ERRORLOG, relatedKey));
 	}
 }
 
