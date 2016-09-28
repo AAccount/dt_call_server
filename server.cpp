@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
 	OpenSSL_add_all_algorithms();
 
 	//set ssl properties
-	SSL_CTX *sslcontext = SSL_CTX_new(TLSv1_method());
+	SSL_CTX *sslcontext = SSL_CTX_new(TLSv1_2_method());
 	if(&sslcontext <= 0)
 	{
 		string error = "ssl initialization problem";
@@ -197,9 +197,6 @@ int main(int argc, char *argv[])
 	//TODO: check how ideal const char *ciphers is
 	//https://github.com/deadtrickster/cl-dropbox/blob/master/src/ssl.lisp
 	SSL_CTX_set_cipher_list(sslcontext, ciphers.c_str());
-	SSL_CTX_set_options(sslcontext, SSL_OP_NO_TLSv1);
-	SSL_CTX_set_options(sslcontext, SSL_OP_NO_TLSv1_1);
-	SSL_CTX_set_options(sslcontext, SSL_OP_SINGLE_DH_USE);
 	returnValue= SSL_CTX_use_PrivateKey_file(sslcontext, privateKeyFile.c_str(), SSL_FILETYPE_PEM);
 	if(returnValue <= 0)
 	{
@@ -855,7 +852,7 @@ int main(int argc, char *argv[])
 							sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
 
 							//tell zapper that time's up for answering touma's call
-							string resp = to_string(now) + "|ring|timeout|" + touma;
+							string resp = to_string(now) + "|ring|timeout|" + touma + "\n";
 							int zapperCmdFd = postgres->userFd(zapper, COMMAND, iterationKey);
 							SSL *zapperCmdSsl = clientssl[zapperCmdFd];
 							write2Client(resp, zapperCmdSsl, iterationKey);
