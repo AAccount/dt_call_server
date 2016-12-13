@@ -49,6 +49,7 @@ insert into tag (tagid, tagname) values (22, 'postgres userFromSessionid');
 insert into tag (tagid, tagname) values (23, 'postgres userFd');
 insert into tag (tagid, tagname) values (24, 'postgres userSessionId');
 insert into tag (tagid, tagname) values (25, 'postgres doesUserExist');
+insert into tag (tagid, tagname) values (26, 'ssl command write');
 
 -- data tables
 -- user table

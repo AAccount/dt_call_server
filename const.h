@@ -20,7 +20,7 @@
 //timeouts
 #define ALARMTIMEOUT 3 //seconds
 #define SOCKETTIMEOUT 2 //seconds
-#define WSELECTTIMEOUT 100000 //microseconds
+#define WSELECTTIMEOUT 100 //microseconds
 
 //maximum amount of times a socket can write fail before killing
 #define FAILMAX 10
