@@ -2,7 +2,7 @@ create group for program
 create user with nologin shell for program
 create postgres user for program
 create database
-create extension INSIDE the database
+create extension (pgcrypto) INSIDE the database
 grant user with database permissions
 import sample/real data
 (if fedora --> debian) recompile in debian, copy exe
