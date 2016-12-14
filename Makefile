@@ -8,15 +8,15 @@ PQXX =  -lpqxx -lpq
 
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
- LEGACYDBGCFLAGS = -g -m32 -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
- OPTCFLAGS = -flto -O3 -march=native -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA
- CFLAGS = -g -Werror -std=c++11 -DJAVA1BYTE -DJSTOPMEDIA -DJCALLDIAG
+ LEGACYDBGCFLAGS = -g -m32 -Werror -std=c++11 -DJSTOPMEDIA
+ OPTCFLAGS = -flto -O3 -march=native -Werror -std=c++11 -DJSTOPMEDIA
+ CFLAGS = -g -Werror -std=c++11 -DJSTOPMEDIA -DJCALLDIAG
  CC = g++
 endif
 
 ifeq ($(UNAME),FreeBSD)
- CFLAGS = -O3 -march=native -Werror -DJAVA1BYTE -DJSTOPMEDIA
- DBGFLAGS = -g -Werror -DJAVA1BYTE -DJCALLDIAG -DJSTOPMEDIA -DJCALLDIAG
+ CFLAGS = -O3 -march=native -Werror -DJSTOPMEDIA
+ DBGFLAGS = -g -Werror -DJCALLDIAG -DJSTOPMEDIA -DJCALLDIAG
  INC = -I /usr/local/include
  LIB = -L /usr/local/lib
  CC = clang++

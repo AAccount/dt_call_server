@@ -522,9 +522,8 @@ int main(int argc, char *argv[])
 				int sdstate = sdinfo[sd];
 				if(sdstate == SOCKCMD)
 				{
-#ifdef JAVA1BYTE
-					//workaround for j/aclient sending first byte of a command separately
-					//after the initial login
+					//what was previously a workaround now has an official purpose: heartbeat/ping ignore byte
+					//this byte is just sent to keep the socket and its various nat tables it takes to get here alive
 					string bufferString(inputBuffer);
 					if(bufferString == JBYTE)
 					{
@@ -533,7 +532,6 @@ int main(int argc, char *argv[])
 #endif
 						goto skipfd;
 					}
-#endif
 					string originalBufferCmd = to_string(inputBuffer); //save original command string before it gets mutilated by strtok
 					vector<string> commandContents = parse(inputBuffer);
 					string ip = ipFromSd(sd);
@@ -608,7 +606,7 @@ int main(int argc, char *argv[])
 
 							//record a succesful login and response sent
 							postgres->setFd(sessionid, sd, COMMAND, iterationKey);
-							string resp = to_string(now) + "|resp|login|" + to_string(sessionid) + "\n";
+							string resp = to_string(now) + "|resp|login|" + to_string(sessionid);
 							write2Client(resp, sdssl, iterationKey);
 							postgres->insertLog(DBLog(Utils::millisNow(), TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
 						}
@@ -649,7 +647,7 @@ int main(int argc, char *argv[])
 							int zapperCmdFd = postgres->userFd(zapper, COMMAND, iterationKey);
 							if(zapperMediaFd == 0 || zapperCmdFd == 0 )
 							{
-								string na = to_string(now) + "|ring|notavailable|" + zapper + "\n";
+								string na = to_string(now) + "|ring|notavailable|" + zapper;
 								write2Client(na, sdssl, iterationKey);
 								postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, na, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd; //while not really an invalid command, there's no point of continuing
@@ -659,7 +657,7 @@ int main(int argc, char *argv[])
 							int currentState = sdinfo[zapperMediaFd];
 							if(currentState != SOCKMEDIAIDLE)
 							{
-								string busy = to_string(now) + "|ring|busy|" + zapper + "\n";
+								string busy = to_string(now) + "|ring|busy|" + zapper;
 								write2Client(busy, sdssl, iterationKey);
 								postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, busy, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd; //not really invalid either but can't continue any further at this point
@@ -668,7 +666,7 @@ int main(int argc, char *argv[])
 							//make sure touma didn't accidentally dial himself
 							if(touma == zapper)
 							{
-								string busy = to_string(now) + "|ring|busy|" + zapper + "\n"; //ye olde landline did this
+								string busy = to_string(now) + "|ring|busy|" + zapper; //ye olde landline did this
 								write2Client(busy, sdssl, iterationKey);
 								busy = "(self dialed) " + busy;
 								postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, busy, touma, OUTBOUNDLOG, ip, iterationKey));
@@ -680,12 +678,12 @@ int main(int argc, char *argv[])
 							sdinfo[toumaMediaFd] = -zapperMediaFd;
 
 							//tell touma that zapper is being rung
-							string notifyTouma = to_string(now) + "|ring|available|" + zapper + "\n";
+							string notifyTouma = to_string(now) + "|ring|available|" + zapper;
 							write2Client(notifyTouma, sdssl, iterationKey);
 							postgres->insertLog(DBLog(Utils::millisNow(), TAG_CALL, notifyTouma, touma, OUTBOUNDLOG, ip, iterationKey));
 			
 							//tell zapper touma wants to call her
-							string notifyZapper = to_string(now) + "|ring|incoming|" + touma + "\n";
+							string notifyZapper = to_string(now) + "|ring|incoming|" + touma;
 							SSL *zapperssl = clientssl[zapperCmdFd];
 							write2Client(notifyZapper, zapperssl, iterationKey);
 							string zapperip = ipFromSd(zapperCmdFd);
@@ -709,7 +707,7 @@ int main(int argc, char *argv[])
 								goto invalidcmd;
 							}
 							string exists = (postgres->doesUserExist(who, iterationKey)) ? "exists" : "doesntexist";
-							string resp = to_string(now) + "|lookup|" + who + "|" + exists + "\n";
+							string resp = to_string(now) + "|lookup|" + who + "|" + exists;
 							write2Client(resp, sdssl, iterationKey);
 							postgres->insertLog(DBLog(Utils::millisNow(), TAG_LOOKUP, resp, from, OUTBOUNDLOG, ip, iterationKey));
 						}
@@ -743,12 +741,12 @@ int main(int argc, char *argv[])
 							//	AND confirm to touma, it's zapper he's being connected with
 							int toumaCmdFd = postgres->userFd(touma, COMMAND, iterationKey);
 							SSL *toumaCmdSsl = clientssl[toumaCmdFd];
-							string toumaResp = to_string(now) + "|call|start|" + zapper + "\n";
+							string toumaResp = to_string(now) + "|call|start|" + zapper;
 							write2Client(toumaResp, toumaCmdSsl, iterationKey);
 							postgres->insertLog(DBLog(Utils::millisNow(), TAG_ACCEPT, toumaResp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), iterationKey));
 
 							//confirm to zapper she's being connected to touma
-							string zapperResp = to_string(now) + "|call|start|" + touma + "\n";
+							string zapperResp = to_string(now) + "|call|start|" + touma;
 							write2Client(zapperResp, sdssl, iterationKey);
 							postgres->insertLog(DBLog(Utils::millisNow(), TAG_ACCEPT, zapperResp, zapper, OUTBOUNDLOG, ip, iterationKey));
 						}
@@ -782,7 +780,7 @@ int main(int argc, char *argv[])
 							//tell touma his call was rejected
 							int toumaCmdFd = postgres->userFd(touma, COMMAND, iterationKey);
 							SSL *toumaCmdSsl = clientssl[toumaCmdFd];
-							string resp = to_string(now) + "|call|reject|" + zapper + "\n";
+							string resp = to_string(now) + "|call|reject|" + zapper;
 							write2Client(resp, toumaCmdSsl, iterationKey);
 							postgres->insertLog(DBLog(Utils::millisNow(), TAG_REJECT, resp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), iterationKey));
 						}
@@ -817,7 +815,7 @@ int main(int argc, char *argv[])
 							sdinfo[talkingMediaFd] = SOCKMEDIAIDLE;
 
 							//tell the one still talking, it's time to hang up
-							string resp = to_string(now) + "|call|end|" + wants2End + "\n";
+							string resp = to_string(now) + "|call|end|" + wants2End;
 							int talkingCmdFd = postgres->userFd(stillTalking, COMMAND, iterationKey);
 							SSL *talkingCmdSsl = clientssl[talkingCmdFd];
 							write2Client(resp, talkingCmdSsl, iterationKey);
@@ -852,7 +850,7 @@ int main(int argc, char *argv[])
 							sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
 
 							//tell zapper that time's up for answering touma's call
-							string resp = to_string(now) + "|ring|timeout|" + touma + "\n";
+							string resp = to_string(now) + "|ring|timeout|" + touma;
 							int zapperCmdFd = postgres->userFd(zapper, COMMAND, iterationKey);
 							SSL *zapperCmdSsl = clientssl[zapperCmdFd];
 							write2Client(resp, zapperCmdSsl, iterationKey);
@@ -891,10 +889,11 @@ int main(int argc, char *argv[])
 				}
 				else if(sdstate == SOCKMEDIANEW)
 				{//timestamp|sessionid (of the user this media fd should be registered/associated to)
-#ifdef JAVA1BYTE
 					//workaround for jclient sending first byte of a command separately
 					//after the initial login
 					string bufferString(inputBuffer);
+
+					//what was previously a workaround now has an official purpose: heartbeat/ping ignore byte
 					if(bufferString == JBYTE)
 					{
 #ifdef VERBOSE
@@ -902,7 +901,6 @@ int main(int argc, char *argv[])
 #endif
 						goto skipfd;
 					}
-#endif
 					string ip = ipFromSd(sd);
 					//need to write the string to the db before it gets mutilated by strtok in parse(bufferMedia)
 					postgres->insertLog(DBLog(Utils::millisNow(), TAG_MEDIANEW, to_string(inputBuffer), DONTKNOW, INBOUNDLOG, ip, iterationKey));
@@ -1078,7 +1076,7 @@ int main(int argc, char *argv[])
 						}
 
 						//write to the person who got dropped's command fd that the call was dropped
-						string drop = to_string(now) + "|call|drop|" + to_string(sessionid) + "\n";
+						string drop = to_string(now) + "|call|drop|" + to_string(sessionid);
 						int commandfd = postgres->userFd(user, COMMAND, iterationKey);
 						SSL *cmdSsl = clientssl[commandfd];
 						write2Client(drop, cmdSsl, iterationKey);
