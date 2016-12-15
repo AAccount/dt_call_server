@@ -214,11 +214,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	//socket read timeout option
-	struct timeval timeout;
-	timeout.tv_sec = SOCKETTIMEOUT;
-	timeout.tv_usec = 0;
-
 	//setup command port to accept new connections
 	cmdFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
 	if(cmdFD < 0)
@@ -236,14 +231,6 @@ int main(int argc, char *argv[])
 	if(returnValue < 0)
 	{
 		string error = "cannot bind command socket to a nic";
-		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-	returnValue = setsockopt(cmdFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	if(returnValue < 0)
-	{
-		string error = "cannot set command socket options";
 		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
@@ -267,14 +254,6 @@ int main(int argc, char *argv[])
 	if(returnValue < 0)
 	{
 		string error = "cannot bind media socket to a nic";
-		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-	returnValue = setsockopt(mediaFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	if(returnValue < 0)
-	{
-		string error = "cannot set media socket options";
 		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
@@ -330,7 +309,7 @@ int main(int argc, char *argv[])
 		cout << "select has " << returnValue << " sockets ready for reading\n";
 #endif
 		//now that someone has sent something, check all the sockets to see which ones are writable
-		//give a 0.1second time to check. don't want the request to involve an unwritable socket and
+		//give a 0.1ms time to check. don't want the request to involve an unwritable socket and
 		//stall the whole server
 		returnValue = select(maxsd+1, NULL, &writefds, NULL, &writeTimeout);
 		if(returnValue < 0)
@@ -356,19 +335,6 @@ int main(int argc, char *argv[])
 				goto skipNewCmd;
 			}
 			string ip = inet_ntoa(cli_addr.sin_addr);
-
-			//https://tls.mbed.org/discussions/bug-report-issues/ssl_write-and-ssl_read-timeout
-			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
-			returnValue = setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-			if(returnValue < 0)
-			{
-				string error = "cannot set timeout for incoming command socket from " + ip;
-				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
-				perror(error.c_str());
-				shutdown(incomingCmd, 2);
-				close(incomingCmd);
-				goto skipNewCmd;
-			}
 
 			//setup ssl connection
 			SSL *connssl = SSL_new(sslcontext);
@@ -410,18 +376,6 @@ int main(int argc, char *argv[])
 				goto skipNewMedia;
 			}
 			string ip = inet_ntoa(cli_addr.sin_addr);
-
-			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
-			returnValue = setsockopt(incomingMedia, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-			if(returnValue < 0)
-			{
-				string error = "cannot set timeout for incoming media socket from " + ip;
-				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
-				perror(error.c_str());
-				shutdown(incomingMedia, 2);
-				close(incomingMedia);
-				goto skipNewMedia;
-			}
 
 			//setup ssl connection
 			SSL *connssl = SSL_new(sslcontext);
@@ -466,7 +420,7 @@ int main(int argc, char *argv[])
 				//when a client disconnects, for some reason, the socket is marked as having "stuff" on it.
 				//however that "stuff" is no good for ssl, so use eventful boolean to indicate if there was
 				//any ssl work done for this actively marked socket descriptor. if not, drop the socket.
-				bool waiting = true, eventful=false;
+				bool waiting = true;
 				uint64_t iterationKey = dist(mt);
 
 				//read from the socket into the buffer
@@ -485,7 +439,6 @@ int main(int argc, char *argv[])
 					{
 						case SSL_ERROR_NONE:
 							waiting = false;
-							eventful = true; //an ssl operation completed this round, something did happen
 							break;
 						//other cases when necessary. right now only no error signals a successful read
 					}
@@ -500,8 +453,8 @@ int main(int argc, char *argv[])
 					postgres->insertLog(DBLog(Utils::millisNow(), TAG_ALARM, error, user, ERRORLOG, ip, iterationKey));
 				}
 
-				//check whether this flagged socket descriptor was of any use this round. if not it's dead
-				if(!eventful)
+				///SSL_read return 0 = dead socket
+				if(returnValue == 0)
 				{
 					string user;
 					if(sdinfo[sd] == SOCKCMD)
@@ -1011,7 +964,7 @@ int main(int argc, char *argv[])
 					//logging related stuff if it's never going to be used most of the time.
 #ifdef VERBOSE
 #ifdef JCALLDIAG
-					cout << "received " << bufferRead << " bytes of call data: " << bufferMedia << "\n";
+					cout << "received " << bufferRead << " bytes of call data\n";
 #endif
 #endif
 					if(clientssl.count(sdstate) > 0) //the other person's media sd does exist
