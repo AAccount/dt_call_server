@@ -327,7 +327,7 @@ int main(int argc, char *argv[])
 		{
 			uint64_t relatedKey = dist(mt);
 
-			ualarm(UALARMTIMEOUT, 0); //**see new media connection note about crappy wifi
+			ualarm(UALARMTIMEOUT, 0); //see new media connection note about crappy wifi
 			incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
 			if(incomingCmd < 0)
 			{
