@@ -347,6 +347,7 @@ int main(int argc, char *argv[])
 			//in case something happened before the incoming connection can be made ssl.
 			if(returnValue <= 0 || alarmKilled)
 			{
+				alarmKilled = false;
 				string error = "Problem initializing new command tls connection from " + ip;
 				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
 				SSL_shutdown(connssl);
@@ -394,6 +395,7 @@ int main(int argc, char *argv[])
 			//in case something happened before the incoming connection can be made ssl
 			if(returnValue <= 0 || alarmKilled)
 			{
+				alarmKilled = false;
 				string error = "Problem initializing new command tls connection from " + ip;
 				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
 				SSL_shutdown(connssl);
