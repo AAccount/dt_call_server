@@ -326,6 +326,8 @@ int main(int argc, char *argv[])
 		if(FD_ISSET(cmdFD, &readfds))
 		{
 			uint64_t relatedKey = dist(mt);
+
+			ualarm(UALARMTIMEOUT, 0); //**see new media connection note about crappy wifi
 			incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
 			if(incomingCmd < 0)
 			{
@@ -340,9 +342,10 @@ int main(int argc, char *argv[])
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingCmd);
 			returnValue = SSL_accept(connssl);
+			ualarm(0, 0);
 
 			//in case something happened before the incoming connection can be made ssl.
-			if(returnValue <= 0)
+			if(returnValue <= 0 || alarmKilled)
 			{
 				string error = "Problem initializing new command tls connection from " + ip;
 				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
@@ -367,6 +370,11 @@ int main(int argc, char *argv[])
 		if(FD_ISSET(mediaFD, &readfds))
 		{
 			uint64_t relatedKey = dist(mt);
+
+			//there are cases of crappy wifi (university of toronto CS buildings), or certain timings coming out
+			//of a subway tunnel and going back in to one that can cause the SSL process to stall. put a timer
+			//on the connection initiation
+			ualarm(UALARMTIMEOUT, 0);
 			incomingMedia = accept(mediaFD, (struct sockaddr *) &cli_addr, &clilen);
 			if(incomingMedia < 0)
 			{
@@ -381,9 +389,10 @@ int main(int argc, char *argv[])
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingMedia);
 			returnValue = SSL_accept(connssl);
+			ualarm(0, 0);
 
 			//in case something happened before the incoming connection can be made ssl
-			if(returnValue <= 0)
+			if(returnValue <= 0 || alarmKilled)
 			{
 				string error = "Problem initializing new command tls connection from " + ip;
 				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
@@ -426,7 +435,7 @@ int main(int argc, char *argv[])
 				//read from the socket into the buffer
 				bufferRead = 0;
 				bzero(inputBuffer, BUFFERSIZE+1);
-				alarm(ALARMTIMEOUT);
+				ualarm(UALARMTIMEOUT, 0);
 				do
 				{//wait for the input chunk to come in first before doing something
 					returnValue = SSL_read(sdssl, inputBuffer, BUFFERSIZE-bufferRead);
@@ -443,7 +452,7 @@ int main(int argc, char *argv[])
 						//other cases when necessary. right now only no error signals a successful read
 					}
 				} while(waiting && SSL_pending(sdssl));
-				alarm(0);
+				ualarm(0, 0);
 				if(alarmKilled)
 				{
 					alarmKilled = false;
