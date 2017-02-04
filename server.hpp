@@ -17,9 +17,6 @@ bool isRealCall(string persona, string personb, uint64_t relatedKey);
 // and not the whole command string buffer [] size
 void write2Client(string response, SSL *respSsl, uint64_t relatedKey);
 
-//for sig alarm: set the boolean flag that sig alarm was issued so a log can be written
-void alarm_handler(int signum);
-
 //used for parsing the configuration file: remove whitespace preceding/trailing and comments
 string trim (string str);
 

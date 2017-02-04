@@ -18,7 +18,7 @@
 #define JBYTE "D"
 
 //timeouts
-#define UALARMTIMEOUT 500000 //microseconds
+#define READTIMEOUT 500000 //microseconds
 #define WSELECTTIMEOUT 100 //microseconds
 
 //maximum amount of times a socket can write fail before killing

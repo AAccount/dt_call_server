@@ -45,8 +45,6 @@ map<int, SSL*>clientssl;
 //so any fails are going to come from the current call
 unordered_map<int, int> failCount;
 
-volatile bool alarmKilled = false;
-
 int main(int argc, char *argv[])
 {
 	//setup random number generator for the log relation key (a random number that related logs can use)
@@ -214,6 +212,11 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	//socket read timeout option
+	struct timeval timeout;
+	timeout.tv_sec = 0;
+	timeout.tv_usec = READTIMEOUT;
+
 	//setup command port to accept new connections
 	cmdFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
 	if(cmdFD < 0)
@@ -234,6 +237,14 @@ int main(int argc, char *argv[])
 		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
+	}
+	returnValue = setsockopt(cmdFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+	if(returnValue < 0)
+	{
+			string error = "cannot set command socket options";
+	 		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+	 		perror(error.c_str());
+	 		return 1;
 	}
 	listen(cmdFD, MAXLISTENWAIT);
 
@@ -258,6 +269,14 @@ int main(int argc, char *argv[])
 		perror(error.c_str());
 		return 1;
 	}
+	returnValue = setsockopt(mediaFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+	if(returnValue < 0)
+	{
+			string error = "cannot set media socket options";
+	 		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+	 		perror(error.c_str());
+	 		return 1;
+	}
 	listen(mediaFD, MAXLISTENWAIT);
 
 	clilen = sizeof(cli_addr);
@@ -265,7 +284,6 @@ int main(int argc, char *argv[])
 	//sigpipe is thrown for closing the broken connection. it's gonna happen for a voip server handling mobile clients
 	//what're you gonna do about it... IGNORE IT!!
 	signal(SIGPIPE, SIG_IGN);
-	signal(SIGALRM, alarm_handler);
 
 	//write select timeout
 	struct timeval writeTimeout;
@@ -327,7 +345,6 @@ int main(int argc, char *argv[])
 		{
 			uint64_t relatedKey = dist(mt);
 
-			ualarm(UALARMTIMEOUT, 0); //see new media connection note about crappy wifi
 			incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
 			if(incomingCmd < 0)
 			{
@@ -338,16 +355,26 @@ int main(int argc, char *argv[])
 			}
 			string ip = inet_ntoa(cli_addr.sin_addr);
 
+			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
+			returnValue = setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
+			if(returnValue < 0)
+			{
+				string error = "cannot set timeout for incoming media socket from " + ip;
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
+				perror(error.c_str());
+				shutdown(incomingMedia, 2);
+				close(incomingMedia);
+				goto skipNewMedia;
+			}
+
 			//setup ssl connection
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingCmd);
 			returnValue = SSL_accept(connssl);
-			ualarm(0, 0);
 
 			//in case something happened before the incoming connection can be made ssl.
-			if(returnValue <= 0 || alarmKilled)
+			if(returnValue <= 0)
 			{
-				alarmKilled = false;
 				string error = "Problem initializing new command tls connection from " + ip;
 				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
 				SSL_shutdown(connssl);
@@ -372,10 +399,6 @@ int main(int argc, char *argv[])
 		{
 			uint64_t relatedKey = dist(mt);
 
-			//there are cases of crappy wifi (university of toronto CS buildings), or certain timings coming out
-			//of a subway tunnel and going back in to one that can cause the SSL process to stall. put a timer
-			//on the connection initiation
-			ualarm(UALARMTIMEOUT, 0);
 			incomingMedia = accept(mediaFD, (struct sockaddr *) &cli_addr, &clilen);
 			if(incomingMedia < 0)
 			{
@@ -386,16 +409,25 @@ int main(int argc, char *argv[])
 			}
 			string ip = inet_ntoa(cli_addr.sin_addr);
 
-			//setup ssl connection
+			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
+			returnValue = setsockopt(incomingMedia, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
+			if(returnValue < 0)
+			{
+				string error = "cannot set timeout for incoming media socket from " + ip;
+				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
+				perror(error.c_str());
+				shutdown(incomingMedia, 2);
+				close(incomingMedia);
+				goto skipNewMedia;
+			}
+
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingMedia);
 			returnValue = SSL_accept(connssl);
-			ualarm(0, 0);
 
 			//in case something happened before the incoming connection can be made ssl
-			if(returnValue <= 0 || alarmKilled)
+			if(returnValue <= 0)
 			{
-				alarmKilled = false;
 				string error = "Problem initializing new command tls connection from " + ip;
 				postgres->insertLog(DBLog(Utils::millisNow(), TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
 				SSL_shutdown(connssl);
@@ -437,7 +469,6 @@ int main(int argc, char *argv[])
 				//read from the socket into the buffer
 				bufferRead = 0;
 				bzero(inputBuffer, BUFFERSIZE+1);
-				ualarm(UALARMTIMEOUT, 0);
 				do
 				{//wait for the input chunk to come in first before doing something
 					returnValue = SSL_read(sdssl, inputBuffer, BUFFERSIZE-bufferRead);
@@ -454,15 +485,6 @@ int main(int argc, char *argv[])
 						//other cases when necessary. right now only no error signals a successful read
 					}
 				} while(waiting && SSL_pending(sdssl));
-				ualarm(0, 0);
-				if(alarmKilled)
-				{
-					alarmKilled = false;
-					string user = postgres->userFromFd(sd, MEDIA, iterationKey);
-					string error = "Alarm killed SSL read of socket";
-					string ip = ipFromSd(sd);
-					postgres->insertLog(DBLog(Utils::millisNow(), TAG_ALARM, error, user, ERRORLOG, ip, iterationKey));
-				}
 
 				///SSL_read return 0 = dead socket
 				if(returnValue == 0)
@@ -1285,11 +1307,6 @@ void write2Client(string response, SSL *respSsl, uint64_t relatedKey)
 		string error = "ssl_write returned an error of: " + to_string(errValue) + " while trying to write to the COMMAND socket";
 		postgres->insertLog(DBLog(Utils::millisNow(), TAG_SSLCMD, error, ERRORLOG, relatedKey));
 	}
-}
-
-void alarm_handler(int signum)
-{
-	alarmKilled = true;
 }
 
 //https://stackoverflow.com/questions/1798112/removing-leading-and-trailing-spaces-from-a-string

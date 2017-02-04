@@ -4,3 +4,4 @@ server
 *.pem
 
 /dtoperator
+/readlogs.sql
