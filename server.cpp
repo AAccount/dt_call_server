@@ -1293,12 +1293,7 @@ bool isRealCall(string persona, string personb, uint64_t relatedKey)
 // write a message to a client
 void write2Client(string response, SSL *respSsl, uint64_t relatedKey)
 {
-	int length = response.size();
-	char serverOut[length+1]; //make sure the amount written out represents the response string and isn't response + tons of 0 padding
-	bzero(serverOut, length+1);
-	memcpy(serverOut, response.c_str(), length);
-
-	int errValue = SSL_write(respSsl, serverOut, length);
+	int errValue = SSL_write(respSsl, response.c_str(), response.size());
 	if(errValue <= 0)
 	{
 		PGUtils *postgres = PGUtils::getInstance();

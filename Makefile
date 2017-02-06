@@ -8,9 +8,9 @@ PQXX =  -lpqxx -lpq
 
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
- LEGACYDBGCFLAGS = -g -m32 -Werror -std=c++11 -DJSTOPMEDIA
- OPTCFLAGS = -flto -O3 -march=native -Werror -std=c++11 -DJSTOPMEDIA
- CFLAGS = -g -Werror -std=c++11 -DJSTOPMEDIA -DJCALLDIAG
+ LEGACYDBGCFLAGS = -g -m32 -Werror -std=c++11 -DJSTOPMEDIA -fPIE -pie
+ OPTCFLAGS = -flto -O3 -march=native -Werror -std=c++11 -DJSTOPMEDIA -fPIE -pie -D_FORTIFY_SOURCE=2
+ CFLAGS = -g -Werror -std=c++11 -DJSTOPMEDIA -DJCALLDIAG -fPIE -pie
  CC = g++
 endif
 
