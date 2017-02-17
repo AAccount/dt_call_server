@@ -1,5 +1,5 @@
 # dt_call_server
-VoIP server for android and test java client
+VoIP server for android and test java client. Makes **encrypted** calls.
 
 The VoIP server for my android and test java client. Admitedly the weakest link of the whole VoIP Project.
 Based on a heavily beefed up school assignment dealing with the select system call.
@@ -39,3 +39,5 @@ I'm just going with what I learned in class. The C/C++ hybrid is just what I pic
 All test accounts are based on characters from: https://myanimelist.net/anime/4654/Toaru_Majutsu_no_Index
 
 (Watch it and its spinoff. They're really good.)
+
+Footnote: the design of this server makes it fully possible to do a MitM decryption of calls from the server. It is not designed for end to end encryption but rather client to server encrytption.
