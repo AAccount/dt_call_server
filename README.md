@@ -22,7 +22,7 @@ When a socket is created it is assigned a state:
 
 There is a special "jbyte" which when sent to a socket is ignored. 
 
-Its purpose is for the client to periodically ping the server to keep the nat pathways open. This VoIP system was designed to allow clients to connect from anywhere. Clients need not have a publicly acessible IP address but simply have a way to get routed to from the outside. NAT is acceptable.
+Its purpose is for the client to periodically ping the server to keep the nat pathways open. This VoIP system was designed to allow clients to connect from anywhere. Clients need not have a publicly accessible IP address but simply have a way to get routed to from the outside. NAT is acceptable.
 
 Sockets are all on a read timeout to prevent a bad connection stalling the whole server.
 
