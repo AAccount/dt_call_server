@@ -13,6 +13,7 @@ Each user has 2 sockets: a command socket (to send commands on) and media socket
 Timestamp is to help guard against replay. The window for acceptable timestamps os configurable.
 
 All constants are stored in const.h
+
 When a socket is created it is assigned a state: 
 * command: a command socket to receive and parse commands.
 * media new: a new media socket that has not been associated with a user yet.
@@ -21,10 +22,9 @@ When a socket is created it is assigned a state:
 
 There is a special "jbyte" which when sent to a socket is ignored. 
 
-Its purpose is for the client to periodically ping the server to keep the nat pathways open.
+Its purpose is for the client to periodically ping the server to keep the nat pathways open. This VoIP system was designed to allow clients to connect from anywhere. Clients need not have a publicly acessible IP address but simply have a way to get routed to from the outside. NAT is acceptable.
 
 Sockets are all on a read timeout to prevent a bad connection stalling the whole server.
-
 
 Configurations for this server are stored in a standard unix style conf file with "#" as the comment delimiter.
 
