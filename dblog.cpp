@@ -55,6 +55,11 @@ int DBLog::getTag()
 
 string DBLog::getMessage()
 {
+	if(message.length() == 0)
+	{
+		message = "(none given)";
+	}
+
 #ifndef VERBOSE
 //strip newlines from the message for more pleasant terminal output
 	size_t length = message.length();
