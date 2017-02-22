@@ -1,5 +1,5 @@
 #include "dblog.hpp"
-
+#include <iostream>
 using namespace std;
 
 DBLog::DBLog(int cid, uint64_t cts, int ctag, string cmessage, string cuser, int ctype, string cip, uint64_t crelatedKey)
@@ -84,4 +84,11 @@ string DBLog::getIp()
 uint64_t DBLog::getRelatedKey()
 {
 	return relatedKey;
+}
+
+std::ostream& operator<<(std::ostream &stream, const DBLog &dblog)
+{
+	return stream << "dblog (id: " << dblog.id << " timestamp: " << dblog.timestamp << " tag: " << dblog.tag
+			<< " message: " << dblog.message << " user: " << dblog.user << " type: " << dblog.type << " ip: "
+			<< dblog.ip << " relatedkey: " << dblog.relatedKey << ")";
 }

@@ -46,7 +46,7 @@
 #define TAG_POSTGRES_UTHERE 25
 
 #include <string>
-
+#include <iostream>
 class DBLog
 {
 private:
@@ -58,7 +58,7 @@ private:
 	int type;
 	std::string ip;
 	uint64_t relatedKey;
-
+	friend std::ostream& operator<<(std::ostream&, const DBLog&);
 public:
 	DBLog(int cid, uint64_t cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, uint64_t crelatedKey);
 	DBLog(uint64_t cts, int ctag, std::string cmessage, std::string user, int type, std::string ip, uint64_t crelatedKey);

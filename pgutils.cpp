@@ -418,6 +418,7 @@ void PGUtils::insertLog(DBLog dbl)
 	{
 		//if logging to the db failed all you can do is print to stdout. not like you can log a db fail to the db
 		cout << "db logging failed because: " << e.what();
+		cout << "problem log: " << dbl;
 	}
 
 	//use in memory hash table of tag id --> tag name so tag names only have to be written down once: in the db
