@@ -72,10 +72,12 @@ int main(int argc, char *argv[])
 	char inputBuffer[BUFFERSIZE+1];
 
 	//read program options from a config file
-	bool gotPublicKey = false, gotPrivateKey = false, gotCiphers = false, gotCmdPort = false, gotMediaPort = false;
+	bool gotPublicKey = false, gotPrivateKey = false, gotCiphers = false, gotCmdPort = false, gotMediaPort = false, gotDhFile = false;
 	string publicKeyFile;
 	string privateKeyFile;
 	string ciphers = DEFAULTCIPHERS;
+	string dhfile = "";
+
 	ifstream conffile(CONFFILE);
 	string line;
 
@@ -133,6 +135,12 @@ int main(int argc, char *argv[])
 			gotCiphers = true;
 			continue;
 		}
+		else if (var == "dhfile")
+		{
+			dhfile = value;
+			gotDhFile = true;
+			continue;
+		}
 		else
 		{
 			string unknown = "unknown variable parsed: " + line;
@@ -141,7 +149,7 @@ int main(int argc, char *argv[])
 	}
 
 	//at the minimum a public and private key must be specified. everything else has a default value
-	if (!gotPublicKey || !gotPrivateKey)
+	if (!gotPublicKey || !gotPrivateKey || !gotDhFile)
 	{
 		string conffile = CONFFILE;
 		if(!gotPublicKey)
@@ -152,6 +160,11 @@ int main(int argc, char *argv[])
 		if(!gotPublicKey)
 		{
 			string error = "Your did not specify a PRIVATE key pem in: " + conffile + "\n";
+			postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		}
+		if(!gotDhFile)
+		{
+			string error = "Your did not specify a DH file for DHE ciphers in: " + conffile + "\n";
 			postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		}
 		exit(1);
@@ -192,9 +205,11 @@ int main(int argc, char *argv[])
 		perror(error.c_str());
 		return 1;
 	}
-	//TODO: check how ideal const char *ciphers is
-	//https://github.com/deadtrickster/cl-dropbox/blob/master/src/ssl.lisp
+
+	//ciphers
 	SSL_CTX_set_cipher_list(sslcontext, ciphers.c_str());
+
+	//private key
 	returnValue= SSL_CTX_use_PrivateKey_file(sslcontext, privateKeyFile.c_str(), SSL_FILETYPE_PEM);
 	if(returnValue <= 0)
 	{
@@ -203,6 +218,8 @@ int main(int argc, char *argv[])
 		perror(error.c_str());
 		return 1;
 	}
+
+	//public key
 	returnValue = SSL_CTX_use_certificate_file(sslcontext, publicKeyFile.c_str(), SSL_FILETYPE_PEM);
 	if(returnValue <= 0)
 	{
@@ -211,6 +228,37 @@ int main(int argc, char *argv[])
 		perror(error.c_str());
 		return 1;
 	}
+
+	//dh params to make dhe ciphers work
+	//https://www.openssl.org/docs/man1.0.1/ssl/SSL_CTX_set_tmp_dh.html
+	DH *dh = NULL;
+	FILE *paramfile;
+	paramfile = fopen(dhfile.c_str(), "r");
+	if(!paramfile)
+	{
+		string error = "problems opening dh param file at: " + dhfile;
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		perror(error.c_str());
+		return 1;
+	}
+	dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
+	fclose(paramfile);
+	if(dh == NULL)
+	{
+		string error = "dh param file opened but openssl could not use dh param file at: " + dhfile;
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		perror(error.c_str());
+		return 1;
+	}
+	returnValue = SSL_CTX_set_tmp_dh(sslcontext, dh);
+	if(returnValue != 1)
+	{
+		string error = "dh param file opened and interpreted but reject by context: " + dhfile;
+		postgres->insertLog(DBLog(Utils::millisNow(), TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		perror(error.c_str());
+		return 1;
+	}
+	//for ecdhe see SSL_CTX_set_tmp_ecdh
 
 	//socket read timeout option
 	struct timeval timeout;
