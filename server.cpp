@@ -55,9 +55,7 @@ int main(int argc, char *argv[])
 	uniform_int_distribution<uint64_t> dist (0, (uint64_t)9223372036854775807);
 	uint64_t initkey = dist(mt);
 
-	//you MUST establish the postgres utilities instance variable here or get a segmentation inside on c->prepare
 	UserUtils *userUtils = UserUtils::getInstance();
-
 	userUtils->insertLog(Log(TAG_INIT, "starting call operator", SELF, SYSTEMLOG, SELFIP, initkey));
 
 #ifdef JSTOPMEDIA
@@ -1090,7 +1088,7 @@ int main(int argc, char *argv[])
 						//if touma's connection died during a previous round of select, you cannot send
 						//timestamp|call|end|touma to zapper because touma's file/socket descriptor records have
 						//been removed form the database. at the present, the state of zapper'd media fd = touma media fd.
-						//because the record has been removed, you can't do postgres->userFromFd(zapper_mediafd_state, MEDIA)
+						//because the record has been removed, you can't do userUtils->userFromFd(zapper_mediafd_state, MEDIA)
 						//to find out she's in a call with touma. 
 						//therefore you have to send a different command... the call drop command
 
@@ -1149,7 +1147,7 @@ int main(int argc, char *argv[])
 #endif
 	}
 
-	//stop postgres
+	//stop user utilities
 	UserUtils *instance = UserUtils::getInstance();
 	instance->killInstance();
 
@@ -1209,14 +1207,14 @@ vector<string> parse(char command[])
 //	for the user to be removed.
 void removeClient(int sd, uint64_t relatedKey)
 {
-	UserUtils *postgres = UserUtils::getInstance();
-	string uname = postgres->userFromFd(sd, COMMAND, relatedKey); //make a lucky guess you got the command fd
+	UserUtils *userUtils = UserUtils::getInstance();
+	string uname = userUtils->userFromFd(sd, COMMAND, relatedKey); //make a lucky guess you got the command fd
 	int media, cmd;
 
 #ifdef JSTOPMEDIA
 	//make the assumption. if it's right remove both. if it's wrong then... it's still right. remove only the media
 	cmd = sd;
-	media = postgres->userFd(uname, MEDIA, relatedKey);
+	media = userUtils->userFd(uname, MEDIA, relatedKey);
 #else
 	/*
 	 * The actual correct method of removing both sockets regardless of what was supplied
@@ -1224,12 +1222,12 @@ void removeClient(int sd, uint64_t relatedKey)
 	if(!uname.empty())
 	{//lucky guess was right
 		cmd = sd;
-		media = postgres->userFd(uname, MEDIA, relatedKey);
+		media = userUtils->userFd(uname, MEDIA, relatedKey);
 	}
 	else
 	{//lucky guess was wrong. then you got the media fd
-		uname = postgres->userFromFd(sd, MEDIA, relatedKey);
-		cmd = postgres->userFd(uname, COMMAND, relatedKey);
+		uname = userUtils->userFromFd(sd, MEDIA, relatedKey);
+		cmd = userUtils->userFd(uname, COMMAND, relatedKey);
 		media = sd;
 	}
 #endif
@@ -1286,19 +1284,19 @@ void removeClient(int sd, uint64_t relatedKey)
 
 	//incase of crash, there will be no entires in the hash table and tree. skip these pairs and just flush out
 	//	the irrelevant db info
-	postgres->clearSession(uname, relatedKey);
+	userUtils->clearSession(uname, relatedKey);
 }
 
 //before doing an accept, reject, end command check to see if it's for a real call
 //	or someone trying to get smart with the server
 bool isRealCall(string persona, string personb, uint64_t relatedKey)
 {
-	UserUtils *postgres = UserUtils::getInstance();
+	UserUtils *userUtils = UserUtils::getInstance();
 	string prefix =  "call between " + persona + " && " + personb + ": ";
 
 	//check if A and B even have media FDs
-	int afd = postgres->userFd(persona, MEDIA, relatedKey);
-	int bfd = postgres->userFd(personb, MEDIA, relatedKey);
+	int afd = userUtils->userFd(persona, MEDIA, relatedKey);
+	int bfd = userUtils->userFd(personb, MEDIA, relatedKey);
 	if(afd == 0)
 	{
 #ifdef VERBOSE
@@ -1346,11 +1344,11 @@ void write2Client(string response, SSL *respSsl, uint64_t relatedKey)
 	int errValue = SSL_write(respSsl, response.c_str(), response.size());
 	if(errValue <= 0)
 	{
-		UserUtils *postgres = UserUtils::getInstance();
+		UserUtils *userUtils = UserUtils::getInstance();
 		int socket = SSL_get_fd(respSsl);
-		string user = postgres->userFromFd(socket, COMMAND, relatedKey);
+		string user = userUtils->userFromFd(socket, COMMAND, relatedKey);
 		string error = "ssl_write returned an error of: " + to_string(errValue) + " while trying to write to the COMMAND socket";
-		postgres->insertLog(Log(TAG_SSLCMD, error, "", ERRORLOG, "", relatedKey));
+		userUtils->insertLog(Log(TAG_SSLCMD, error, "", ERRORLOG, "", relatedKey));
 	}
 }
 

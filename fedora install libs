@@ -1,5 +1,4 @@
-postgresql-devel
 openssl-devel
 glibc-devel
 libstdc++.devel
-libpqxx-devel
+libscrypt-devel

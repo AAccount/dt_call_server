@@ -184,7 +184,7 @@ string UserUtils::userFromFd(int fd, int which, uint64_t relatedKey)
 
 string UserUtils::userFromSessionid(uint64_t sessionid, uint64_t relatedKey)
 {
-	if(sessionkeyMap.count(sessionid) == 0)
+	if(sessionkeyMap.count(sessionid) > 0)
 	{
 		return sessionkeyMap[sessionid]->getUname();
 	}
