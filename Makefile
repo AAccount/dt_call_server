@@ -5,6 +5,7 @@
 MATH = -lm
 OPENSSL = -lssl -lcrypto
 PQXX =  -lpqxx -lpq
+SCRYPT = -lscrypt
 
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
@@ -25,8 +26,8 @@ endif
 server: server.o pgutils.o dblog.o Utils.o
 	${CC} ${CFLAGS} -o dtoperator pgutils.o ${PQXX} server.o dblog.o ${OPENSSL} ${MATH} ${INC} ${LIB} Utils.o
 
-testdb: testdb.cpp pgutils.o
-	${CC} ${CFLAGS} -o $@ testdb.cpp pgutils.o ${PQXX} ${INC} ${LIB}
+genscrypt: genscrypt.c
+	${CC} ${CFLAGS} -o $@ genscrypt.c ${SCRYPT} ${INC} ${LIB}
 
 pgutils.o : pgutils.cpp pgutils.hpp
 	${CC} ${CFLAGS} -c pgutils.cpp ${INC}

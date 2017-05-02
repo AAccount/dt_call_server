@@ -26,7 +26,10 @@
 
 //where the configuration file is
 //#define CONFFILE "/etc/dtoperator/dtoperator.conf"
+//#define USERSFILE "/etc/dtoperator/users"
 #define CONFFILE "/home/Daniel/dtoperator"
+#define USERSFILE "/home/Daniel/callusers"
+
 #define DEFAULTCMD 1991
 #define DEFAULTMEDIA 2014
 #define DEFAULTCIPHERS "DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:AES256-GCM-SHA384:AES256-SHA256:AES256-SHA:AES128-GCM-SHA256:AES128-SHA256:AES128-SHA"

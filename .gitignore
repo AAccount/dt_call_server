@@ -5,3 +5,4 @@ server
 
 /dtoperator
 /readlogs.sql
+/genscrypt
