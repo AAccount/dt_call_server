@@ -27,8 +27,12 @@
 //where the configuration file is
 //#define CONFFILE "/etc/dtoperator/dtoperator.conf"
 //#define USERSFILE "/etc/dtoperator/users"
-#define CONFFILE "/home/Daniel/dtoperator"
-#define USERSFILE "/home/Daniel/callusers"
+//#define LOGFOLDER "/var/log/dtoperator/"
+#define CONFFILE "/home/Daniel/dtoperator/dtoperator.conf"
+#define USERSFILE "/home/Daniel/dtoperator/users"
+#define LOGFOLDER "/home/Daniel/dtoperator/"
+
+#define LOGPREFIX "log "
 
 #define DEFAULTCMD 1991
 #define DEFAULTMEDIA 2014

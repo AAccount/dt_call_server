@@ -4,7 +4,6 @@
 #VERBOSE: print out a summary of what happened every single select call. (the old cout, pre dblog, debugging output)
 MATH = -lm
 OPENSSL = -lssl -lcrypto
-PQXX =  -lpqxx -lpq
 SCRYPT = -lscrypt
 
 UNAME = $(shell uname -s)
@@ -23,24 +22,27 @@ ifeq ($(UNAME),FreeBSD)
  CC = clang++
 endif
 
-server: server.o pgutils.o dblog.o Utils.o
-	${CC} ${CFLAGS} -o dtoperator pgutils.o ${PQXX} server.o dblog.o ${OPENSSL} ${MATH} ${INC} ${LIB} Utils.o
-
-genscrypt: genscrypt.c
-	${CC} ${CFLAGS} -o $@ genscrypt.c ${SCRYPT} ${INC} ${LIB}
-
-pgutils.o : pgutils.cpp pgutils.hpp
-	${CC} ${CFLAGS} -c pgutils.cpp ${INC}
+server: server.o UserUtils.o Log.o Utils.o User.o
+	${CC} ${CFLAGS} -o dtoperator server.o UserUtils.o Log.o Utils.o User.o ${SCRYPT} ${OPENSSL} ${MATH} ${INC} ${LIB}
 
 server.o : server.cpp server.hpp
 	${CC} ${CFLAGS} -c server.cpp ${INC}
-
-dblog.o: dblog.cpp dblog.hpp
-	${CC} ${CFLAGS} -c dblog.cpp ${INC}
-
+	
+UserUtils.o : UserUtils.cpp UserUtils.hpp
+	${CC} ${CFLAGS} -c UserUtils.cpp ${INC}
+	
+Log.o : Log.cpp Log.hpp
+	${CC} ${CFLAGS} -c Log.cpp ${INC}
+	
 Utils.o : Utils.cpp Utils.hpp
 	${CC} ${CFLAGS} -c Utils.cpp ${INC}
+	
+User.o : User.cpp User.hpp
+	${CC} ${CFLAGS} -c User.cpp ${INC}
+	
+genscrypt: genscrypt.c
+	${CC} ${CFLAGS} -o $@ genscrypt.c ${SCRYPT} ${INC} ${LIB}
 
 clean:
-	rm dtoperator testdb *.o *.gch
+	rm dtoperator genscrypt *.o
 

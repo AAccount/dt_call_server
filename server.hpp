@@ -17,8 +17,5 @@ bool isRealCall(string persona, string personb, uint64_t relatedKey);
 // and not the whole command string buffer [] size
 void write2Client(string response, SSL *respSsl, uint64_t relatedKey);
 
-//used for parsing the configuration file: remove whitespace preceding/trailing and comments
-string trim (string str);
-
 //get the ip address of a socket descriptor in human readable 192.168.1.1 format
 string ipFromSd(int sd);
