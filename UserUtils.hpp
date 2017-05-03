@@ -30,19 +30,19 @@ public:
 	static UserUtils* getInstance();
 
 	//db set/write functions
-	uint64_t authenticate(string username, string password, uint64_t relatedKey);
-	void setFd(uint64_t sessionid, int fd, int which, uint64_t relatedKey);
-	void clearSession(string username, uint64_t relatedKey);
+	uint64_t authenticate(string username, string password);
+	void setFd(uint64_t sessionid, int fd, int which);
+	void clearSession(string username);
 
 	//db verification functions
-	bool verifySessionid(uint64_t sessionid, int fd, uint64_t relatedKey);
-	bool doesUserExist(string name, uint64_t relatedKey);
+	bool verifySessionid(uint64_t sessionid, int fd);
+	bool doesUserExist(string name);
 
 	//db lookup functions
-	string userFromFd(int fd, int which, uint64_t relatedKey);
-	string userFromSessionid(uint64_t sessionid, uint64_t relatedKey);
-	int userFd(string user, int which, uint64_t relatedKey);
-	uint64_t userSessionId(string uname, uint64_t relatedKey);
+	string userFromFd(int fd, int which);
+	string userFromSessionid(uint64_t sessionid);
+	int userFd(string user, int which);
+	uint64_t userSessionId(string uname);
 	void killInstance();
 
 	//log related functions

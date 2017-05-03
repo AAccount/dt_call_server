@@ -83,7 +83,7 @@ UserUtils::~UserUtils()
 	}
 }
 
-uint64_t UserUtils::authenticate(string username, string password, uint64_t relatedKey)
+uint64_t UserUtils::authenticate(string username, string password)
 {
 	if(nameMap.count(username) == 0)
 	{//this account doesn't exist. end of story
@@ -115,7 +115,7 @@ uint64_t UserUtils::authenticate(string username, string password, uint64_t rela
 	return sessionid;
 }
 
-void UserUtils::setFd(uint64_t sessionid, int fd, int which, uint64_t relatedKey)
+void UserUtils::setFd(uint64_t sessionid, int fd, int which)
 {
 
 	User *user = sessionkeyMap[sessionid];
@@ -134,7 +134,7 @@ void UserUtils::setFd(uint64_t sessionid, int fd, int which, uint64_t relatedKey
 	}
 }
 
-void UserUtils::clearSession(string username, uint64_t relatedKey)
+void UserUtils::clearSession(string username)
 {
 	if(nameMap.count(username) > 0)
 	{
@@ -152,7 +152,7 @@ void UserUtils::clearSession(string username, uint64_t relatedKey)
 	}
 }
 
-bool UserUtils::verifySessionid(uint64_t sessionid, int fd, uint64_t relatedKey)
+bool UserUtils::verifySessionid(uint64_t sessionid, int fd)
 {
 	if(sessionkeyMap.count(sessionid) == 0)
 	{
@@ -163,7 +163,7 @@ bool UserUtils::verifySessionid(uint64_t sessionid, int fd, uint64_t relatedKey)
 	return user->getCommandfd() == fd;
 }
 
-string UserUtils::userFromFd(int fd, int which, uint64_t relatedKey)
+string UserUtils::userFromFd(int fd, int which)
 {
 	if(which == COMMAND)
 	{
@@ -182,7 +182,7 @@ string UserUtils::userFromFd(int fd, int which, uint64_t relatedKey)
 	return "";
 }
 
-string UserUtils::userFromSessionid(uint64_t sessionid, uint64_t relatedKey)
+string UserUtils::userFromSessionid(uint64_t sessionid)
 {
 	if(sessionkeyMap.count(sessionid) > 0)
 	{
@@ -192,7 +192,7 @@ string UserUtils::userFromSessionid(uint64_t sessionid, uint64_t relatedKey)
 	return "";
 }
 
-int UserUtils::userFd(string user, int which, uint64_t relatedKey)
+int UserUtils::userFd(string user, int which)
 {
 	if(nameMap.count(user) > 0)
 	{
@@ -209,12 +209,12 @@ int UserUtils::userFd(string user, int which, uint64_t relatedKey)
 	return 0;
 }
 
-bool UserUtils::doesUserExist(string name, uint64_t relatedKey)
+bool UserUtils::doesUserExist(string name)
 {
 	return nameMap.count(name) > 0;
 }
 
-uint64_t UserUtils::userSessionId(string uname, uint64_t relatedKey)
+uint64_t UserUtils::userSessionId(string uname)
 {
 	if(nameMap.count(uname) > 0)
 	{

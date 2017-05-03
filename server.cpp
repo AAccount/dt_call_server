@@ -540,11 +540,11 @@ int main(int argc, char *argv[])
 					string user;
 					if(sdinfo[sd] == SOCKCMD)
 					{
-						user = userUtils->userFromFd(sd, COMMAND, iterationKey);
+						user = userUtils->userFromFd(sd, COMMAND);
 					}
 					else
 					{
-						user = userUtils->userFromFd(sd, MEDIA, iterationKey);
+						user = userUtils->userFromFd(sd, MEDIA);
 					}
 					string ip = ipFromSd(sd);
 					string error = "socket has died";
@@ -585,7 +585,7 @@ int main(int argc, char *argv[])
 							uint64_t mins = timeDifference/60;
 							uint64_t seconds = timeDifference - mins*60;
 							string error = "command received was outside the "+to_string(MARGIN_OF_ERROR)+" minute margin of error: " + to_string(mins)+"mins, "+to_string(seconds) + "seconds";
-							string user = userUtils->userFromFd(sd, COMMAND, iterationKey);
+							string user = userUtils->userFromFd(sd, COMMAND);
 							if(originalBufferCmd.find("login") == string::npos)
 							{//don't accidentally leak passwords for bad login timestamps
 								error = error + " (" + originalBufferCmd + ")";
@@ -598,7 +598,7 @@ int main(int argc, char *argv[])
 
 							//send the rejection to the client
 							string invalid = to_string(now) + "|resp|invalid|command\n";
-							write2Client(invalid, sdssl, iterationKey);
+							write2Client(invalid, sdssl);
 							goto invalidcmd;
 						}
 
@@ -610,7 +610,7 @@ int main(int argc, char *argv[])
 							string censoredInput = commandContents.at(0) + "|login|" + username + "|????????"; //never store plain text passwords ANYWHERE
 							userUtils->insertLog(Log(TAG_LOGIN, censoredInput, username, INBOUNDLOG, ip, iterationKey));
 
-							int oldcmd = userUtils->userFd(username, COMMAND, iterationKey);
+							int oldcmd = userUtils->userFd(username, COMMAND);
 							if(oldcmd > 0)
 							{//remove old SSL structs to prevent memory leak
 #ifdef VERBOSE
@@ -619,7 +619,7 @@ int main(int argc, char *argv[])
 								removals.push_back(oldcmd);
 							}
 
-							int oldmedia = userUtils->userFd(username, MEDIA, iterationKey);
+							int oldmedia = userUtils->userFd(username, MEDIA);
 							if(oldmedia > 0)
 							{//remove old SSL structs to prevent memory leak
 #ifdef VERBOSE
@@ -628,20 +628,20 @@ int main(int argc, char *argv[])
 								removals.push_back(oldmedia);
 							}
 
-							uint64_t sessionid = userUtils->authenticate(username, plaintext, iterationKey);
+							uint64_t sessionid = userUtils->authenticate(username, plaintext);
 							if(sessionid == 0)
 							{
 								//for the user however, give no hints about what went wrong in case of brute force
 								string invalid = to_string(now) + "|resp|invalid|command\n";
 								userUtils->insertLog(Log(TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, iterationKey));
-								write2Client(invalid, sdssl, iterationKey);
+								write2Client(invalid, sdssl);
 								goto invalidcmd;
 							}
 
 							//record a succesful login and response sent
-							userUtils->setFd(sessionid, sd, COMMAND, iterationKey);
+							userUtils->setFd(sessionid, sd, COMMAND);
 							string resp = to_string(now) + "|resp|login|" + to_string(sessionid);
-							write2Client(resp, sdssl, iterationKey);
+							write2Client(resp, sdssl);
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
 						}
 
@@ -652,37 +652,37 @@ int main(int argc, char *argv[])
 
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
 							string zapper = commandContents.at(2);
-							string touma = userUtils->userFromSessionid(sessionid, iterationKey);
+							string touma = userUtils->userFromSessionid(sessionid);
 							userUtils->insertLog(Log(TAG_CALL, originalBufferCmd, touma, INBOUNDLOG, ip, iterationKey));
 
-							if(!userUtils->verifySessionid(sessionid, sd, iterationKey))
+							if(!userUtils->verifySessionid(sessionid, sd))
 							{
 								string error = " INVALID SESSION ID. refusing to start call";
 								userUtils->insertLog(Log(TAG_CALL, error, touma, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl, iterationKey);
+								write2Client(invalid, sdssl);
 								userUtils->insertLog(Log(TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
 
 							//double check touma has a mediafd
-							int toumaMediaFd = userUtils->userFd(touma, MEDIA, iterationKey);
+							int toumaMediaFd = userUtils->userFd(touma, MEDIA);
 							if(toumaMediaFd == 0)
 							{
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl, iterationKey);
+								write2Client(invalid, sdssl);
 								userUtils->insertLog(Log(TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
 
 							//find out if zapper has both a command and media fd
-							int zapperMediaFd = userUtils->userFd(zapper, MEDIA, iterationKey);
-							int zapperCmdFd = userUtils->userFd(zapper, COMMAND, iterationKey);
+							int zapperMediaFd = userUtils->userFd(zapper, MEDIA);
+							int zapperCmdFd = userUtils->userFd(zapper, COMMAND);
 							if(zapperMediaFd == 0 || zapperCmdFd == 0 )
 							{
 								string na = to_string(now) + "|ring|notavailable|" + zapper;
-								write2Client(na, sdssl, iterationKey);
+								write2Client(na, sdssl);
 								userUtils->insertLog(Log(TAG_CALL, na, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd; //while not really an invalid command, there's no point of continuing
 							}
@@ -692,7 +692,7 @@ int main(int argc, char *argv[])
 							if(currentState != SOCKMEDIAIDLE)
 							{
 								string busy = to_string(now) + "|ring|busy|" + zapper;
-								write2Client(busy, sdssl, iterationKey);
+								write2Client(busy, sdssl);
 								userUtils->insertLog(Log(TAG_CALL, busy, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd; //not really invalid either but can't continue any further at this point
 							}
@@ -701,7 +701,7 @@ int main(int argc, char *argv[])
 							if(touma == zapper)
 							{
 								string busy = to_string(now) + "|ring|busy|" + zapper; //ye olde landline did this
-								write2Client(busy, sdssl, iterationKey);
+								write2Client(busy, sdssl);
 								busy = "(self dialed) " + busy;
 								userUtils->insertLog(Log(TAG_CALL, busy, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd; //not really invalid either but can't continue any further at this point
@@ -713,13 +713,13 @@ int main(int argc, char *argv[])
 
 							//tell touma that zapper is being rung
 							string notifyTouma = to_string(now) + "|ring|available|" + zapper;
-							write2Client(notifyTouma, sdssl, iterationKey);
+							write2Client(notifyTouma, sdssl);
 							userUtils->insertLog(Log(TAG_CALL, notifyTouma, touma, OUTBOUNDLOG, ip, iterationKey));
 			
 							//tell zapper touma wants to call her
 							string notifyZapper = to_string(now) + "|ring|incoming|" + touma;
 							SSL *zapperssl = clientssl[zapperCmdFd];
-							write2Client(notifyZapper, zapperssl, iterationKey);
+							write2Client(notifyZapper, zapperssl);
 							string zapperip = ipFromSd(zapperCmdFd);
 							userUtils->insertLog(Log(TAG_CALL, notifyZapper, zapper, OUTBOUNDLOG, ip, iterationKey));
 						}
@@ -727,22 +727,22 @@ int main(int argc, char *argv[])
 						{
 							string who = commandContents.at(2);
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string from = userUtils->userFromSessionid(sessionid, iterationKey);
+							string from = userUtils->userFromSessionid(sessionid);
 							userUtils->insertLog(Log(TAG_LOOKUP, originalBufferCmd, from, INBOUNDLOG, ip, iterationKey));
 
-							if(!userUtils->verifySessionid(sessionid, sd, iterationKey))
+							if(!userUtils->verifySessionid(sessionid, sd))
 							{
 								string error = "invalid sessionid attempting to do a user lookup";
 								userUtils->insertLog(Log(TAG_LOOKUP, error, from, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl, iterationKey);
+								write2Client(invalid, sdssl);
 								userUtils->insertLog(Log(TAG_LOOKUP, invalid, from, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
-							string exists = (userUtils->doesUserExist(who, iterationKey)) ? "exists" : "doesntexist";
+							string exists = (userUtils->doesUserExist(who)) ? "exists" : "doesntexist";
 							string resp = to_string(now) + "|lookup|" + who + "|" + exists;
-							write2Client(resp, sdssl, iterationKey);
+							write2Client(resp, sdssl);
 							userUtils->insertLog(Log(TAG_LOOKUP, resp, from, OUTBOUNDLOG, ip, iterationKey));
 						}
 
@@ -751,37 +751,37 @@ int main(int argc, char *argv[])
 						else if (command == "accept")
 						{//timestamp|accept|touma|zapperid
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string zapper = userUtils->userFromSessionid(sessionid, iterationKey);
+							string zapper = userUtils->userFromSessionid(sessionid);
 							string touma = commandContents.at(2);
 							userUtils->insertLog(Log(TAG_ACCEPT, originalBufferCmd, zapper, INBOUNDLOG, ip, iterationKey));
 
-							if(!isRealCall(zapper, touma, iterationKey))
+							if(!isRealCall(zapper, touma))
 							{
 								string error = touma + " never made a call request to " + zapper;
 								userUtils->insertLog(Log(TAG_ACCEPT, error, zapper, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl, iterationKey);
+								write2Client(invalid, sdssl);
 								userUtils->insertLog(Log(TAG_ACCEPT, invalid, zapper, OUTBOUNDLOG, ip , iterationKey));
 								goto invalidcmd;
 							}
 
-							int zapperMediaFd = userUtils->userFd(zapper, MEDIA, iterationKey);
-							int toumaMediaFd = userUtils->userFd(touma, MEDIA, iterationKey);
+							int zapperMediaFd = userUtils->userFd(zapper, MEDIA);
+							int toumaMediaFd = userUtils->userFd(touma, MEDIA);
 							sdinfo[zapperMediaFd] = toumaMediaFd;
 							sdinfo[toumaMediaFd] = zapperMediaFd;
 
 							//tell touma zapper accepted his call request										
 							//	AND confirm to touma, it's zapper he's being connected with
-							int toumaCmdFd = userUtils->userFd(touma, COMMAND, iterationKey);
+							int toumaCmdFd = userUtils->userFd(touma, COMMAND);
 							SSL *toumaCmdSsl = clientssl[toumaCmdFd];
 							string toumaResp = to_string(now) + "|call|start|" + zapper;
-							write2Client(toumaResp, toumaCmdSsl, iterationKey);
+							write2Client(toumaResp, toumaCmdSsl);
 							userUtils->insertLog(Log(TAG_ACCEPT, toumaResp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), iterationKey));
 
 							//confirm to zapper she's being connected to touma
 							string zapperResp = to_string(now) + "|call|start|" + touma;
-							write2Client(zapperResp, sdssl, iterationKey);
+							write2Client(zapperResp, sdssl);
 							userUtils->insertLog(Log(TAG_ACCEPT, zapperResp, zapper, OUTBOUNDLOG, ip, iterationKey));
 						}
 
@@ -790,32 +790,32 @@ int main(int argc, char *argv[])
 						else if (command == "reject")
 						{//timestamp|reject|touma|sessionid
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string zapper = userUtils->userFromSessionid(sessionid, iterationKey);
+							string zapper = userUtils->userFromSessionid(sessionid);
 							string touma = commandContents.at(2);
 							userUtils->insertLog(Log(TAG_REJECT, originalBufferCmd, zapper, INBOUNDLOG, ip, iterationKey));
 
-							if(!isRealCall(zapper, touma, iterationKey))
+							if(!isRealCall(zapper, touma))
 							{
 								string error = touma + " never made a call request to " + zapper;
 								userUtils->insertLog(Log(TAG_REJECT, error, zapper, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl, iterationKey);
+								write2Client(invalid, sdssl);
 								userUtils->insertLog(Log(TAG_REJECT, invalid, zapper, OUTBOUNDLOG, ip , iterationKey));
 								goto invalidcmd;
 							}
 
 							//set touma's and zapper's media socket state back to idle
-							int toumaMediaFd = userUtils->userFd(touma, MEDIA, iterationKey);
-							int zapperMediaFd = userUtils->userFd(zapper, MEDIA, iterationKey);
+							int toumaMediaFd = userUtils->userFd(touma, MEDIA);
+							int zapperMediaFd = userUtils->userFd(zapper, MEDIA);
 							sdinfo[toumaMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
 
 							//tell touma his call was rejected
-							int toumaCmdFd = userUtils->userFd(touma, COMMAND, iterationKey);
+							int toumaCmdFd = userUtils->userFd(touma, COMMAND);
 							SSL *toumaCmdSsl = clientssl[toumaCmdFd];
 							string resp = to_string(now) + "|call|reject|" + zapper;
-							write2Client(resp, toumaCmdSsl, iterationKey);
+							write2Client(resp, toumaCmdSsl);
 							userUtils->insertLog(Log(TAG_REJECT, resp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), iterationKey));
 						}
 
@@ -827,32 +827,32 @@ int main(int argc, char *argv[])
 							//timestamp|end|zapper|toumasid : touma wants to end the call with zapper
 
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string wants2End = userUtils->userFromSessionid(sessionid, iterationKey);
+							string wants2End = userUtils->userFromSessionid(sessionid);
 							string stillTalking = commandContents.at(2);
 							userUtils->insertLog(Log(TAG_END, originalBufferCmd, wants2End, INBOUNDLOG, ip, iterationKey));
 
-							if(!isRealCall(wants2End, stillTalking, iterationKey))
+							if(!isRealCall(wants2End, stillTalking))
 							{
 								string error = stillTalking + " isn't in a call with " + wants2End;
 								userUtils->insertLog(Log(TAG_END, error, wants2End, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl, iterationKey);
+								write2Client(invalid, sdssl);
 								userUtils->insertLog(Log(TAG_END, invalid, wants2End, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
 
 							//set touma's and zapper's media socket state back to idle
-							int endMediaFd = userUtils->userFd(wants2End, MEDIA, iterationKey);
-							int talkingMediaFd = userUtils->userFd(stillTalking, MEDIA, iterationKey);
+							int endMediaFd = userUtils->userFd(wants2End, MEDIA);
+							int talkingMediaFd = userUtils->userFd(stillTalking, MEDIA);
 							sdinfo[endMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[talkingMediaFd] = SOCKMEDIAIDLE;
 
 							//tell the one still talking, it's time to hang up
 							string resp = to_string(now) + "|call|end|" + wants2End;
-							int talkingCmdFd = userUtils->userFd(stillTalking, COMMAND, iterationKey);
+							int talkingCmdFd = userUtils->userFd(stillTalking, COMMAND);
 							SSL *talkingCmdSsl = clientssl[talkingCmdFd];
-							write2Client(resp, talkingCmdSsl, iterationKey);
+							write2Client(resp, talkingCmdSsl);
 							userUtils->insertLog(Log(TAG_END, resp, stillTalking, OUTBOUNDLOG, ipFromSd(talkingCmdFd), iterationKey));
 						}
 						//call timeout: zapper hasn't answer touma's call request in the 1 minute ring time
@@ -863,60 +863,60 @@ int main(int argc, char *argv[])
 						{
 							string zapper = commandContents.at(2);
 							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string touma = userUtils->userFromSessionid(sessionid, iterationKey);
+							string touma = userUtils->userFromSessionid(sessionid);
 							userUtils->insertLog(Log(TAG_TIMEOUT, originalBufferCmd, touma, INBOUNDLOG, ip, iterationKey));
 
-							if(!isRealCall(touma, zapper, iterationKey))
+							if(!isRealCall(touma, zapper))
 							{
 								string error = touma + " never called " + zapper + " so there is nothing to timeout";
 								userUtils->insertLog(Log(TAG_TIMEOUT, error, touma, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl, iterationKey);
+								write2Client(invalid, sdssl);
 								userUtils->insertLog(Log(TAG_TIMEOUT, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
 
 							//set touma's and zapper's media socket state back to idle
-							int toumaMediaFd = userUtils->userFd(touma, MEDIA, iterationKey);
-							int zapperMediaFd = userUtils->userFd(zapper, MEDIA, iterationKey);
+							int toumaMediaFd = userUtils->userFd(touma, MEDIA);
+							int zapperMediaFd = userUtils->userFd(zapper, MEDIA);
 							sdinfo[toumaMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
 
 							//tell zapper that time's up for answering touma's call
 							string resp = to_string(now) + "|ring|timeout|" + touma;
-							int zapperCmdFd = userUtils->userFd(zapper, COMMAND, iterationKey);
+							int zapperCmdFd = userUtils->userFd(zapper, COMMAND);
 							SSL *zapperCmdSsl = clientssl[zapperCmdFd];
-							write2Client(resp, zapperCmdSsl, iterationKey);
+							write2Client(resp, zapperCmdSsl);
 							userUtils->insertLog(Log(TAG_TIMEOUT, resp, zapper, OUTBOUNDLOG, ipFromSd(zapperCmdFd), iterationKey));
 						}
 						else //commandContents[1] is not a known command... something fishy???
 						{
-							userUtils->insertLog(Log(TAG_BADCMD, originalBufferCmd, userUtils->userFromFd(sd, COMMAND, iterationKey), INBOUNDLOG, ip, iterationKey));
+							userUtils->insertLog(Log(TAG_BADCMD, originalBufferCmd, userUtils->userFromFd(sd, COMMAND), INBOUNDLOG, ip, iterationKey));
 						}
 					}
 					catch(invalid_argument &badarg)
 					{//timestamp couldn't be parsed. assume someone is trying something fishy
-						string user = userUtils->userFromFd(sd, COMMAND, iterationKey);
+						string user = userUtils->userFromFd(sd, COMMAND);
 						userUtils->insertLog(Log(TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip, iterationKey));
 
 						string error =  "INVALID ARGUMENT EXCEPTION: (uint64_t)stoull (string too long) could not parse timestamp";
 						userUtils->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip, iterationKey));
 
 						string invalid = to_string(now) + "|resp|invalid|command\n";
-						write2Client(invalid, sdssl, iterationKey);
+						write2Client(invalid, sdssl);
 						userUtils->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, iterationKey));
 					}
 					catch(out_of_range &exrange)
 					{
-						string user = userUtils->userFromFd(sd, COMMAND, iterationKey);
+						string user = userUtils->userFromFd(sd, COMMAND);
 						userUtils->insertLog(Log(TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip, iterationKey));
 
 						string error = "OUT OF RANGE (vector<string> parsed from command) EXCEPTION: client sent a misformed command";
 						userUtils->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip, iterationKey));
 
 						string invalid = to_string(now) + "|resp|invalid|command\n";
-						write2Client(invalid, sdssl, iterationKey);
+						write2Client(invalid, sdssl);
 						userUtils->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, iterationKey));
 					}
 					invalidcmd:; //bad timestamp, invalid sessionid, not real call... etc.
@@ -943,7 +943,7 @@ int main(int argc, char *argv[])
 					try
 					{
 						uint64_t sessionid = (uint64_t)stoull(commandContents.at(1));
-						string intendedUser = userUtils->userFromSessionid(sessionid, iterationKey);
+						string intendedUser = userUtils->userFromSessionid(sessionid);
 
 						//check timestamp is ok
 						time_t now = time(NULL);
@@ -970,7 +970,7 @@ int main(int argc, char *argv[])
 						userUtils->insertLog(Log(TAG_MEDIANEW, message, intendedUser, INBOUNDLOG, ip, iterationKey));
 
 						//get the user's command fd to do an ip lookup of which ip the command fd is associated with
-						int cmdfd = userUtils->userFd(intendedUser, COMMAND, iterationKey);
+						int cmdfd = userUtils->userFd(intendedUser, COMMAND);
 						if(cmdfd == 0)
 						{//with a valid timestamp, valid sessionid, there is no cmd fd for this user??? how??? you must log in through a cmd fd to get a sessionid
 							string error = "(possible bug) valid timestamp and sessionid but " + intendedUser + " has no command fd. can't continue association of media socket";
@@ -1000,7 +1000,7 @@ int main(int argc, char *argv[])
 							userUtils->insertLog(Log(TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, iterationKey));
 							goto skipreg;
 						}
-						userUtils->setFd(sessionid, sd, MEDIA, iterationKey);
+						userUtils->setFd(sessionid, sd, MEDIA);
 						sdinfo[sd] = SOCKMEDIAIDLE;
 
 					}
@@ -1061,7 +1061,7 @@ int main(int argc, char *argv[])
 
 							int fails = failCount[sdstate];
 							string ip = ipFromSd(sdstate); //log the ip of the socket that can't be written to
-							string user = userUtils->userFromFd(sdstate, MEDIA, iterationKey); //log who couldn't be sent media
+							string user = userUtils->userFromFd(sdstate, MEDIA); //log who couldn't be sent media
 							string error = "couldn't write to media socket because it was not ready. failed " + to_string(fails) + " times";
 							userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
 
@@ -1071,7 +1071,7 @@ int main(int argc, char *argv[])
 							{
 								string error = "reached maximum media socket write failure of: " + to_string(FAILMAX);
 								userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
-								removeClient(sdstate, iterationKey);
+								removeClient(sdstate);
 								//on the next round if(clientssl.count(sdstate)) will fail and go to
 								//the else which will send the call drop. waiting for the next round to
 								//avoid copying and pasting identical code
@@ -1096,12 +1096,12 @@ int main(int argc, char *argv[])
 						string ip = ipFromSd(sd);
 
 						//reset the media connection state
-						string user = userUtils->userFromFd(sd, MEDIA, iterationKey);
+						string user = userUtils->userFromFd(sd, MEDIA);
 						sdinfo[sd] = SOCKMEDIAIDLE;
 
 						//drop the call for the user
 						time_t now = time(NULL);
-						uint64_t sessionid = userUtils->userSessionId(user, iterationKey);
+						uint64_t sessionid = userUtils->userSessionId(user);
 						if(sessionid == 0)
 						{
 							string error = "call was dropped but the user had no session id?? possible bug";
@@ -1111,9 +1111,9 @@ int main(int argc, char *argv[])
 
 						//write to the person who got dropped's command fd that the call was dropped
 						string drop = to_string(now) + "|call|drop|" + to_string(sessionid);
-						int commandfd = userUtils->userFd(user, COMMAND, iterationKey);
+						int commandfd = userUtils->userFd(user, COMMAND);
 						SSL *cmdSsl = clientssl[commandfd];
-						write2Client(drop, cmdSsl, iterationKey);
+						write2Client(drop, cmdSsl);
 						userUtils->insertLog(Log(TAG_MEDIACALL, drop, user, OUTBOUNDLOG, ip, iterationKey));
 					}
 				}
@@ -1137,7 +1137,7 @@ int main(int argc, char *argv[])
 				int kickout = *rmit;
 				if(clientssl.count(kickout) > 0)
 				{
-					removeClient(kickout, initkey);
+					removeClient(kickout);
 				}
 			}
 			removals.clear();
@@ -1205,10 +1205,10 @@ vector<string> parse(char command[])
 // sd: a client's socket descriptor
 // to make things easier, this function will attempt to find both the media and cmd fd
 //	for the user to be removed.
-void removeClient(int sd, uint64_t relatedKey)
+void removeClient(int sd)
 {
 	UserUtils *userUtils = UserUtils::getInstance();
-	string uname = userUtils->userFromFd(sd, COMMAND, relatedKey); //make a lucky guess you got the command fd
+	string uname = userUtils->userFromFd(sd, COMMAND); //make a lucky guess you got the command fd
 	int media, cmd;
 
 #ifdef JSTOPMEDIA
@@ -1222,12 +1222,12 @@ void removeClient(int sd, uint64_t relatedKey)
 	if(!uname.empty())
 	{//lucky guess was right
 		cmd = sd;
-		media = userUtils->userFd(uname, MEDIA, relatedKey);
+		media = userUtils->userFd(uname, MEDIA);
 	}
 	else
 	{//lucky guess was wrong. then you got the media fd
-		uname = userUtils->userFromFd(sd, MEDIA, relatedKey);
-		cmd = userUtils->userFd(uname, COMMAND, relatedKey);
+		uname = userUtils->userFromFd(sd, MEDIA);
+		cmd = userUtils->userFd(uname, COMMAND);
 		media = sd;
 	}
 #endif
@@ -1284,19 +1284,19 @@ void removeClient(int sd, uint64_t relatedKey)
 
 	//incase of crash, there will be no entires in the hash table and tree. skip these pairs and just flush out
 	//	the irrelevant db info
-	userUtils->clearSession(uname, relatedKey);
+	userUtils->clearSession(uname);
 }
 
 //before doing an accept, reject, end command check to see if it's for a real call
 //	or someone trying to get smart with the server
-bool isRealCall(string persona, string personb, uint64_t relatedKey)
+bool isRealCall(string persona, string personb)
 {
 	UserUtils *userUtils = UserUtils::getInstance();
 	string prefix =  "call between " + persona + " && " + personb + ": ";
 
 	//check if A and B even have media FDs
-	int afd = userUtils->userFd(persona, MEDIA, relatedKey);
-	int bfd = userUtils->userFd(personb, MEDIA, relatedKey);
+	int afd = userUtils->userFd(persona, MEDIA);
+	int bfd = userUtils->userFd(personb, MEDIA);
 	if(afd == 0)
 	{
 #ifdef VERBOSE
@@ -1339,16 +1339,16 @@ bool isRealCall(string persona, string personb, uint64_t relatedKey)
 
 
 // write a message to a client
-void write2Client(string response, SSL *respSsl, uint64_t relatedKey)
+void write2Client(string response, SSL *respSsl)
 {
 	int errValue = SSL_write(respSsl, response.c_str(), response.size());
 	if(errValue <= 0)
 	{
 		UserUtils *userUtils = UserUtils::getInstance();
 		int socket = SSL_get_fd(respSsl);
-		string user = userUtils->userFromFd(socket, COMMAND, relatedKey);
+		string user = userUtils->userFromFd(socket, COMMAND);
 		string error = "ssl_write returned an error of: " + to_string(errValue) + " while trying to write to the COMMAND socket";
-		userUtils->insertLog(Log(TAG_SSLCMD, error, "", ERRORLOG, "", relatedKey));
+		userUtils->insertLog(Log(TAG_SSLCMD, error, "", ERRORLOG, ""));
 	}
 }
 
