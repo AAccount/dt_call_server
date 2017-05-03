@@ -15,7 +15,7 @@ bool isRealCall(string persona, string personb);
 
 //convert the string to c char[] and send it by ssl* (when sending, send only as many bytes as there are characters
 // and not the whole command string buffer [] size
-void write2Client(string response, SSL *respSsl);
+void write2Client(string response, SSL *respSsl, uint64_t relatedKey);
 
 //get the ip address of a socket descriptor in human readable 192.168.1.1 format
 string ipFromSd(int sd);

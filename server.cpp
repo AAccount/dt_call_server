@@ -598,7 +598,7 @@ int main(int argc, char *argv[])
 
 							//send the rejection to the client
 							string invalid = to_string(now) + "|resp|invalid|command\n";
-							write2Client(invalid, sdssl);
+							write2Client(invalid, sdssl, iterationKey);
 							goto invalidcmd;
 						}
 
@@ -634,14 +634,14 @@ int main(int argc, char *argv[])
 								//for the user however, give no hints about what went wrong in case of brute force
 								string invalid = to_string(now) + "|resp|invalid|command\n";
 								userUtils->insertLog(Log(TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, iterationKey));
-								write2Client(invalid, sdssl);
+								write2Client(invalid, sdssl, iterationKey);
 								goto invalidcmd;
 							}
 
 							//record a succesful login and response sent
 							userUtils->setFd(sessionid, sd, COMMAND);
 							string resp = to_string(now) + "|resp|login|" + to_string(sessionid);
-							write2Client(resp, sdssl);
+							write2Client(resp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
 						}
 
@@ -661,7 +661,7 @@ int main(int argc, char *argv[])
 								userUtils->insertLog(Log(TAG_CALL, error, touma, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
+								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
@@ -671,7 +671,7 @@ int main(int argc, char *argv[])
 							if(toumaMediaFd == 0)
 							{
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
+								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
@@ -682,7 +682,7 @@ int main(int argc, char *argv[])
 							if(zapperMediaFd == 0 || zapperCmdFd == 0 )
 							{
 								string na = to_string(now) + "|ring|notavailable|" + zapper;
-								write2Client(na, sdssl);
+								write2Client(na, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, na, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd; //while not really an invalid command, there's no point of continuing
 							}
@@ -692,7 +692,7 @@ int main(int argc, char *argv[])
 							if(currentState != SOCKMEDIAIDLE)
 							{
 								string busy = to_string(now) + "|ring|busy|" + zapper;
-								write2Client(busy, sdssl);
+								write2Client(busy, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, busy, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd; //not really invalid either but can't continue any further at this point
 							}
@@ -701,7 +701,7 @@ int main(int argc, char *argv[])
 							if(touma == zapper)
 							{
 								string busy = to_string(now) + "|ring|busy|" + zapper; //ye olde landline did this
-								write2Client(busy, sdssl);
+								write2Client(busy, sdssl, iterationKey);
 								busy = "(self dialed) " + busy;
 								userUtils->insertLog(Log(TAG_CALL, busy, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd; //not really invalid either but can't continue any further at this point
@@ -713,13 +713,13 @@ int main(int argc, char *argv[])
 
 							//tell touma that zapper is being rung
 							string notifyTouma = to_string(now) + "|ring|available|" + zapper;
-							write2Client(notifyTouma, sdssl);
+							write2Client(notifyTouma, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_CALL, notifyTouma, touma, OUTBOUNDLOG, ip, iterationKey));
 			
 							//tell zapper touma wants to call her
 							string notifyZapper = to_string(now) + "|ring|incoming|" + touma;
 							SSL *zapperssl = clientssl[zapperCmdFd];
-							write2Client(notifyZapper, zapperssl);
+							write2Client(notifyZapper, zapperssl, iterationKey);
 							string zapperip = ipFromSd(zapperCmdFd);
 							userUtils->insertLog(Log(TAG_CALL, notifyZapper, zapper, OUTBOUNDLOG, ip, iterationKey));
 						}
@@ -736,13 +736,13 @@ int main(int argc, char *argv[])
 								userUtils->insertLog(Log(TAG_LOOKUP, error, from, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
+								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_LOOKUP, invalid, from, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
 							string exists = (userUtils->doesUserExist(who)) ? "exists" : "doesntexist";
 							string resp = to_string(now) + "|lookup|" + who + "|" + exists;
-							write2Client(resp, sdssl);
+							write2Client(resp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_LOOKUP, resp, from, OUTBOUNDLOG, ip, iterationKey));
 						}
 
@@ -761,7 +761,7 @@ int main(int argc, char *argv[])
 								userUtils->insertLog(Log(TAG_ACCEPT, error, zapper, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
+								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_ACCEPT, invalid, zapper, OUTBOUNDLOG, ip , iterationKey));
 								goto invalidcmd;
 							}
@@ -776,12 +776,12 @@ int main(int argc, char *argv[])
 							int toumaCmdFd = userUtils->userFd(touma, COMMAND);
 							SSL *toumaCmdSsl = clientssl[toumaCmdFd];
 							string toumaResp = to_string(now) + "|call|start|" + zapper;
-							write2Client(toumaResp, toumaCmdSsl);
+							write2Client(toumaResp, toumaCmdSsl, iterationKey);
 							userUtils->insertLog(Log(TAG_ACCEPT, toumaResp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), iterationKey));
 
 							//confirm to zapper she's being connected to touma
 							string zapperResp = to_string(now) + "|call|start|" + touma;
-							write2Client(zapperResp, sdssl);
+							write2Client(zapperResp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_ACCEPT, zapperResp, zapper, OUTBOUNDLOG, ip, iterationKey));
 						}
 
@@ -800,7 +800,7 @@ int main(int argc, char *argv[])
 								userUtils->insertLog(Log(TAG_REJECT, error, zapper, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
+								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_REJECT, invalid, zapper, OUTBOUNDLOG, ip , iterationKey));
 								goto invalidcmd;
 							}
@@ -815,7 +815,7 @@ int main(int argc, char *argv[])
 							int toumaCmdFd = userUtils->userFd(touma, COMMAND);
 							SSL *toumaCmdSsl = clientssl[toumaCmdFd];
 							string resp = to_string(now) + "|call|reject|" + zapper;
-							write2Client(resp, toumaCmdSsl);
+							write2Client(resp, toumaCmdSsl, iterationKey);
 							userUtils->insertLog(Log(TAG_REJECT, resp, touma, OUTBOUNDLOG, ipFromSd(toumaCmdFd), iterationKey));
 						}
 
@@ -837,7 +837,7 @@ int main(int argc, char *argv[])
 								userUtils->insertLog(Log(TAG_END, error, wants2End, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
+								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_END, invalid, wants2End, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
@@ -852,7 +852,7 @@ int main(int argc, char *argv[])
 							string resp = to_string(now) + "|call|end|" + wants2End;
 							int talkingCmdFd = userUtils->userFd(stillTalking, COMMAND);
 							SSL *talkingCmdSsl = clientssl[talkingCmdFd];
-							write2Client(resp, talkingCmdSsl);
+							write2Client(resp, talkingCmdSsl, iterationKey);
 							userUtils->insertLog(Log(TAG_END, resp, stillTalking, OUTBOUNDLOG, ipFromSd(talkingCmdFd), iterationKey));
 						}
 						//call timeout: zapper hasn't answer touma's call request in the 1 minute ring time
@@ -872,7 +872,7 @@ int main(int argc, char *argv[])
 								userUtils->insertLog(Log(TAG_TIMEOUT, error, touma, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command\n";
-								write2Client(invalid, sdssl);
+								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_TIMEOUT, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
 							}
@@ -887,7 +887,7 @@ int main(int argc, char *argv[])
 							string resp = to_string(now) + "|ring|timeout|" + touma;
 							int zapperCmdFd = userUtils->userFd(zapper, COMMAND);
 							SSL *zapperCmdSsl = clientssl[zapperCmdFd];
-							write2Client(resp, zapperCmdSsl);
+							write2Client(resp, zapperCmdSsl, iterationKey);
 							userUtils->insertLog(Log(TAG_TIMEOUT, resp, zapper, OUTBOUNDLOG, ipFromSd(zapperCmdFd), iterationKey));
 						}
 						else //commandContents[1] is not a known command... something fishy???
@@ -904,7 +904,7 @@ int main(int argc, char *argv[])
 						userUtils->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip, iterationKey));
 
 						string invalid = to_string(now) + "|resp|invalid|command\n";
-						write2Client(invalid, sdssl);
+						write2Client(invalid, sdssl, iterationKey);
 						userUtils->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, iterationKey));
 					}
 					catch(out_of_range &exrange)
@@ -916,7 +916,7 @@ int main(int argc, char *argv[])
 						userUtils->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip, iterationKey));
 
 						string invalid = to_string(now) + "|resp|invalid|command\n";
-						write2Client(invalid, sdssl);
+						write2Client(invalid, sdssl, iterationKey);
 						userUtils->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, iterationKey));
 					}
 					invalidcmd:; //bad timestamp, invalid sessionid, not real call... etc.
@@ -1113,7 +1113,7 @@ int main(int argc, char *argv[])
 						string drop = to_string(now) + "|call|drop|" + to_string(sessionid);
 						int commandfd = userUtils->userFd(user, COMMAND);
 						SSL *cmdSsl = clientssl[commandfd];
-						write2Client(drop, cmdSsl);
+						write2Client(drop, cmdSsl, iterationKey);
 						userUtils->insertLog(Log(TAG_MEDIACALL, drop, user, OUTBOUNDLOG, ip, iterationKey));
 					}
 				}
@@ -1214,7 +1214,7 @@ void removeClient(int sd)
 #ifdef JSTOPMEDIA
 	//make the assumption. if it's right remove both. if it's wrong then... it's still right. remove only the media
 	cmd = sd;
-	media = userUtils->userFd(uname, MEDIA, relatedKey);
+	media = userUtils->userFd(uname, MEDIA);
 #else
 	/*
 	 * The actual correct method of removing both sockets regardless of what was supplied
@@ -1339,7 +1339,7 @@ bool isRealCall(string persona, string personb)
 
 
 // write a message to a client
-void write2Client(string response, SSL *respSsl)
+void write2Client(string response, SSL *respSsl, uint64_t relatedKey)
 {
 	int errValue = SSL_write(respSsl, response.c_str(), response.size());
 	if(errValue <= 0)
@@ -1348,7 +1348,8 @@ void write2Client(string response, SSL *respSsl)
 		int socket = SSL_get_fd(respSsl);
 		string user = userUtils->userFromFd(socket, COMMAND);
 		string error = "ssl_write returned an error of: " + to_string(errValue) + " while trying to write to the COMMAND socket";
-		userUtils->insertLog(Log(TAG_SSLCMD, error, "", ERRORLOG, ""));
+		string ip = ipFromSd(socket);
+		userUtils->insertLog(Log(TAG_SSLCMD, error, user, ERRORLOG, ip, relatedKey));
 	}
 }
 
