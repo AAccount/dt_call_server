@@ -79,10 +79,6 @@ int main(int argc, char *argv[])
 
 	//helper to setup the ssl context
 	SSL_CTX *sslcontext = setupOpenSSL(ciphers, privateKeyFile, publicKeyFile, dhfile, userUtils, initkey);
-	if(sslcontext == NULL)
-	{
-		return 1;
-	}
 
 	//socket read timeout option
 	struct timeval timeout;
@@ -122,7 +118,7 @@ int main(int argc, char *argv[])
 		map<int, SSL*>::iterator it;
 		for(it = clientssl.begin(); it != clientssl.end(); ++it)
 		{
-			sd = it->first;			
+			sd = it->first;
 			FD_SET(sd, &readfds);
 			FD_SET(sd, &writefds);
 			if(sd > maxsd)
@@ -143,6 +139,7 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 		cout << "select has " << sockets << " sockets ready for reading\n";
 #endif
+
 		//now that someone has sent something, check all the sockets to see which ones are writable
 		//give a 0.1ms time to check. don't want the request to involve an unwritable socket and
 		//stall the whole server
@@ -157,55 +154,12 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 		cout << "select has " << sockets << " sockets ready for writing\n";
 #endif
+
 		//check for a new incoming connection on command port
 		if(FD_ISSET(cmdFD, &readfds))
 		{
 			uint64_t relatedKey = dist(mt);
-
-			incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
-			if(incomingCmd < 0)
-			{
-				string error = "accept system call error";
-				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, DONTKNOW, relatedKey));
-				perror(error.c_str());
-				goto skipNewCmd;
-			}
-			string ip = inet_ntoa(cli_addr.sin_addr);
-
-			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
-			if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout)) < 0)
-			{
-				string error = "cannot set timeout for incoming media socket from " + ip;
-				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
-				perror(error.c_str());
-				shutdown(incomingMedia, 2);
-				close(incomingMedia);
-				goto skipNewMedia;
-			}
-
-			//setup ssl connection
-			SSL *connssl = SSL_new(sslcontext);
-			SSL_set_fd(connssl, incomingCmd);
-
-			//in case something happened before the incoming connection can be made ssl.
-			if(SSL_accept(connssl) <= 0)
-			{
-				string error = "Problem initializing new command tls connection from " + ip;
-				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
-				SSL_shutdown(connssl);
-				SSL_free(connssl);
-				shutdown(incomingCmd, 2);
-				close(incomingCmd);
-			}
-			else
-			{
-				//add the new socket descriptor to the client self balancing tree
-				string message = "new command socket from " + ip;
-				userUtils->insertLog(Log(TAG_INCOMINGCMD, message, SELF, INBOUNDLOG, ip, relatedKey));
-				clientssl[incomingCmd] = connssl;
-				sdinfo[incomingCmd] = SOCKCMD;
-				failCount[incomingCmd] = 0;
-			}
+			setupSslClient(cmdFD, SOCKCMD, &cli_addr, clilen, &timeout, sslcontext, userUtils, relatedKey);
 		}
 		skipNewCmd:;
 
@@ -213,49 +167,7 @@ int main(int argc, char *argv[])
 		if(FD_ISSET(mediaFD, &readfds))
 		{
 			uint64_t relatedKey = dist(mt);
-
-			incomingMedia = accept(mediaFD, (struct sockaddr *) &cli_addr, &clilen);
-			if(incomingMedia < 0)
-			{
-				string error = "accept system call error";
-				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, DONTKNOW, relatedKey));
-				perror(error.c_str());
-				goto skipNewMedia;
-			}
-			string ip = inet_ntoa(cli_addr.sin_addr);
-
-			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
-			if(setsockopt(incomingMedia, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout)) < 0)
-			{
-				string error = "cannot set timeout for incoming media socket from " + ip;
-				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
-				perror(error.c_str());
-				shutdown(incomingMedia, 2);
-				close(incomingMedia);
-				goto skipNewMedia;
-			}
-
-			SSL *connssl = SSL_new(sslcontext);
-			SSL_set_fd(connssl, incomingMedia);
-
-			//in case something happened before the incoming connection can be made ssl
-			if(SSL_accept(connssl) <= 0)
-			{
-				string error = "Problem initializing new command tls connection from " + ip;
-				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
-				SSL_shutdown(connssl);
-				SSL_free(connssl);
-				shutdown(incomingMedia, 2);
-				close(incomingMedia);
-			}
-			else
-			{
-				string message = "new media socket from " + ip;
-				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, message, SELF, INBOUNDLOG, ip, relatedKey));
-				clientssl[incomingMedia] = connssl;
-				sdinfo[incomingMedia] = SOCKMEDIANEW;
-				failCount[incomingMedia] = 0;
-			}
+			setupSslClient(mediaFD, SOCKMEDIANEW, &cli_addr, clilen, &timeout, sslcontext, userUtils, relatedKey);
 		}
 		skipNewMedia:;
 
@@ -927,6 +839,63 @@ int main(int argc, char *argv[])
 	return 0; 
 }
 
+void setupSslClient(int fd, int fdType, struct sockaddr_in *info, socklen_t clilen, struct timeval *timeout, SSL_CTX *sslcontext, UserUtils *userUtils, uint64_t relatedKey)
+{
+	string tag = "";
+	if(fdType == SOCKCMD)
+	{
+		tag = TAG_INCOMINGCMD;
+	}
+	else
+	{
+		tag = TAG_INCOMINGMEDIA;
+	}
+
+	int incoming = accept(fd, (struct sockaddr *)info, &clilen);
+	if(incoming < 0)
+	{
+		string error = "accept system call error";
+		userUtils->insertLog(Log(tag, error, SELF, ERRORLOG, DONTKNOW, relatedKey));
+		perror(error.c_str());
+		return;
+	}
+	string ip = inet_ntoa(info->sin_addr);
+
+	//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
+	if(setsockopt(incoming, SOL_SOCKET, SO_RCVTIMEO, (char*)timeout, sizeof(struct timeval)) < 0)
+	{
+		string error = "cannot set timeout for incoming socket from " + ip;
+		userUtils->insertLog(Log(tag, error, SELF, ERRORLOG, ip, relatedKey));
+		perror(error.c_str());
+		shutdown(incoming, 2);
+		close(incoming);
+		return;
+	}
+
+	//setup ssl connection
+	SSL *connssl = SSL_new(sslcontext);
+	SSL_set_fd(connssl, incoming);
+
+	//in case something happened before the incoming connection can be made ssl.
+	if(SSL_accept(connssl) <= 0)
+	{
+		string error = "Problem initializing new command tls connection from " + ip;
+		userUtils->insertLog(Log(tag, error, SELF, ERRORLOG, ip, relatedKey));
+		SSL_shutdown(connssl);
+		SSL_free(connssl);
+		shutdown(incoming, 2);
+		close(incoming);
+	}
+	else
+	{
+		//add the new socket descriptor to the client self balancing tree
+		string message = "new command socket from " + ip;
+		userUtils->insertLog(Log(TAG_INCOMINGCMD, message, SELF, INBOUNDLOG, ip, relatedKey));
+		clientssl[incoming] = connssl;
+		sdinfo[incoming] = fdType;
+		failCount[incoming] = 0;
+	}
+}
 //use a vector to prevent reading out of bounds
 vector<string> parse(char command[])
 {

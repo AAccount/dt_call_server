@@ -2,7 +2,12 @@
 #include <vector>
 #include <openssl/ssl.h>
 
+#include "UserUtils.hpp"
+
 using namespace std;
+
+//turn an incoming socket into an ssl socket and prepare it for use
+void setupSslClient(int fd, int fdType, struct sockaddr_in *info, socklen_t clilen, struct timeval *timeout, SSL_CTX *sslcontext, UserUtils *userUtils, uint64_t relatedKey);
 
 //parse incoming server commands (split the incoming command string by the | character)
 vector<string> parse(char command[]);
