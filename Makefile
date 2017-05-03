@@ -22,11 +22,14 @@ ifeq ($(UNAME),FreeBSD)
  CC = clang++
 endif
 
-server: server.o UserUtils.o Log.o Utils.o User.o
-	${CC} ${CFLAGS} -o dtoperator server.o UserUtils.o Log.o Utils.o User.o ${SCRYPT} ${OPENSSL} ${MATH} ${INC} ${LIB}
+server: server.o server_init.o UserUtils.o Log.o Utils.o User.o
+	${CC} ${CFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o ${SCRYPT} ${OPENSSL} ${MATH} ${INC} ${LIB}
 
 server.o : server.cpp server.hpp
 	${CC} ${CFLAGS} -c server.cpp ${INC}
+	
+server_init.o : server_init.cpp server_init.hpp
+	${CC} ${CFLAGS} -c server_init.cpp ${INC}
 	
 UserUtils.o : UserUtils.cpp UserUtils.hpp
 	${CC} ${CFLAGS} -c UserUtils.cpp ${INC}

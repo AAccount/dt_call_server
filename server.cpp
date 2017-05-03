@@ -18,11 +18,10 @@
 #include "const.h"
 #include "server.hpp"
 #include "Utils.hpp"
+#include "server_init.hpp"
 
 #include <cmath>
-#include <iostream>
 #include <string>
-#include <sstream>
 #include <unordered_map> //hash table
 #include <map> //self balancing tree used as a table
 #include <vector>
@@ -73,120 +72,12 @@ int main(int argc, char *argv[])
 	char inputBuffer[BUFFERSIZE+1];
 
 	//read program options from a config file
-	bool gotPublicKey = false, gotPrivateKey = false, gotCiphers = false, gotCmdPort = false, gotMediaPort = false, gotDhFile = false;
 	string publicKeyFile;
 	string privateKeyFile;
 	string ciphers = DEFAULTCIPHERS;
 	string dhfile = "";
 
-	ifstream conffile(CONFFILE);
-	string line;
-
-	while(getline(conffile, line))
-	{
-		//skip blank lines and comment lines
-		if(line.length() == 0 || line.at(0) == '#')
-		{
-			continue;
-		}
-
-		//read the variable and its value
-		string var, value;
-		stringstream ss(line);
-		getline(ss, var, '=');
-		getline(ss, value, '=');
-
-		//cleanup the surrounding whitespace and strip the end of line comment
-		var = Utils::trim(var);
-		value = Utils::trim(value);
-
-		//if there is no value then go on to the next line
-		if(value == "")
-		{
-			continue;
-		}
-
-		if(var == "command")
-		{
-			cmdPort = atoi(value.c_str());
-			gotCmdPort = true;
-			continue;
-		}
-		else if (var == "media")
-		{
-			mediaPort = atoi(value.c_str());
-			gotMediaPort = true;
-			continue;
-		}
-		else if (var == "public")
-		{
-			publicKeyFile = value;
-			gotPublicKey = true;
-			continue;
-		}
-		else if (var == "private")
-		{
-			privateKeyFile = value;
-			gotPrivateKey = true;
-			continue;
-		}
-		else if (var == "ciphers")
-		{
-			ciphers = value;
-			gotCiphers = true;
-			continue;
-		}
-		else if (var == "dhfile")
-		{
-			dhfile = value;
-			gotDhFile = true;
-			continue;
-		}
-		else
-		{
-			string unknown = "unknown variable parsed: " + line;
-			userUtils->insertLog(Log(TAG_INIT, unknown, SELF, SYSTEMLOG, SELFIP, initkey));
-		}
-	}
-
-	//at the minimum a public and private key must be specified. everything else has a default value
-	if (!gotPublicKey || !gotPrivateKey || !gotDhFile)
-	{
-		string conffile = CONFFILE;
-		if(!gotPublicKey)
-		{
-			string error = "Your did not specify a PUBLIC key pem in: " + conffile + "\n";
-			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		}
-		if(!gotPublicKey)
-		{
-			string error = "Your did not specify a PRIVATE key pem in: " + conffile + "\n";
-			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		}
-		if(!gotDhFile)
-		{
-			string error = "Your did not specify a DH file for DHE ciphers in: " + conffile + "\n";
-			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		}
-		exit(1);
-	}
-
-	//warn of default values if they're being used
-	if(!gotCmdPort)
-	{
-		string message =  "Using default command port of: " + to_string(cmdPort);
-		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
-	}
-	if(!gotMediaPort)
-	{
-		string message= "Using default media port of: " + to_string(mediaPort);
-		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
-	}
-	if(!gotCiphers)
-	{
-		string message = "Using default ciphers (no ECDHE): " + ciphers;
-		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
-	}
+	readServerConfig(&cmdPort, &mediaPort, &publicKeyFile, &privateKeyFile, &ciphers, &dhfile, userUtils, initkey);
 
 	struct sockaddr_in serv_cmd, serv_media, cli_addr;
 	fd_set readfds;
