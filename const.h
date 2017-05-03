@@ -30,7 +30,7 @@
 //#define LOGFOLDER "/var/log/dtoperator/"
 #define CONFFILE "/home/Daniel/dtoperator/dtoperator.conf"
 #define USERSFILE "/home/Daniel/dtoperator/users"
-#define LOGFOLDER "/home/Daniel/dtoperator/"
+#define LOGFOLDER "/tmp/"
 
 #define LOGPREFIX "log "
 

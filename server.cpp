@@ -47,6 +47,8 @@ map<int, SSL*>clientssl;
 //so any fails are going to come from the current call
 unordered_map<int, int> failCount;
 
+UserUtils *userUtils = UserUtils::getInstance();
+
 int main(int argc, char *argv[])
 {
 	//setup random number generator for the log relation key (a random number that related logs can use)
@@ -55,7 +57,6 @@ int main(int argc, char *argv[])
 	uniform_int_distribution<uint64_t> dist (0, (uint64_t)9223372036854775807);
 	uint64_t initkey = dist(mt);
 
-	UserUtils *userUtils = UserUtils::getInstance();
 	userUtils->insertLog(Log(TAG_INIT, "starting call operator", SELF, SYSTEMLOG, SELFIP, initkey));
 
 #ifdef JSTOPMEDIA
@@ -64,7 +65,7 @@ int main(int argc, char *argv[])
 	
 	int cmdFD, incomingCmd, cmdPort = DEFAULTCMD; //command port stuff
 	int mediaFD, incomingMedia, mediaPort = DEFAULTMEDIA, bufferRead; //media port stuff
-	int returnValue; //error handling
+	int amountRead; //for counting how much was ssl read
 	int maxsd, sd; //select related vars
 	SSL *sdssl; //used for iterating through the ordered map
 	socklen_t clilen;
@@ -210,8 +211,7 @@ int main(int argc, char *argv[])
 	SSL_CTX_set_cipher_list(sslcontext, ciphers.c_str());
 
 	//private key
-	returnValue= SSL_CTX_use_PrivateKey_file(sslcontext, privateKeyFile.c_str(), SSL_FILETYPE_PEM);
-	if(returnValue <= 0)
+	if(SSL_CTX_use_PrivateKey_file(sslcontext, privateKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
 	{
 		string error = "problems with the private key";
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
@@ -220,8 +220,7 @@ int main(int argc, char *argv[])
 	}
 
 	//public key
-	returnValue = SSL_CTX_use_certificate_file(sslcontext, publicKeyFile.c_str(), SSL_FILETYPE_PEM);
-	if(returnValue <= 0)
+	if(SSL_CTX_use_certificate_file(sslcontext, publicKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
 	{
 		string error = "problems with the public key";
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
@@ -250,8 +249,7 @@ int main(int argc, char *argv[])
 		perror(error.c_str());
 		return 1;
 	}
-	returnValue = SSL_CTX_set_tmp_dh(sslcontext, dh);
-	if(returnValue != 1)
+	if(SSL_CTX_set_tmp_dh(sslcontext, dh) != 1)
 	{
 		string error = "dh param file opened and interpreted but reject by context: " + dhfile;
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
@@ -278,16 +276,14 @@ int main(int argc, char *argv[])
 	serv_cmd.sin_family = AF_INET;
 	serv_cmd.sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	serv_cmd.sin_port = htons(cmdPort);
-	returnValue = bind(cmdFD, (struct sockaddr *) &serv_cmd, sizeof(serv_cmd)); //bind socket to nic and port
-	if(returnValue < 0)
+	if(bind(cmdFD, (struct sockaddr *) &serv_cmd, sizeof(serv_cmd)) < 0)
 	{
 		string error = "cannot bind command socket to a nic";
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
-	returnValue = setsockopt(cmdFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	if(returnValue < 0)
+	if(setsockopt(cmdFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
 	{
 			string error = "cannot set command socket options";
 	 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
@@ -309,16 +305,14 @@ int main(int argc, char *argv[])
 	serv_media.sin_family = AF_INET;
 	serv_media.sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	serv_media.sin_port = htons(mediaPort);
-	returnValue = bind(mediaFD, (struct sockaddr *) &serv_media, sizeof(serv_media)); //bind socket to nic and port
-	if(returnValue < 0)
+	if(bind(mediaFD, (struct sockaddr *) &serv_media, sizeof(serv_media)) < 0)
 	{
 		string error = "cannot bind media socket to a nic";
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
 		return 1;
 	}
-	returnValue = setsockopt(mediaFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	if(returnValue < 0)
+	if(setsockopt(mediaFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
 	{
 			string error = "cannot set media socket options";
 	 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
@@ -363,8 +357,8 @@ int main(int argc, char *argv[])
 		}
 
 		//wait for somebody to send something to the server
-		returnValue = select(maxsd+1, &readfds, NULL, NULL, NULL);
-		if(returnValue < 0)
+		int sockets = select(maxsd+1, &readfds, NULL, NULL, NULL);
+		if(sockets < 0)
 		{
 			string error = "read fds select system call error";
 			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
@@ -372,13 +366,13 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 #ifdef VERBOSE
-		cout << "select has " << returnValue << " sockets ready for reading\n";
+		cout << "select has " << sockets << " sockets ready for reading\n";
 #endif
 		//now that someone has sent something, check all the sockets to see which ones are writable
 		//give a 0.1ms time to check. don't want the request to involve an unwritable socket and
 		//stall the whole server
-		returnValue = select(maxsd+1, NULL, &writefds, NULL, &writeTimeout);
-		if(returnValue < 0)
+		sockets = select(maxsd+1, NULL, &writefds, NULL, &writeTimeout);
+		if(sockets < 0)
 		{
 			string error = "write fds select system call error";
 			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
@@ -386,7 +380,7 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 #ifdef VERBOSE
-		cout << "select has " << returnValue << " sockets ready for writing\n";
+		cout << "select has " << sockets << " sockets ready for writing\n";
 #endif
 		//check for a new incoming connection on command port
 		if(FD_ISSET(cmdFD, &readfds))
@@ -404,8 +398,7 @@ int main(int argc, char *argv[])
 			string ip = inet_ntoa(cli_addr.sin_addr);
 
 			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
-			returnValue = setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
-			if(returnValue < 0)
+			if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout)) < 0)
 			{
 				string error = "cannot set timeout for incoming media socket from " + ip;
 				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
@@ -418,10 +411,9 @@ int main(int argc, char *argv[])
 			//setup ssl connection
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingCmd);
-			returnValue = SSL_accept(connssl);
 
 			//in case something happened before the incoming connection can be made ssl.
-			if(returnValue <= 0)
+			if(SSL_accept(connssl) <= 0)
 			{
 				string error = "Problem initializing new command tls connection from " + ip;
 				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
@@ -458,8 +450,7 @@ int main(int argc, char *argv[])
 			string ip = inet_ntoa(cli_addr.sin_addr);
 
 			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
-			returnValue = setsockopt(incomingMedia, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
-			if(returnValue < 0)
+			if(setsockopt(incomingMedia, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout)) < 0)
 			{
 				string error = "cannot set timeout for incoming media socket from " + ip;
 				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
@@ -471,10 +462,9 @@ int main(int argc, char *argv[])
 
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingMedia);
-			returnValue = SSL_accept(connssl);
 
 			//in case something happened before the incoming connection can be made ssl
-			if(returnValue <= 0)
+			if(SSL_accept(connssl) <= 0)
 			{
 				string error = "Problem initializing new command tls connection from " + ip;
 				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
@@ -519,12 +509,12 @@ int main(int argc, char *argv[])
 				bzero(inputBuffer, BUFFERSIZE+1);
 				do
 				{//wait for the input chunk to come in first before doing something
-					returnValue = SSL_read(sdssl, inputBuffer, BUFFERSIZE-bufferRead);
-					if(returnValue > 0)
+					amountRead = SSL_read(sdssl, inputBuffer, BUFFERSIZE-bufferRead);
+					if(amountRead > 0)
 					{
-						bufferRead = bufferRead + returnValue;
+						bufferRead = bufferRead + amountRead;
 					}
-					int sslerr = SSL_get_error(sdssl, returnValue);
+					int sslerr = SSL_get_error(sdssl, amountRead);
 					switch (sslerr)
 					{
 						case SSL_ERROR_NONE:
@@ -535,7 +525,7 @@ int main(int argc, char *argv[])
 				} while(waiting && SSL_pending(sdssl));
 
 				///SSL_read return 0 = dead socket
-				if(returnValue == 0)
+				if(amountRead == 0)
 				{
 					string user;
 					if(sdinfo[sd] == SOCKCMD)
@@ -1207,7 +1197,6 @@ vector<string> parse(char command[])
 //	for the user to be removed.
 void removeClient(int sd)
 {
-	UserUtils *userUtils = UserUtils::getInstance();
 	string uname = userUtils->userFromFd(sd, COMMAND); //make a lucky guess you got the command fd
 	int media, cmd;
 
@@ -1291,7 +1280,6 @@ void removeClient(int sd)
 //	or someone trying to get smart with the server
 bool isRealCall(string persona, string personb)
 {
-	UserUtils *userUtils = UserUtils::getInstance();
 	string prefix =  "call between " + persona + " && " + personb + ": ";
 
 	//check if A and B even have media FDs
@@ -1344,7 +1332,6 @@ void write2Client(string response, SSL *respSsl, uint64_t relatedKey)
 	int errValue = SSL_write(respSsl, response.c_str(), response.size());
 	if(errValue <= 0)
 	{
-		UserUtils *userUtils = UserUtils::getInstance();
 		int socket = SSL_get_fd(respSsl);
 		string user = userUtils->userFromFd(socket, COMMAND);
 		string error = "ssl_write returned an error of: " + to_string(errValue) + " while trying to write to the COMMAND socket";
