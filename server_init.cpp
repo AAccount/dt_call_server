@@ -140,7 +140,7 @@ SSL_CTX* setupOpenSSL(string ciphers, string privateKeyFile, string publicKeyFil
 		string error = "ssl initialization problem";
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
-		return NULL;
+		exit(1);
 	}
 
 	//ciphers
@@ -152,7 +152,7 @@ SSL_CTX* setupOpenSSL(string ciphers, string privateKeyFile, string publicKeyFil
 		string error = "problems with the private key";
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
-		return NULL;
+		exit(1);
 	}
 
 	//public key
@@ -161,7 +161,7 @@ SSL_CTX* setupOpenSSL(string ciphers, string privateKeyFile, string publicKeyFil
 		string error = "problems with the public key";
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
-		return NULL;
+		exit(1);
 	}
 
 	//dh params to make dhe ciphers work
@@ -174,7 +174,7 @@ SSL_CTX* setupOpenSSL(string ciphers, string privateKeyFile, string publicKeyFil
 		string error = "problems opening dh param file at: " +  dhfile;
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
-		return NULL;
+		exit(1);
 	}
 	dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
 	fclose(paramfile);
@@ -183,14 +183,14 @@ SSL_CTX* setupOpenSSL(string ciphers, string privateKeyFile, string publicKeyFil
 		string error = "dh param file opened but openssl could not use dh param file at: " + dhfile;
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
-		return NULL;
+		exit(1);
 	}
 	if(SSL_CTX_set_tmp_dh(result, dh) != 1)
 	{
 		string error = "dh param file opened and interpreted but reject by context: " + dhfile;
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
 		perror(error.c_str());
-		return NULL;
+		exit(1);
 	}
 	//for ecdhe see SSL_CTX_set_tmp_ecdh
 	return result;
