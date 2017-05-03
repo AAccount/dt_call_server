@@ -41,10 +41,8 @@ uint32_t User::getCommandfd()
 
 void User::setCommandfd(uint32_t newCommandfd)
 {
-	if(newCommandfd > 4)
-	{
-		commandfd = newCommandfd;
-	}
+
+	commandfd = newCommandfd;
 }
 
 uint32_t User::getMediafd()
@@ -54,10 +52,8 @@ uint32_t User::getMediafd()
 
 void User::setMediafd(uint32_t newMediafd)
 {
-	if(newMediafd > 4)
-	{
-		mediafd = newMediafd;
-	}
+
+	mediafd = newMediafd;
 }
 
 uint64_t User::getSessionkey()
