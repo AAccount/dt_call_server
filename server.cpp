@@ -67,161 +67,45 @@ int main(int argc, char *argv[])
 	int amountRead; //for counting how much was ssl read
 	int maxsd, sd; //select related vars
 	SSL *sdssl; //used for iterating through the ordered map
-	socklen_t clilen;
-
 	char inputBuffer[BUFFERSIZE+1];
 
-	//read program options from a config file
 	string publicKeyFile;
 	string privateKeyFile;
 	string ciphers = DEFAULTCIPHERS;
 	string dhfile = "";
 
+	//use a helper function to read the config file
 	readServerConfig(&cmdPort, &mediaPort, &publicKeyFile, &privateKeyFile, &ciphers, &dhfile, userUtils, initkey);
 
-	struct sockaddr_in serv_cmd, serv_media, cli_addr;
-	fd_set readfds;
-	fd_set writefds;
-
-	//openssl setup
-	SSL_load_error_strings();
-	SSL_library_init();
-	OpenSSL_add_all_algorithms();
-
-	//set ssl properties
-	SSL_CTX *sslcontext = SSL_CTX_new(TLSv1_2_method());
-	if(&sslcontext <= 0)
+	//helper to setup the ssl context
+	SSL_CTX *sslcontext = setupOpenSSL(ciphers, privateKeyFile, publicKeyFile, dhfile, userUtils, initkey);
+	if(sslcontext == NULL)
 	{
-		string error = "ssl initialization problem";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
 		return 1;
 	}
-
-	//ciphers
-	SSL_CTX_set_cipher_list(sslcontext, ciphers.c_str());
-
-	//private key
-	if(SSL_CTX_use_PrivateKey_file(sslcontext, privateKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
-	{
-		string error = "problems with the private key";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-
-	//public key
-	if(SSL_CTX_use_certificate_file(sslcontext, publicKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
-	{
-		string error = "problems with the public key";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-
-	//dh params to make dhe ciphers work
-	//https://www.openssl.org/docs/man1.0.1/ssl/SSL_CTX_set_tmp_dh.html
-	DH *dh = NULL;
-	FILE *paramfile;
-	paramfile = fopen(dhfile.c_str(), "r");
-	if(!paramfile)
-	{
-		string error = "problems opening dh param file at: " + dhfile;
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-	dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
-	fclose(paramfile);
-	if(dh == NULL)
-	{
-		string error = "dh param file opened but openssl could not use dh param file at: " + dhfile;
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-	if(SSL_CTX_set_tmp_dh(sslcontext, dh) != 1)
-	{
-		string error = "dh param file opened and interpreted but reject by context: " + dhfile;
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-	//for ecdhe see SSL_CTX_set_tmp_ecdh
 
 	//socket read timeout option
 	struct timeval timeout;
 	timeout.tv_sec = 0;
 	timeout.tv_usec = READTIMEOUT;
+	//write select timeout
+	struct timeval writeTimeout;
+	writeTimeout.tv_sec = 0;
+	writeTimeout.tv_usec = WSELECTTIMEOUT;
 
-	//setup command port to accept new connections
-	cmdFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
-	if(cmdFD < 0)
-	{
-		string error = "cannot establish command socket";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-	bzero((char *) &serv_cmd, sizeof(serv_cmd));
-	serv_cmd.sin_family = AF_INET;
-	serv_cmd.sin_addr.s_addr = INADDR_ANY; //listen on any nic
-	serv_cmd.sin_port = htons(cmdPort);
-	if(bind(cmdFD, (struct sockaddr *) &serv_cmd, sizeof(serv_cmd)) < 0)
-	{
-		string error = "cannot bind command socket to a nic";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-	if(setsockopt(cmdFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
-	{
-			string error = "cannot set command socket options";
-	 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-	 		perror(error.c_str());
-	 		return 1;
-	}
-	listen(cmdFD, MAXLISTENWAIT);
+	//helper to setup the sockets
+	struct sockaddr_in serv_cmd, serv_media, cli_addr;
+	setupListeningSocket(&timeout, &cmdFD, &serv_cmd, cmdPort, userUtils, initkey);
+	setupListeningSocket(&timeout, &mediaFD, &serv_media, mediaPort, userUtils, initkey);
 
-	//setup media port to accept new connections
-	mediaFD = socket(AF_INET, SOCK_STREAM, 0); //tcp socket
-	if(mediaFD < 0)
-	{
-		string error = "cannot establish media socket";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-	bzero((char *) &serv_media, sizeof(serv_media));
-	serv_media.sin_family = AF_INET;
-	serv_media.sin_addr.s_addr = INADDR_ANY; //listen on any nic
-	serv_media.sin_port = htons(mediaPort);
-	if(bind(mediaFD, (struct sockaddr *) &serv_media, sizeof(serv_media)) < 0)
-	{
-		string error = "cannot bind media socket to a nic";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-		perror(error.c_str());
-		return 1;
-	}
-	if(setsockopt(mediaFD, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
-	{
-			string error = "cannot set media socket options";
-	 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
-	 		perror(error.c_str());
-	 		return 1;
-	}
-	listen(mediaFD, MAXLISTENWAIT);
-
-	clilen = sizeof(cli_addr);
+	socklen_t clilen = sizeof(cli_addr);
 
 	//sigpipe is thrown for closing the broken connection. it's gonna happen for a voip server handling mobile clients
 	//what're you gonna do about it... IGNORE IT!!
 	signal(SIGPIPE, SIG_IGN);
 
-	//write select timeout
-	struct timeval writeTimeout;
-	writeTimeout.tv_sec = 0;
-	writeTimeout.tv_usec = WSELECTTIMEOUT;
+	fd_set readfds;
+	fd_set writefds;
 
 	while(true) //forever
 	{
