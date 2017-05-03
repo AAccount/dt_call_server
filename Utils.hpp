@@ -15,9 +15,6 @@
 class Utils
 {
 	public:
-		//get the time now in milliseconds
-		static uint64_t millisNow();
-
 		//used for parsing the configuration file: remove whitespace preceding/trailing and comments
 		static std::string trim(std::string input);
 };
