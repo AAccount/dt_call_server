@@ -25,15 +25,20 @@
 #include <unordered_map> //hash table
 #include <map> //self balancing tree used as a table
 #include <vector>
+#include <set>
 #include <fstream>
 #include <random>
+#include <unordered_set>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
 
 #include "Log.hpp"
 #include "UserUtils.hpp"
 
 using namespace std;
 
-//using goto in general to avoid excessive indentation and else statements
+struct timeval writeTimeout;
 
 //information on what each socket descriptor is (command, media) and what it's supposed to be doing if it's a media socket
 unordered_map<int, int> sdinfo; 
@@ -45,6 +50,18 @@ map<int, SSL*>clientssl;
 //most likely to be used by media sockets during calls. media socket gets reset after a call anyways
 //so any fails are going to come from the current call
 unordered_map<int, int> failCount;
+
+//list of live call media fds the call thread should be paying attention to
+unordered_set<int> liveFds;
+mutex liveMutex;
+
+//variables to wake up the call thread when it has stuff to take care of
+mutex callThreadWakeup;
+condition_variable callThreadCv;
+
+//list of fds that main should remove at the end of each of its rounds
+set<int> removals;
+mutex removalsModMutex;
 
 UserUtils *userUtils = UserUtils::getInstance();
 
@@ -69,10 +86,7 @@ int main(int argc, char *argv[])
 	SSL *sdssl; //used for iterating through the ordered map
 	char inputBuffer[BUFFERSIZE+1];
 
-	string publicKeyFile;
-	string privateKeyFile;
-	string ciphers = DEFAULTCIPHERS;
-	string dhfile = "";
+	string publicKeyFile, privateKeyFile, ciphers = DEFAULTCIPHERS, dhfile = "";
 
 	//use a helper function to read the config file
 	readServerConfig(&cmdPort, &mediaPort, &publicKeyFile, &privateKeyFile, &ciphers, &dhfile, userUtils, initkey);
@@ -85,7 +99,6 @@ int main(int argc, char *argv[])
 	timeout.tv_sec = 0;
 	timeout.tv_usec = READTIMEOUT;
 	//write select timeout
-	struct timeval writeTimeout;
 	writeTimeout.tv_sec = 0;
 	writeTimeout.tv_usec = WSELECTTIMEOUT;
 
@@ -103,6 +116,9 @@ int main(int argc, char *argv[])
 	fd_set readfds;
 	fd_set writefds;
 
+	//start the call thread
+	thread liveCalls(callThreadFx);
+
 	while(true) //forever
 	{
 #ifdef VERBOSE
@@ -114,16 +130,15 @@ int main(int argc, char *argv[])
 		FD_ZERO(&writefds);
 		maxsd = (cmdFD > mediaFD) ? cmdFD : mediaFD; //quick 1 liner for determining the bigger sd
 
-		//http://www.cplusplus.com/reference/map/map/begin/
-		map<int, SSL*>::iterator it;
-		for(it = clientssl.begin(); it != clientssl.end(); ++it)
+		for(auto it = clientssl.begin(); it != clientssl.end(); ++it)
 		{
 			sd = it->first;
-			FD_SET(sd, &readfds);
-			FD_SET(sd, &writefds);
-			if(sd > maxsd)
-			{
-				maxsd = sd;
+			int state = sdinfo[sd];
+			if (state == SOCKCMD || state == SOCKMEDIANEW || state == SOCKMEDIAIDLE)
+			{//main no longer in charge of live call media sockets
+				FD_SET(sd, &readfds);
+				FD_SET(sd, &writefds);
+				maxsd = (sd > maxsd) ? sd : maxsd;
 			}
 		}
 
@@ -161,7 +176,6 @@ int main(int argc, char *argv[])
 			uint64_t relatedKey = dist(mt);
 			setupSslClient(cmdFD, SOCKCMD, &cli_addr, clilen, &timeout, sslcontext, userUtils, relatedKey);
 		}
-		skipNewCmd:;
 
 		//check for a new incoming connection on media port
 		if(FD_ISSET(mediaFD, &readfds))
@@ -169,12 +183,9 @@ int main(int argc, char *argv[])
 			uint64_t relatedKey = dist(mt);
 			setupSslClient(mediaFD, SOCKMEDIANEW, &cli_addr, clilen, &timeout, sslcontext, userUtils, relatedKey);
 		}
-		skipNewMedia:;
 
 		//check for data on an existing connection
-		//reuse the same iterator variable (reinitialize it too)
-		vector<int> removals;
-		for(it = clientssl.begin(); it != clientssl.end(); ++it)
+		for(auto it = clientssl.begin(); it != clientssl.end(); ++it)
 		{//figure out if it's a command, or voice data. handle appropriately
 
 			//get the socket descriptor and associated ssl struct from the iterator round
@@ -185,48 +196,13 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 				cout << "socket descriptor: " << sd << " was marked as set\n";
 #endif
-				//when a client disconnects, for some reason, the socket is marked as having "stuff" on it.
-				//however that "stuff" is no good for ssl, so use eventful boolean to indicate if there was
-				//any ssl work done for this actively marked socket descriptor. if not, drop the socket.
-				bool waiting = true;
 				uint64_t iterationKey = dist(mt);
-
-				//read from the socket into the buffer
-				bufferRead = 0;
-				bzero(inputBuffer, BUFFERSIZE+1);
-				do
-				{//wait for the input chunk to come in first before doing something
-					amountRead = SSL_read(sdssl, inputBuffer, BUFFERSIZE-bufferRead);
-					if(amountRead > 0)
-					{
-						bufferRead = bufferRead + amountRead;
-					}
-					int sslerr = SSL_get_error(sdssl, amountRead);
-					switch (sslerr)
-					{
-						case SSL_ERROR_NONE:
-							waiting = false;
-							break;
-						//other cases when necessary. right now only no error signals a successful read
-					}
-				} while(waiting && SSL_pending(sdssl));
-
-				///SSL_read return 0 = dead socket
+				amountRead = readSSLSocket(sdssl, inputBuffer, iterationKey); //size is the standard buffer size in const.h
 				if(amountRead == 0)
 				{
-					string user;
-					if(sdinfo[sd] == SOCKCMD)
-					{
-						user = userUtils->userFromFd(sd, COMMAND);
-					}
-					else
-					{
-						user = userUtils->userFromFd(sd, MEDIA);
-					}
-					string ip = ipFromSd(sd);
-					string error = "socket has died";
-					userUtils->insertLog(Log(TAG_DEADSOCK, error, user, ERRORLOG, ip, iterationKey));
-					removals.push_back(sd);
+					removalsModMutex.lock();
+					removals.insert(sd);
+					removalsModMutex.unlock();
 					goto skipfd;
 				}
 
@@ -293,7 +269,9 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 								cout << "previous command socket/SSL* exists, will remove\n";
 #endif
-								removals.push_back(oldcmd);
+								removalsModMutex.lock();
+								removals.insert(oldcmd);
+								removalsModMutex.unlock();
 							}
 
 							int oldmedia = userUtils->userFd(username, MEDIA);
@@ -302,7 +280,9 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 								cout << "previous meida socket/SSL* exists, will remove\n";
 #endif
-								removals.push_back(oldmedia);
+								removalsModMutex.lock();
+								removals.insert(oldmedia);
+								removalsModMutex.unlock();
 							}
 
 							uint64_t sessionid = userUtils->authenticate(username, plaintext);
@@ -448,6 +428,16 @@ int main(int argc, char *argv[])
 							sdinfo[zapperMediaFd] = toumaMediaFd;
 							sdinfo[toumaMediaFd] = zapperMediaFd;
 
+							//set the live watch and notify
+							liveMutex.lock();
+							liveFds.insert(toumaMediaFd);
+							liveFds.insert(zapperMediaFd);
+							liveMutex.unlock();
+
+							//wake up the live call thread if it's waiting
+							lock_guard<mutex> lock(callThreadWakeup);
+							callThreadCv.notify_all();
+
 							//tell touma zapper accepted his call request										
 							//	AND confirm to touma, it's zapper he's being connected with
 							int toumaCmdFd = userUtils->userFd(touma, COMMAND);
@@ -524,6 +514,12 @@ int main(int argc, char *argv[])
 							int talkingMediaFd = userUtils->userFd(stillTalking, MEDIA);
 							sdinfo[endMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[talkingMediaFd] = SOCKMEDIAIDLE;
+
+							//remove the fds to the live watch
+							liveMutex.lock();
+							liveFds.erase(endMediaFd);
+							liveFds.erase(talkingMediaFd);
+							liveMutex.unlock();
 
 							//tell the one still talking, it's time to hang up
 							string resp = to_string(now) + "|call|end|" + wants2End;
@@ -714,87 +710,6 @@ int main(int argc, char *argv[])
 #endif //VERBOSE
 
 				}
-				else if(sdstate > 0) //in call
-				{
-					//when in call your sdstate is the media socket descriptor of the person you're calling
-					//not avoiding duplicate code of generating log stuff: ip, user, related key because
-					//sending media will occur many times/sec. don't want to go through all the trouble of generating
-					//logging related stuff if it's never going to be used most of the time.
-#ifdef VERBOSE
-#ifdef JCALLDIAG
-					cout << "received " << bufferRead << " bytes of call data\n";
-#endif
-#endif
-					if(clientssl.count(sdstate) > 0) //the other person's media sd does exist
-					{
-						if(FD_ISSET(sdstate, &writefds))
-						{//only send if the socket's buffer has place
-							SSL *recepient = clientssl[sdstate];
-							SSL_write(recepient, inputBuffer, bufferRead);
-						}
-						else
-						{//if there is no place, just drop the 32bytes of voice
-						 //a backlog of voice will cause a call lag. better to ask again and say "didn't catch that"
-
-							int fails = failCount[sdstate];
-							string ip = ipFromSd(sdstate); //log the ip of the socket that can't be written to
-							string user = userUtils->userFromFd(sdstate, MEDIA); //log who couldn't be sent media
-							string error = "couldn't write to media socket because it was not ready. failed " + to_string(fails) + " times";
-							userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
-
-							fails++;
-							failCount[sdstate] = fails;
-							if(fails > FAILMAX)
-							{
-								string error = "reached maximum media socket write failure of: " + to_string(FAILMAX);
-								userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
-								removeClient(sdstate);
-								//on the next round if(clientssl.count(sdstate)) will fail and go to
-								//the else which will send the call drop. waiting for the next round to
-								//avoid copying and pasting identical code
-							}
-						}
-					}
-					else
-					{
-						//call drop logic: example of touma calling zapper and touma's connection dies
-						//if touma's connetion dies during the current round of "select", zapper's kb of
-						//media will just be lost in the above if block. it won't reach this else block yet
-						//because touma will still have a media port
-						//
-						//if touma's connection died during a previous round of select, you cannot send
-						//timestamp|call|end|touma to zapper because touma's file/socket descriptor records have
-						//been removed form the database. at the present, the state of zapper'd media fd = touma media fd.
-						//because the record has been removed, you can't do userUtils->userFromFd(zapper_mediafd_state, MEDIA)
-						//to find out she's in a call with touma. 
-						//therefore you have to send a different command... the call drop command
-
-						//logging related stuff
-						string ip = ipFromSd(sd);
-
-						//reset the media connection state
-						string user = userUtils->userFromFd(sd, MEDIA);
-						sdinfo[sd] = SOCKMEDIAIDLE;
-
-						//drop the call for the user
-						time_t now = time(NULL);
-						uint64_t sessionid = userUtils->userSessionId(user);
-						if(sessionid == 0)
-						{
-							string error = "call was dropped but the user had no session id?? possible bug";
-							userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
-							goto skipfd;
-						}
-
-						//write to the person who got dropped's command fd that the call was dropped
-						string drop = to_string(now) + "|call|drop|" + to_string(sessionid);
-						int commandfd = userUtils->userFd(user, COMMAND);
-						SSL *cmdSsl = clientssl[commandfd];
-						write2Client(drop, cmdSsl, iterationKey);
-						userUtils->insertLog(Log(TAG_MEDIACALL, drop, user, OUTBOUNDLOG, ip, iterationKey));
-					}
-				}
-
 			}// if FD_ISSET : figure out command or voice and handle appropriately
 		skipfd:; //fd was dead. removed it. go on to the next one
 		}// for loop going through the fd set
@@ -803,13 +718,13 @@ int main(int argc, char *argv[])
 		//don't mess with the map contents while the iterator is live.
 		//removing while runnning causes segfaults because if the removed item gets iterated over after removal
 		//it's no longer there so you get a segfault
+		removalsModMutex.lock();
 		if(removals.size() > 0)
 		{
 #ifdef VERBOSE
 			cout << "Removing " << removals.size() << " dead/leftover sockets\n";
 #endif
-			vector<int>::iterator rmit;
-			for(rmit = removals.begin(); rmit != removals.end(); ++rmit)
+			for(auto rmit = removals.begin(); rmit != removals.end(); ++rmit)
 			{
 				int kickout = *rmit;
 				if(clientssl.count(kickout) > 0)
@@ -819,14 +734,14 @@ int main(int argc, char *argv[])
 			}
 			removals.clear();
 		}
+		removalsModMutex.unlock();
 #ifdef VERBOSE
 		cout << "_____________________________________\n_________________________________\n";
 #endif
 	}
 
 	//stop user utilities
-	UserUtils *instance = UserUtils::getInstance();
-	instance->killInstance();
+	userUtils->killInstance();
 
 	//openssl stuff
 	SSL_CTX_free(sslcontext);
@@ -839,6 +754,177 @@ int main(int argc, char *argv[])
 	return 0; 
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////
+// live calls thread function: a mini version of the main function just for calls
+/////////////////////////////////////////////////////////////////////////////////////////////////
+void callThreadFx()
+{
+	//setup random number generator for the log relation key (a random number that related logs can use)
+	random_device rd;
+	mt19937 mt(rd());
+	uniform_int_distribution<uint64_t> dist (0, (uint64_t)9223372036854775807);
+
+	fd_set callReadFds;
+	fd_set callWriteFds;
+	int readMax=0, writeMax=0;
+	char liveBuffer[BUFFERSIZE+1];
+
+	while(true)
+	{
+		if(liveFds.size() == 0)
+		{//if there are no live fds to watch then wait until there are some
+			cout << "live call threads going to sleep\n";
+			unique_lock<mutex> lock(callThreadWakeup);
+			callThreadCv.wait(lock);
+			lock.unlock(); //no need to keep holding on. just needed it for the wakeup call
+			cout << "live calls thread woken up\n";
+		}
+
+		uint64_t iterationKey = dist(mt);
+
+		//make a copy of the live fd list to avoid locking the whole time
+		liveMutex.lock();
+		vector<int> liveCopy;
+		for(auto it=liveFds.begin(); it != liveFds.end(); ++it)
+		{
+			liveCopy.push_back(*it);
+		}
+		liveMutex.unlock();
+
+		//zero out max and fd sets for a new round
+		FD_ZERO(&callReadFds);
+		FD_ZERO(&callWriteFds);
+		readMax=0, writeMax=0;
+
+		//setup the fd sets
+		for(auto it=liveCopy.begin(); it != liveCopy.end(); ++it)
+		{
+			FD_SET(*it, &callReadFds);
+			FD_SET(*it, &callWriteFds);
+			readMax = (*it > readMax) ? *it : readMax;
+			writeMax = (*it > writeMax) ? *it : writeMax;
+		}
+
+		//wait for call data to come in and figure out who call data can be written to
+		if(select(readMax+1, &callReadFds, NULL, NULL, NULL) < 0)
+		{
+			continue;
+		}
+		if(select(writeMax+1, NULL, &callWriteFds, NULL, &writeTimeout) < 0)
+		{
+			continue;
+		}
+
+		for(auto it=liveCopy.begin(); it != liveCopy.end(); ++it)
+		{
+			if(FD_ISSET(*it, &callReadFds))
+			{
+				int amountRead = readSSLSocket(clientssl[*it], liveBuffer, iterationKey);
+				int sdstate = sdinfo[*it];
+
+				if(amountRead == 0)
+				{
+					cout << "LIVE CALL THREAD fd " << *it << " died\n";
+					//nothing read, this socket is dead. add it to the removals
+					removalsModMutex.lock();
+					removals.insert(*it);
+					removalsModMutex.unlock();
+
+					//also stop following it on the live list
+					liveMutex.lock();
+					liveFds.erase(*it);
+					liveMutex.unlock();
+					continue; //on to the next one
+				}
+
+				if(clientssl.count(sdstate) > 0) //is the receipient still there
+				{
+					if(FD_ISSET(sdinfo[*it], &callWriteFds))
+					{
+						SSL *recepient = clientssl[sdstate];
+						SSL_write(recepient, liveBuffer, amountRead);
+					}
+					else
+					{
+						//if there is no place, just drop the 32bytes of voice
+						//a backlog of voice will cause a call lag. better to ask again and say "didn't catch that"
+						int fails = failCount[sdstate];
+						string ip = ipFromSd(sdstate); //log the ip of the socket that can't be written to
+						string user = userUtils->userFromFd(sdstate, MEDIA); //log who couldn't be sent media
+						string error = "couldn't write to media socket because it was not ready. failed " + to_string(fails) + " times";
+						userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
+
+						fails++;
+						failCount[sdstate] = fails;
+						if (fails > FAILMAX)
+						{
+							string error = "reached maximum media socket write failure of: " + to_string(FAILMAX);
+							userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
+
+							removalsModMutex.lock();
+							removals.insert(sdstate);
+							removalsModMutex.unlock();
+
+							//stop following the receiver on the live list.
+							//stop following the sender on the next round where the sender is cleaned up
+							liveMutex.lock();
+							liveFds.erase(sdstate);
+							liveMutex.unlock();
+						}
+					}
+				}
+				else
+				{
+					//call drop logic: example of touma calling zapper and touma's connection dies
+					//if touma's connetion dies during the current round of "select", zapper's kb of
+					//media will just be lost in the above if block. it won't reach this else block yet
+					//because touma will still have a media port
+					//
+					//if touma's connection died during a previous round of select, you cannot send
+					//timestamp|call|end|touma to zapper because touma's file/socket descriptor records have
+					//been removed form the database. at the present, the state of zapper'd media fd = touma media fd.
+					//because the record has been removed, you can't do userUtils->userFromFd(zapper_mediafd_state, MEDIA)
+					//to find out she's in a call with touma.
+					//therefore you have to send a different command... the call drop command
+
+					//logging related stuff
+					string ip = ipFromSd(*it);
+
+					//reset the media connection state
+					string user = userUtils->userFromFd(*it, MEDIA);
+					sdinfo[*it] = SOCKMEDIAIDLE; //no need to fear a race condition. only accept, end, drop modify media socket state
+
+					//stop following the sender now that he's idle
+					liveMutex.lock();
+					liveFds.erase(*it);
+					liveMutex.unlock();
+
+					//drop the call for the user
+					time_t now = time(NULL);
+					uint64_t sessionid = userUtils->userSessionId(user);
+					if (sessionid == 0)
+					{
+						string error = "call was dropped but the user had no session id?? possible bug";
+						userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
+						continue;
+					}
+
+					//write to the person who got dropped's command fd that the call was dropped
+					string drop = to_string(now) + "|call|drop|" + to_string(sessionid);
+					int commandfd = userUtils->userFd(user, COMMAND);
+					SSL *cmdSsl = clientssl[commandfd];
+					write2Client(drop, cmdSsl, iterationKey);
+					userUtils->insertLog(Log(TAG_MEDIACALL, drop, user, OUTBOUNDLOG, ip, iterationKey));
+				}
+			}
+		}
+	}
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+// various post init helper functions
+/////////////////////////////////////////////////////////////////////////////////////////////////
 void setupSslClient(int fd, int fdType, struct sockaddr_in *info, socklen_t clilen, struct timeval *timeout, SSL_CTX *sslcontext, UserUtils *userUtils, uint64_t relatedKey)
 {
 	string tag = "";
@@ -896,6 +982,54 @@ void setupSslClient(int fd, int fdType, struct sockaddr_in *info, socklen_t clil
 		failCount[incoming] = 0;
 	}
 }
+
+int readSSLSocket(SSL *sdssl, char *buffer, uint64_t iterationKey) //size is the standard buffer size in const.h
+{
+	//when a client disconnects, for some reason, the socket is marked as having "stuff" on it.
+	//however that "stuff" is no good for ssl, so use eventful boolean to indicate if there was
+	//any ssl work done for this actively marked socket descriptor. if not, drop the socket.
+	bool waiting = true;
+
+	//read from the socket into the buffer
+	int bufferRead=0, amountRead=0;
+	bzero(buffer, BUFFERSIZE+1);
+	do
+	{//wait for the input chunk to come in first before doing something
+		amountRead = SSL_read(sdssl, buffer, BUFFERSIZE-bufferRead);
+		if(amountRead > 0)
+		{
+			bufferRead = bufferRead + amountRead;
+		}
+		int sslerr = SSL_get_error(sdssl, amountRead);
+		switch (sslerr)
+		{
+			case SSL_ERROR_NONE:
+				waiting = false;
+				break;
+			//other cases when necessary. right now only no error signals a successful read
+		}
+	} while(waiting && SSL_pending(sdssl));
+
+	///SSL_read return 0 = dead socket
+	if(amountRead == 0)
+	{
+		string user;
+		int sd = SSL_get_fd(sdssl);
+		if(sdinfo[sd] == SOCKCMD)
+		{
+			user = userUtils->userFromFd(sd, COMMAND);
+		}
+		else
+		{
+			user = userUtils->userFromFd(sd, MEDIA);
+		}
+		string ip = ipFromSd(sd);
+		string error = "socket has died";
+		userUtils->insertLog(Log(TAG_DEADSOCK, error, user, ERRORLOG, ip, iterationKey));
+	}
+	return amountRead;
+}
+
 //use a vector to prevent reading out of bounds
 vector<string> parse(char command[])
 {
