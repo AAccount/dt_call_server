@@ -27,6 +27,14 @@
 #include <vector>
 #include <fstream>
 #include <random>
+<<<<<<< master
+=======
+#include <unordered_set>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <algorithm>
+>>>>>>> 98438d1 Fix freebsd logic complain.
 
 #include "Log.hpp"
 #include "UserUtils.hpp"
@@ -341,7 +349,7 @@ int main(int argc, char *argv[])
 						string command = commandContents.at(1);
 						uint64_t timestamp = (uint64_t)stoull(commandContents.at(0)); //catch is for this
 						uint64_t maxError = 60*MARGIN_OF_ERROR;
-						uint64_t timeDifference = (uint64_t)std::llabs(now - timestamp);
+						uint64_t timeDifference = max((uint64_t)now, timestamp) - min((uint64_t)now, timestamp);
 						if(timeDifference > maxError)
 						{
 							//only bother processing the command if the timestamp was valid
@@ -714,7 +722,7 @@ int main(int argc, char *argv[])
 						time_t now = time(NULL);
 						uint64_t timestamp = (uint64_t)stoull(commandContents.at(0));
 						uint64_t fivemins = 60*5;
-						uint64_t timeDifference = (uint64_t)std::llabs(now - timestamp);
+						uint64_t timeDifference = max((uint64_t)now, timestamp) - min((uint64_t)now, timestamp);
 						if(timeDifference > fivemins)
 						{
 							uint64_t mins = timeDifference/60;
