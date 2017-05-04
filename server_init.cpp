@@ -211,7 +211,7 @@ void setupListeningSocket(struct timeval *timeout, int *fd, struct sockaddr_in *
 	info->sin_family = AF_INET;
 	info->sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	info->sin_port = htons(port);
-	if(bind(*fd, (struct sockaddr *)info, sizeof(struct sockaddr_in)) < 0)
+	if(::bind(*fd, (struct sockaddr *)info, sizeof(struct sockaddr_in)) < 0)
 	{
 		string error = "cannot bind command socket to a nic";
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));

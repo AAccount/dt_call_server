@@ -27,14 +27,7 @@
 #include <vector>
 #include <fstream>
 #include <random>
-<<<<<<< master
-=======
-#include <unordered_set>
-#include <mutex>
-#include <condition_variable>
-#include <thread>
 #include <algorithm>
->>>>>>> 98438d1 Fix freebsd logic complain.
 
 #include "Log.hpp"
 #include "UserUtils.hpp"
