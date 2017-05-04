@@ -1,11 +1,7 @@
-create group for program
-create user with nologin shell for program
-create postgres user for program
-create database
-create extension (pgcrypto) INSIDE the database
-grant user with database permissions
-import sample/real data
-(if fedora --> debian) recompile in debian, copy exe
-copy systemd service
-leave root as the owner of the exe and configs,certificates but allow program's user account to read. that way if the program gets hacked, the account it's running under still can't change the certificates or the exe itself. change of certificate should be detected and rejected by aclient though
-open firewall ports
+Create unix group for program.
+Create unix user with nologin shell for program.
+(If fedora --> debian recompile in debian.)
+Copy systemd service.
+Leave root as the owner of the exe and configs,certificates but allow program's user account to read. If the program gets hacked, the account it's running under still can't change the certificates or the exe itself. Change of certificate should be detected and rejected by aclient.
+Make the genscrypt program to generate scrypt hashes for the various user passwords. (See sample users file.)
+Open firewall ports.
