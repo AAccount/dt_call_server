@@ -32,8 +32,8 @@ void readServerConfig(int *cmdPort, int *mediaPort, string *publicKeyFile, strin
 		getline(ss, value, '=');
 
 		//cleanup the surrounding whitespace and strip the end of line comment
-		var = Utils::trim(var);
-		value = Utils::trim(value);
+		var = trim(var);
+		value = trim(value);
 
 		//if there is no value then go on to the next line
 		if(value == "")
@@ -122,7 +122,7 @@ void readServerConfig(int *cmdPort, int *mediaPort, string *publicKeyFile, strin
 		string message = "Using default ciphers (no ECDHE): " + *ciphers;
 		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
 	}
-
+	conffile.close();
 }
 
 SSL_CTX* setupOpenSSL(string ciphers, string privateKeyFile, string publicKeyFile, string dhfile, UserUtils *userUtils, uint64_t initkey)
