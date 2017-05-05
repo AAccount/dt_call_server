@@ -22,6 +22,9 @@ vector<string> parse(char command[]);
 //remove a client's command and media or only media depending what kind of sd is given
 void removeClient(int sd);
 
+//verify a timestamp is within the 5 minute margin of error
+bool timestampOK(uint64_t ts, string tag, string user, string ip, uint64_t iterationKey);
+
 //verify the call is real and not a malicious hand crafted command
 bool isRealCall(string persona, string personb);
 

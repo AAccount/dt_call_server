@@ -239,29 +239,11 @@ int main(int argc, char *argv[])
 
 					try
 					{
+						string user = userUtils->userFromFd(sd, COMMAND);
 						string command = commandContents.at(1);
 						uint64_t timestamp = (uint64_t)stoull(commandContents.at(0)); //catch is for this
-						uint64_t maxError = 60*MARGIN_OF_ERROR;
-						uint64_t timeDifference = max((uint64_t)now, timestamp) - min((uint64_t)now, timestamp);
-						if(timeDifference > maxError)
+						if(!timestampOK(timestamp, TAG_BADCMD, user, ip, iterationKey))
 						{
-							//only bother processing the command if the timestamp was valid
-
-							//prepare the error log
-							uint64_t mins = timeDifference/60;
-							uint64_t seconds = timeDifference - mins*60;
-							string error = "command received was outside the "+to_string(MARGIN_OF_ERROR)+" minute margin of error: " + to_string(mins)+"mins, "+to_string(seconds) + "seconds";
-							string user = userUtils->userFromFd(sd, COMMAND);
-							if(originalBufferCmd.find("login") == string::npos)
-							{//don't accidentally leak passwords for bad login timestamps
-								error = error + " (" + originalBufferCmd + ")";
-							}
-							else
-							{
-								error = error + commandContents.at(0) + "|login|" + user + "|????????"; //never store plain text passwords ANYWHERE
-							}
-							userUtils->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip, iterationKey));
-
 							//send the rejection to the client
 							string invalid = to_string(now) + "|resp|invalid|command\n";
 							write2Client(invalid, sdssl, iterationKey);
@@ -623,16 +605,9 @@ int main(int argc, char *argv[])
 						string intendedUser = userUtils->userFromSessionid(sessionid);
 
 						//check timestamp is ok
-						time_t now = time(NULL);
 						uint64_t timestamp = (uint64_t)stoull(commandContents.at(0));
-						uint64_t fivemins = 60*5;
-						uint64_t timeDifference = max((uint64_t)now, timestamp) - min((uint64_t)now, timestamp);
-						if(timeDifference > fivemins)
+						if(!timestampOK(timestamp, TAG_MEDIANEW, intendedUser, ip, iterationKey))
 						{
-							uint64_t mins = timeDifference/60;
-							uint64_t seconds = timeDifference - mins*60;
-							string error = "timestamp " + to_string(mins) + ":" + to_string(seconds) + " outside 5min window of error";
-							userUtils->insertLog(Log(TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, iterationKey));
 							continue;
 						}
 
@@ -1227,6 +1202,26 @@ bool isRealCall(string persona, string personb)
 	return true;	
 }
 
+//check the timestamp is within the 5 minute window of error
+bool timestampOK(uint64_t ts, string tag, string user, string ip, uint64_t iterationKey)
+{
+	//check timestamp is ok
+	time_t now = time(NULL);
+	uint64_t maxError = 60*MARGIN_OF_ERROR;
+	uint64_t timeDifference = max((uint64_t)now, ts) - min((uint64_t)now, ts);
+	if(timeDifference < maxError)
+	{
+		return true;
+	}
+	else
+	{
+		uint64_t mins = timeDifference/60;
+		uint64_t seconds = timeDifference - mins*60;
+		string error = "timestamp " + to_string(mins) + ":" + to_string(seconds) + " outside" +  to_string(MARGIN_OF_ERROR) + "min window of error";
+		userUtils->insertLog(Log(tag, error, user, ERRORLOG, ip, iterationKey));
+		return false;
+	}
+}
 
 // write a message to a client
 void write2Client(string response, SSL *respSsl, uint64_t relatedKey)
