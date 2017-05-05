@@ -28,7 +28,7 @@
 #include <unordered_set>
 #include <mutex>
 #include <condition_variable>
-#include <thread>
+#include <pthread.h>
 #include <algorithm>
 
 #include "Log.hpp"
@@ -43,6 +43,7 @@ unordered_map<int, int> sdinfo;
 
 //associates socket descriptors to their ssl structs
 unordered_map<int, SSL*>clientssl;
+mutex clientsslMutex; //for race conditions when the main thread erases an entry the live thread was just looking at
 
 //fail counts of each socket descriptor. if there are too many fails then remove the socket.
 //most likely to be used by media sockets during calls. media socket gets reset after a call anyways
@@ -109,13 +110,26 @@ int main(int argc, char *argv[])
 
 	//sigpipe is thrown for closing the broken connection. it's gonna happen for a voip server handling mobile clients
 	//what're you gonna do about it... IGNORE IT!!
-	signal(SIGPIPE, SIG_IGN);
+	sigset_t ignorePipe;
+	sigemptyset(&ignorePipe);
+	sigaddset(&ignorePipe, SIGPIPE);
+	if(pthread_sigmask(SIG_BLOCK, &ignorePipe, NULL) != 0)
+	{
+		perror("Cannot block sigpipe. Call server will not be reliable.");
+		exit(1);
+	}
 
 	fd_set readfds;
 	fd_set writefds;
 
 	//start the call thread
-	thread liveCalls(callThreadFx);
+	pthread_t liveCalls;
+	if(pthread_create(&liveCalls, NULL, callThreadFx, NULL) != 0)
+	{
+		perror("Cannot create call thread.");
+		exit(1);
+	}
+	pthread_setname_np(liveCalls, "LiveCalls");
 
 	while(true) //forever
 	{
@@ -744,12 +758,8 @@ int main(int argc, char *argv[])
 /////////////////////////////////////////////////////////////////////////////////////////////////
 // live calls thread function: a mini version of the main function just for calls
 /////////////////////////////////////////////////////////////////////////////////////////////////
-void callThreadFx()
+void* callThreadFx(void *unused)
 {
-	//sigpipe is thrown for closing the broken connection. it's gonna happen for a voip server handling mobile clients
-	//what're you gonna do about it... IGNORE IT!!
-	signal(SIGPIPE, SIG_IGN);
-
 	//setup random number generator for the log relation key (a random number that related logs can use)
 	random_device rd;
 	mt19937 mt(rd());
@@ -810,16 +820,24 @@ void callThreadFx()
 		{
 			if(FD_ISSET(*it, &callReadFds))
 			{
-				//(see cout)
+				//make sure when going to get the SSL* out of clientssl, it doesn't vanish in between
+				clientsslMutex.lock();
 				if(clientssl.count(*it) == 0)
 				{
 					cout << "edge case of live thread select, client reset media socket, media socket cleaned up, trying to read a nonexistant socket\n";
+					clientsslMutex.unlock();
+
+					//no point of following a dead socket
+					removalsModMutex.lock();
+					removals.insert(*it);
+					removalsModMutex.unlock();
 					continue;
 				}
 
 				int amountRead = readSSLSocket(clientssl[*it], liveBuffer, iterationKey);
-				int sdstate = sdinfo[*it];
+				clientsslMutex.unlock();
 
+				int sdstate = sdinfo[*it];
 				if(amountRead == 0)
 				{
 					cout << "LIVE CALL THREAD fd " << *it << " died\n";
@@ -1139,11 +1157,15 @@ void removeClient(int sd)
 
 		if(clientssl.count(media) > 0)
 		{
+			//make sure nobody in the live thread is looking at this to avoid a
+			//	"rug pulled out form under your feet" scenario (race condition) which leads to a segmentation fault
+			clientsslMutex.lock();
 			SSL_shutdown(clientssl[media]);
 			SSL_free(clientssl[media]);
 			shutdown(media, 2);
 			close(media);
 			clientssl.erase(media);
+			clientsslMutex.unlock();
 		}
 	}
 

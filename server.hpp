@@ -8,7 +8,7 @@ using namespace std;
 
 //a separate function to run on its own thread for handling live calls.
 //	don't want and delay caused by processing commands, new logins to effect current calls
-void callThreadFx();
+void* callThreadFx(void *unused);
 
 //turn an incoming socket into a client ssl socket and prepare it for use
 void setupSslClient(int fd, int fdType, struct sockaddr_in *info, socklen_t clilen, struct timeval *timeout, SSL_CTX *sslcontext, UserUtils *userUtils, uint64_t relatedKey);
