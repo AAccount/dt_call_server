@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 //https://stackoverflow.com/questions/1798112/removing-leading-and-trailing-spaces-from-a-string
-std::string Utils::trim (std::string str)
+std::string trim (std::string str)
 {//
 	//nothing to trim in a blank string
 	if(str.length() == 0)

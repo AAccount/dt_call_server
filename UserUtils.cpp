@@ -43,8 +43,8 @@ UserUtils::UserUtils()
 		getline(ss, hash, ' ');
 
 		//cleanup the surrounding whitespace and strip the end of line comment
-		name = Utils::trim(name);
-		hash = Utils::trim(hash);
+		name = trim(name);
+		hash = trim(hash);
 
 		//need both a name and password to continue
 		if(name == "" || hash == "")
