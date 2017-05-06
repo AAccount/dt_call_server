@@ -22,8 +22,6 @@ When a socket is created it is assigned a state:
 * media idle: a media socket that has been associated with a user but isn't doing anything.
 * (another user's media socket fd#): media socket is used in a call. Send voice data to this person's media socket.
 
-A dedicated thread handles live voice calls so processing and parsing commands will not disturb calls.
-
 There is a special "jbyte", which when sent to a socket is ignored. 
 Its purpose is for the client to periodically ping the server to keep the nat pathways open. 
 This VoIP system was designed to allow clients to connect from anywhere. 
