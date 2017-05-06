@@ -6,15 +6,8 @@
 
 using namespace std;
 
-//a separate function to run on its own thread for handling live calls.
-//	don't want and delay caused by processing commands, new logins to effect current calls
-void callThreadFx();
-
-//turn an incoming socket into a client ssl socket and prepare it for use
+//turn an incoming socket into an ssl socket and prepare it for use
 void setupSslClient(int fd, int fdType, struct sockaddr_in *info, socklen_t clilen, struct timeval *timeout, SSL_CTX *sslcontext, UserUtils *userUtils, uint64_t relatedKey);
-
-//read data from an ssl socket and return the amount read
-int readSSLSocket(SSL *sdssl, char *buffer, uint64_t iterationKey); //size is the standard buffer size in const.h
 
 //parse incoming server commands (split the incoming command string by the | character)
 vector<string> parse(char command[]);

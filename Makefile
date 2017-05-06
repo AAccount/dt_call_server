@@ -12,7 +12,6 @@ ifeq ($(UNAME),Linux)
  OPTCFLAGS = -flto -O3 -march=native -Werror -std=c++11 -DJSTOPMEDIA -fPIE -pie -D_FORTIFY_SOURCE=2
  CFLAGS = -g -Werror -std=c++11 -DJSTOPMEDIA -DJCALLDIAG -fPIE -pie
  CC = g++
- PTHREAD = -pthread
 endif
 
 ifeq ($(UNAME),FreeBSD)
@@ -24,7 +23,7 @@ ifeq ($(UNAME),FreeBSD)
 endif
 
 server: server.o server_init.o UserUtils.o Log.o Utils.o User.o
-	${CC} ${CFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o ${SCRYPT} ${OPENSSL} ${MATH} ${PTHREAD} ${INC} ${LIB}
+	${CC} ${CFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o ${SCRYPT} ${OPENSSL} ${MATH} ${INC} ${LIB}
 
 server.o : server.cpp server.hpp
 	${CC} ${CFLAGS} -c server.cpp ${INC}
