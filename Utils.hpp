@@ -12,8 +12,11 @@
 #include <stdint.h>
 #include <string>
 
-//used for parsing the configuration file: remove whitespace preceding/trailing and comments
-std::string trim(std::string input);
-
+class Utils
+{
+	public:
+		//used for parsing the configuration file: remove whitespace preceding/trailing and comments
+		static std::string trim(std::string input);
+};
 
 #endif /* UTILS_HPP_ */

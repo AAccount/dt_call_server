@@ -32,8 +32,8 @@ void readServerConfig(int *cmdPort, int *mediaPort, string *publicKeyFile, strin
 		getline(ss, value, '=');
 
 		//cleanup the surrounding whitespace and strip the end of line comment
-		var = trim(var);
-		value = trim(value);
+		var = Utils::trim(var);
+		value = Utils::trim(value);
 
 		//if there is no value then go on to the next line
 		if(value == "")
