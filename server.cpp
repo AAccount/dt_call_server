@@ -41,6 +41,9 @@ unordered_map<int, int> sdinfo;
 //associates socket descriptors to their ssl structs
 unordered_map<int, SSL*>clientssl;
 
+//list of who is a live call with whom
+unordered_map<string, string> liveList;
+
 //fail counts of each socket descriptor. if there are too many fails then remove the socket.
 //most likely to be used by media sockets during calls. media socket gets reset after a call anyways
 //so any fails are going to come from the current call
@@ -471,8 +474,10 @@ int main(int argc, char *argv[])
 							}
 
 							//setup the media fd statuses
-							sdinfo[zapperMediaFd] = -toumaMediaFd;
-							sdinfo[toumaMediaFd] = -zapperMediaFd;
+							sdinfo[zapperMediaFd] = SOCKMEDIADIALING;
+							sdinfo[toumaMediaFd] = SOCKMEDIADIALING;
+							liveList[zapper] = touma;
+							liveList[touma] = zapper;
 
 							//tell touma that zapper is being rung
 							string notifyTouma = to_string(now) + "|ring|available|" + zapper;
@@ -531,8 +536,8 @@ int main(int argc, char *argv[])
 
 							int zapperMediaFd = userUtils->userFd(zapper, MEDIA);
 							int toumaMediaFd = userUtils->userFd(touma, MEDIA);
-							sdinfo[zapperMediaFd] = toumaMediaFd;
-							sdinfo[toumaMediaFd] = zapperMediaFd;
+							sdinfo[zapperMediaFd] = SOCKMEDIALIVE;
+							sdinfo[toumaMediaFd] = SOCKMEDIALIVE;
 
 							//tell touma zapper accepted his call request										
 							//	AND confirm to touma, it's zapper he's being connected with
@@ -573,6 +578,8 @@ int main(int argc, char *argv[])
 							int zapperMediaFd = userUtils->userFd(zapper, MEDIA);
 							sdinfo[toumaMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
+							liveList.erase(touma);
+							liveList.erase(zapper);
 
 							//tell touma his call was rejected
 							int toumaCmdFd = userUtils->userFd(touma, COMMAND);
@@ -610,6 +617,8 @@ int main(int argc, char *argv[])
 							int talkingMediaFd = userUtils->userFd(stillTalking, MEDIA);
 							sdinfo[endMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[talkingMediaFd] = SOCKMEDIAIDLE;
+							liveList.erase(wants2End);
+							liveList.erase(stillTalking);
 
 							//tell the one still talking, it's time to hang up
 							string resp = to_string(now) + "|call|end|" + wants2End;
@@ -645,6 +654,8 @@ int main(int argc, char *argv[])
 							int zapperMediaFd = userUtils->userFd(zapper, MEDIA);
 							sdinfo[toumaMediaFd] = SOCKMEDIAIDLE;
 							sdinfo[zapperMediaFd] = SOCKMEDIAIDLE;
+							liveList.erase(touma);
+							liveList.erase(zapper);
 
 							//tell zapper that time's up for answering touma's call
 							string resp = to_string(now) + "|ring|timeout|" + touma;
@@ -780,62 +791,59 @@ int main(int argc, char *argv[])
 
 					skipreg:; //skip media fd registration. something didn't check out ok.
 				}
-				else if(sdstate <= SOCKMEDIAIDLE)
-				{
 #ifdef VERBOSE
-					if(sdstate == SOCKMEDIAIDLE)
-					{
-						cout << "received data on an established media socket. ignore it\n";
-#ifdef JCALLDIAG
-						cout << "Got : " << inputBuffer << "\n";
-#endif
-					}
-					else //if(sdstate < -3)
-					{
-						cout << "received data on a media socket waiting for a call accept\n";
-#ifdef JCALLDIAG
-						cout << "Got : " << inputBuffer << "\n";
-#endif
-					}
-#endif //VERBOSE
-
-				}
-				else if(sdstate > 0) //in call
+				else if(sdstate == SOCKMEDIAIDLE)
 				{
-					//when in call your sdstate is the media socket descriptor of the person you're calling
-					//not avoiding duplicate code of generating log stuff: ip, user, related key because
-					//sending media will occur many times/sec. don't want to go through all the trouble of generating
-					//logging related stuff if it's never going to be used most of the time.
+					cout << "received data on an established media socket. ignore it\n";
+#ifdef JCALLDIAG
+					cout << "Got : " << inputBuffer << "\n";
+#endif
+				}
+				else if (sdstate == SOCKMEDIADIALING)
+				{
+					cout << "received data on a media socket waiting for a call accept\n";
+#ifdef JCALLDIAG
+					cout << "Got : " << inputBuffer << "\n";
+#endif
+				}
+#endif //VERBOSE
+				else if(sdstate == SOCKMEDIALIVE) //in call
+				{
 #ifdef VERBOSE
 #ifdef JCALLDIAG
 					cout << "received " << bufferRead << " bytes of call data\n";
 #endif
 #endif
-					if(clientssl.count(sdstate) > 0) //the other person's media sd does exist
+					string owner = userUtils->userFromFd(sd, MEDIA);
+					string recepientName = liveList[owner];
+					int recepientSd = userUtils->userFd(recepientName, MEDIA);
+#ifdef VERBOSE
+					cout << "from " << owner << "(" << to_string(sd) << ") to " << recepientName << "(" << to_string(recepientSd) << ")\n";
+#endif
+					if(recepientSd > 0) //the other person's media sd does exist
 					{
-						if(FD_ISSET(sdstate, &writefds))
+						if(FD_ISSET(recepientSd, &writefds))
 						{//only send if the socket's buffer has place
-							SSL *recepient = clientssl[sdstate];
+							SSL *recepient = clientssl[recepientSd];
 							SSL_write(recepient, inputBuffer, bufferRead);
 						}
 						else
 						{//if there is no place, just drop the 32bytes of voice
 						 //a backlog of voice will cause a call lag. better to ask again and say "didn't catch that"
 
-							int fails = failCount[sdstate];
-							string ip = ipFromSd(sdstate); //log the ip of the socket that can't be written to
-							string user = userUtils->userFromFd(sdstate, MEDIA); //log who couldn't be sent media
+							int fails = failCount[recepientSd];
+							string ip = ipFromSd(recepientSd); //log the ip of the socket that can't be written to
 							string error = "couldn't write to media socket because it was not ready. failed " + to_string(fails) + " times";
-							userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
+							userUtils->insertLog(Log(TAG_MEDIACALL, error, recepientName, ERRORLOG, ip, iterationKey));
 
 							fails++;
-							failCount[sdstate] = fails;
+							failCount[recepientSd] = fails;
 							if(fails > FAILMAX)
 							{
 								string error = "reached maximum media socket write failure of: " + to_string(FAILMAX);
-								userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
-								removeClient(sdstate);
-								//on the next round if(clientssl.count(sdstate)) will fail and go to
+								userUtils->insertLog(Log(TAG_MEDIACALL, error, recepientName, ERRORLOG, ip, iterationKey));
+								removeClient(recepientSd);
+								//on the next round if(recepientSd > 0) will fail and go to
 								//the else which will send the call drop. waiting for the next round to
 								//avoid copying and pasting identical code
 							}
@@ -878,6 +886,10 @@ int main(int argc, char *argv[])
 						SSL *cmdSsl = clientssl[commandfd];
 						write2Client(drop, cmdSsl, iterationKey);
 						userUtils->insertLog(Log(TAG_MEDIACALL, drop, user, OUTBOUNDLOG, ip, iterationKey));
+
+						//remove this dropped call from the live list
+						liveList.erase(liveList[user]);
+						liveList.erase(user);
 					}
 				}
 
@@ -1072,29 +1084,33 @@ bool isRealCall(string persona, string personb)
 		return false;
 	}
 
+	//check if either is in or waiting for a call
 	int astatus = sdinfo[afd];
-	if(!((astatus ==  -bfd) || (astatus == bfd)))
-	{//apparently A isn't waiting for a call with B to start
+	if(!((astatus ==  SOCKMEDIADIALING) || (astatus == SOCKMEDIALIVE)))
+	{
 #ifdef VERBOSE
-		cout << prefix << persona << " isn't expecting a call from or in a call with " << personb;
+		cout << prefix << persona << " isn't expecting or in a call\n";
 #endif
 		return false;
 	}
 
 	int bstatus = sdinfo[bfd];
-	if(!((bstatus == -afd) || (bstatus == afd)))
-	{//apparently B isn't waiting for a call with A to start
+	if(!((bstatus == SOCKMEDIADIALING) || (bstatus == SOCKMEDIALIVE)))
+	{
 #ifdef VERBOSE
-		cout << prefix << personb << " isn't expecting a call from or in a call with" << persona;
+		cout << prefix << personb << " isn't expecting or in a call\n";
 #endif
 		return false;
 	}
 
-	//A and B both have a mediafds and are both mutually waiting for a call to start between them
+	//the moment of truth
+	//	if you've made it this far your media fd states must make it so these 2 must
+	//	be on the live list
+	bool result = (liveList[persona] == personb) && (liveList[personb] == persona);
 #ifdef VERBOSE
-	cout << prefix << "is a real call\n";
+	cout << prefix << "is a real call???: " << result << "\n";
 #endif
-	return true;	
+	return result;
 }
 
 

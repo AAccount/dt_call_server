@@ -13,6 +13,8 @@
 #define SOCKCMD -1
 #define SOCKMEDIANEW -2
 #define SOCKMEDIAIDLE -3
+#define SOCKMEDIADIALING -4
+#define SOCKMEDIALIVE -5
 
 //java 1 byte ignored character
 #define JBYTE "D"
