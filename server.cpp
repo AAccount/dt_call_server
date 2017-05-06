@@ -23,7 +23,6 @@
 #include <cmath>
 #include <string>
 #include <unordered_map> //hash table
-#include <map> //self balancing tree used as a table
 #include <vector>
 #include <fstream>
 #include <random>
@@ -40,7 +39,7 @@ using namespace std;
 unordered_map<int, int> sdinfo; 
 
 //associates socket descriptors to their ssl structs
-map<int, SSL*>clientssl;
+unordered_map<int, SSL*>clientssl;
 
 //fail counts of each socket descriptor. if there are too many fails then remove the socket.
 //most likely to be used by media sockets during calls. media socket gets reset after a call anyways
@@ -119,9 +118,7 @@ int main(int argc, char *argv[])
 		FD_ZERO(&writefds);
 		maxsd = (cmdFD > mediaFD) ? cmdFD : mediaFD; //quick 1 liner for determining the bigger sd
 
-		//http://www.cplusplus.com/reference/map/map/begin/
-		map<int, SSL*>::iterator it;
-		for(it = clientssl.begin(); it != clientssl.end(); ++it)
+		for(auto it = clientssl.begin(); it != clientssl.end(); ++it)
 		{
 			sd = it->first;			
 			FD_SET(sd, &readfds);
@@ -263,7 +260,7 @@ int main(int argc, char *argv[])
 		//check for data on an existing connection
 		//reuse the same iterator variable (reinitialize it too)
 		vector<int> removals;
-		for(it = clientssl.begin(); it != clientssl.end(); ++it)
+		for(auto it = clientssl.begin(); it != clientssl.end(); ++it)
 		{//figure out if it's a command, or voice data. handle appropriately
 
 			//get the socket descriptor and associated ssl struct from the iterator round
@@ -897,8 +894,7 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 			cout << "Removing " << removals.size() << " dead/leftover sockets\n";
 #endif
-			vector<int>::iterator rmit;
-			for(rmit = removals.begin(); rmit != removals.end(); ++rmit)
+			for(auto rmit = removals.begin(); rmit != removals.end(); ++rmit)
 			{
 				int kickout = *rmit;
 				if(clientssl.count(kickout) > 0)
