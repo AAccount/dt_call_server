@@ -1134,15 +1134,11 @@ void removeClient(int sd)
 
 		if(clientssl.count(cmd) > 0)
 		{
-			//also need to lock/unluck here because when the media socket resets after calls
-			//	it's treated as the command socket (for JSTOPMEDIA)
-			clientsslMutex.lock();
 			SSL_shutdown(clientssl[cmd]);
 			SSL_free(clientssl[cmd]);
 			shutdown(cmd, 2);
 			close(cmd);
 			clientssl.erase(cmd);
-			clientsslMutex.unlock();
 		}
 	}
 
