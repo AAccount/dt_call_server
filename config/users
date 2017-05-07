@@ -1,0 +1,15 @@
+#Sample Users File
+
+righthand /home/Daniel/dtoperator/righthand_public.pem
+libprohibited /home/Daniel/dtoperator/libprohibited_public.pem
+zapper /home/Daniel/dtoperator/zapper_public.pem
+
+#USERNAME PATH_TO_PUBLIC_KEY
+
+#Since the config file and user file are parsed with the same code, the users file can be commented.
+#All sample accounts based on tv characters seen: https://myanimelist.net/anime/4654/Toaru_Majutsu_no_Index
+
+#openssl key steps
+#1: openssl genrsa -out libprohibited.pem 2048
+#2: openssl rsa -in libprohibited.pem -outform PEM -pubout -out libprohibited_public.pem
+#3: openssl pkcs8 -topk8 -nocrypt -in libprohibited.pem -out libprohibited_private.pem

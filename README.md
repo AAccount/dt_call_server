@@ -2,7 +2,8 @@
 VoIP server for android and test java client. Makes **encrypted** calls.
 
 The VoIP server for my android and test java client.
-Its only dependancies are libscrypt for password hashing and openssl for encrypting data.
+Its only dependancies is openssl for encrypting data and **public key authentication**.
+This server does not use passwords for authentication.
 
 The server works on Linux and FreeBSD.
 ![Linux Screenshot](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20Fedora24.png "Call server running on Fedora 24 x64")
