@@ -3,6 +3,7 @@
 					//example: amr encodes 32 bytes, making the buffer 64 bytes
 #define MAXLISTENWAIT 5
 #define MARGIN_OF_ERROR 5 //+- amount the command timestamp can be off by in minutes
+#define CHALLENGELENGTH 200
 
 //which fd to set
 #define COMMAND 1

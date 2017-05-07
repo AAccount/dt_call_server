@@ -47,10 +47,7 @@ Utils.o : Utils.cpp Utils.hpp
 	
 User.o : User.cpp User.hpp
 	${CXX} ${CFLAGS} -c User.cpp ${INC}
-	
-genscrypt: genscrypt.c
-	${CC} ${CFLAGS} -o $@ genscrypt.c ${SCRYPT} ${INC} ${LIB}
 
 clean:
-	rm dtoperator genscrypt *.o
+	rm dtoperator *.o
 

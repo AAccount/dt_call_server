@@ -9,18 +9,29 @@
 
 using namespace std;
 
-User::User(string cuname, string chash)
+User::User(string cuname, RSA *ckey)
 {
 	uname = cuname;
-	hash = chash;
+	publicKey = ckey;
 	commandfd = 0;
 	mediafd = 0;
 	sessionkey = 0;
+	challenge = "";
 }
 
 User::~User()
 {
-	// TODO Auto-generated destructor stub
+	RSA_free(publicKey);
+}
+
+string User::getChallenge()
+{
+	return challenge;
+}
+
+void User::setChallenge(string pchallenge)
+{
+	challenge = pchallenge;
 }
 
 string User::getUname()
@@ -28,9 +39,9 @@ string User::getUname()
 	return uname;
 }
 
-string User::getHash()
+RSA* User::getPublicKey()
 {
-	return hash;
+	return publicKey;
 }
 
 

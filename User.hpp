@@ -9,15 +9,18 @@
 #define USER_HPP_
 
 #include <string>
+#include <openssl/pem.h>
 
 using namespace std;
 
 class User
 {
 public:
-	User(string cunmae, string chash);
+	User(string cunmae, RSA *ckey);
 	string getUname();
-	string getHash();
+	RSA* getPublicKey();
+	string getChallenge();
+	void setChallenge(string ch);
 
 	uint32_t getCommandfd();
 	void setCommandfd(uint32_t newCommandfd);
@@ -34,7 +37,8 @@ private:
 	uint32_t commandfd;
 	uint32_t mediafd;
 	string uname;
-	string hash;
+	RSA *publicKey;
+	string challenge;
 	uint64_t sessionkey;
 };
 

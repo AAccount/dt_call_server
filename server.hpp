@@ -19,3 +19,6 @@ void write2Client(string response, SSL *respSsl, uint64_t relatedKey);
 
 //get the ip address of a socket descriptor in human readable 192.168.1.1 format
 string ipFromSd(int sd);
+
+//turn unsigned char array into string of #s
+string stringify(unsigned char *bytes, int length);

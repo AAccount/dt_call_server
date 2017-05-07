@@ -126,10 +126,7 @@ int main(int argc, char *argv[])
 			sd = it->first;			
 			FD_SET(sd, &readfds);
 			FD_SET(sd, &writefds);
-			if(sd > maxsd)
-			{
-				maxsd = sd;
-			}
+			maxsd = (sd > maxsd) ? sd : maxsd;
 		}
 
 		//wait for somebody to send something to the server
@@ -367,14 +364,11 @@ int main(int argc, char *argv[])
 							write2Client(invalid, sdssl, iterationKey);
 							goto invalidcmd;
 						}
-
-						if(command == "login") //you can do string comparison like this in c++
-						{//timestamp|login|username|passwd
+						if(command == "login1") //you can do string comparison like this in c++
+						{//timestamp|login1|username
 							string username = commandContents.at(2);
-							string plaintext = commandContents.at(3);
 							string ip = ipFromSd(sd);
-							string censoredInput = commandContents.at(0) + "|login|" + username + "|????????"; //never store plain text passwords ANYWHERE
-							userUtils->insertLog(Log(TAG_LOGIN, censoredInput, username, INBOUNDLOG, ip, iterationKey));
+							userUtils->insertLog(Log(TAG_LOGIN, originalBufferCmd, username, INBOUNDLOG, ip, iterationKey));
 
 							int oldcmd = userUtils->userFd(username, COMMAND);
 							if(oldcmd > 0)
@@ -394,23 +388,71 @@ int main(int argc, char *argv[])
 								removals.push_back(oldmedia);
 							}
 
-							uint64_t sessionid = userUtils->authenticate(username, plaintext);
-							if(sessionid == 0)
+							//get the user's public key
+							RSA *publicKey = userUtils->getUserPublicKey(username);
+							if(publicKey == NULL)
 							{
-								//for the user however, give no hints about what went wrong in case of brute force
+								//not a real user. send login rejection
 								string invalid = to_string(now) + "|resp|invalid|command\n";
 								userUtils->insertLog(Log(TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, iterationKey));
 								write2Client(invalid, sdssl, iterationKey);
+								removals.push_back(sd); //nothing useful can come from this socket
 								goto invalidcmd;
 							}
 
-							//record a succesful login and response sent
+							//generate the challenge gibberish
+							string challenge = Utils::randomString(CHALLENGELENGTH);
+#ifdef VERBOSE
+							cout << "challenge: " << challenge << "\n";
+#endif
+							userUtils->setUserChallenge(username, challenge);
+							unsigned char* enc = (unsigned char*)malloc(RSA_size(publicKey));
+							int encLength = RSA_public_encrypt(challenge.length(), (const unsigned char*)challenge.c_str(), enc, publicKey, RSA_PKCS1_PADDING);
+							string encString = stringify(enc, encLength);
+							free(enc);
+
+							//send the challenge
+							string resp = to_string(now) + "|resp|login1|" + encString;
+							write2Client(resp, sdssl, iterationKey);
+							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
+							userUtils->insertLog(Log(TAG_LOGIN, "challenge gibberish: " + challenge, username, OUTBOUNDLOG, ip, iterationKey));
+
+						}
+						else if(command == "login2")
+						{//timestamp|login2|username|challenge
+							string username = commandContents.at(2);
+							string ip = ipFromSd(sd);
+							userUtils->insertLog(Log(TAG_LOGIN, originalBufferCmd, username, INBOUNDLOG, ip, iterationKey));
+							string triedChallenge = commandContents.at(3);
+
+							//check the challenge
+							//	an obvious loophole: send "" as the challenge since that's the default value
+							//	DON'T accept the default ""
+							string answer = userUtils->getUserChallenge(username);
+							if (answer == "" || triedChallenge != answer) //no challenge registered for this person or wrong answer
+							{
+								//person doesn't have a challenge to answer or isn't supposed to be
+								string invalid = to_string(now) + "|resp|invalid|command\n";
+								userUtils->insertLog(Log(TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, iterationKey));
+								write2Client(invalid, sdssl, iterationKey);
+								removals.push_back(sd); //nothing useful can come from this socket
+
+								//reset challenge in case it was wrong
+								userUtils->setUserChallenge(username, "");
+								goto invalidcmd;
+							}
+
+							//challenge was correct and wasn't "", set the info
+							uint64_t sessionid = dist(mt);
+							userUtils->setUserSession(username, sessionid);
 							userUtils->setFd(sessionid, sd, COMMAND);
-							string resp = to_string(now) + "|resp|login|" + to_string(sessionid);
+							userUtils->setUserChallenge(username, ""); //reset after successful competion
+
+							//send an ok
+							string resp = to_string(now) + "|resp|login2|" + to_string(sessionid);
 							write2Client(resp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
 						}
-
 						//variables written from touma calling zapper perspective
 						//command will come from touma's cmd fd
 						else if (command == "call")
@@ -1135,3 +1177,32 @@ string ipFromSd(int sd)
 	getpeername(sd, (struct sockaddr*) &thisfd, &thisfdSize);
 	return string(inet_ntoa(thisfd.sin_addr));
 }
+
+string stringify(unsigned char *bytes, int length)
+{
+	string result = "";
+	for(int i=0; i<length; i++)
+	{
+		string number = to_string(bytes[i]);
+		if(bytes[i] < 10)
+		{
+			number = "00" + number;
+		}
+		else if (bytes[i] < 100)
+		{
+			number = "0" + number;
+		}
+		result = result + number;
+	}
+	return result;
+}
+
+
+
+
+
+
+
+
+
+

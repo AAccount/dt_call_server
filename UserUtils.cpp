@@ -37,22 +37,39 @@ UserUtils::UserUtils()
 		}
 
 		//read the name and password
-		string name, hash;
+		string name, publicKey;
 		stringstream ss(line);
 		getline(ss, name, ' ');
-		getline(ss, hash, ' ');
+		getline(ss, publicKey, ' ');
 
 		//cleanup the surrounding whitespace and strip the end of line comment
 		name = Utils::trim(name);
-		hash = Utils::trim(hash);
+		publicKey = Utils::trim(publicKey);
 
-		//need both a name and password to continue
-		if(name == "" || hash == "")
+		//need both a name and a public key to continue
+		if(name == "" || publicKey == "")
 		{
+			cout << "Account '" << name << "' is misconfigured\n";
 			continue;
 		}
 
-		User *user = new User(name, hash);
+		//open the public key file
+		FILE *publicKeyFile = fopen(publicKey.c_str(), "r");
+		if(publicKeyFile == NULL)
+		{
+			cout << "Having problems opening " << name << "'s public key file\n";
+			continue;
+		}
+
+		//turn the file into a useable public key
+		RSA *rsaPublic = PEM_read_RSA_PUBKEY(publicKeyFile, NULL, NULL, NULL);
+		if(rsaPublic == NULL)
+		{
+			cout << "Could not generate a public key from file for: " << name << "\n";
+			continue;
+		}
+
+		User *user = new User(name, rsaPublic);
 
 		//in case the same person has ???2 entries??? get rid of the old one
 		if(nameMap.count(name) > 0)
@@ -83,36 +100,40 @@ UserUtils::~UserUtils()
 	}
 }
 
-uint64_t UserUtils::authenticate(string username, string password)
+RSA* UserUtils::getUserPublicKey(string username)
 {
-	if(nameMap.count(username) == 0)
-	{//this account doesn't exist. end of story
-		return 0;
-	}
-
-	User *user = nameMap[username];
-
-	//need to make non const char* for scrypt library
-	char *hashCStr = new char[user->getHash().length()+1];
-	char *passwordCStr = new char[password.length() +1];
-	std::strcpy(hashCStr, user->getHash().c_str());
-	std::strcpy(passwordCStr, password.c_str());
-
-	uint64_t sessionid = 0;
-	if (libscrypt_check(hashCStr, passwordCStr) > 0)
+	if(nameMap.count(username) > 0)
 	{
-		random_device rd;
-		mt19937 mt(rd());
-		uniform_int_distribution<uint64_t> dist(0, (uint64_t) 9223372036854775807);
-		sessionid = dist(mt);
-
-		sessionkeyMap.erase(user->getSessionkey());
-		sessionkeyMap[sessionid] = user;
-		user->setSessionkey(sessionid);
+		return nameMap[username]->getPublicKey();
 	}
-	delete [] hashCStr;
-	delete [] passwordCStr;
-	return sessionid;
+	return NULL;
+}
+
+string UserUtils::getUserChallenge(string username)
+{
+	if(nameMap.count(username) > 0)
+	{
+		return nameMap[username]->getChallenge();
+	}
+	return "";
+}
+
+void UserUtils::setUserChallenge(string username, string challenge)
+{
+	if(nameMap.count(username) > 0)
+	{
+		nameMap[username]->setChallenge(challenge);
+	}
+}
+
+void UserUtils::setUserSession(string username, uint64_t sessionid)
+{
+	if(nameMap.count(username) > 0)
+	{
+		User *user = nameMap[username];
+		user->setSessionkey(sessionid);
+		sessionkeyMap[sessionid] = user;
+	}
 }
 
 void UserUtils::setFd(uint64_t sessionid, int fd, int which)
@@ -149,6 +170,9 @@ void UserUtils::clearSession(string username)
 		user->setCommandfd(0);
 		mediafdMap.erase(user->getMediafd());
 		user->setMediafd(0);
+
+		//remove challenge
+		user->setChallenge("");
 	}
 }
 

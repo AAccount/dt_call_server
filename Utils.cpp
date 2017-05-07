@@ -9,6 +9,8 @@
 #include <time.h>
 #include <stdint.h>
 
+using namespace std;
+
 //https://stackoverflow.com/questions/1798112/removing-leading-and-trailing-spaces-from-a-string
 std::string Utils::trim (std::string str)
 {//
@@ -34,4 +36,36 @@ std::string Utils::trim (std::string str)
 	}
 	size_t range = ending-beginning+1;
 	return str.substr(beginning, range);
+}
+
+//https://stackoverflow.com/questions/19665818/generate-random-numbers-using-c11-random-library
+std::string Utils::randomString(int length)
+{
+	const string alphanum[] =
+    {"0","1","2","3","4",
+    "5","6","7","8","9",
+    "A","B","C","D","E","F",
+    "G","H","I","J","K",
+    "L","M","N","O","P",
+    "Q","R","S","T","U",
+    "V","W","X","Y","Z",
+    "a","b","c","d","e","f",
+    "g","h","i","j","k",
+    "l","m","n","o","p",
+    "q","r","s","t","u",
+    "v","w","x","y","z"
+    };
+
+	random_device rd;
+	uniform_int_distribution<int> dist(0, 61);
+	mt19937 mt(rd());
+
+	string randomized = "";
+	for(int i=0; i<length; i++)
+	{
+		int index = dist(mt);
+		string character = alphanum[index];
+		randomized = randomized + character;
+	}
+	return randomized;
 }
