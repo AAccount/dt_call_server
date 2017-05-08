@@ -155,6 +155,10 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 		cout << "select has " << sockets << " sockets ready for writing\n";
 #endif
+		//****************************************************************
+		//IMPORTANT: factoring out command and media socket accepting code
+		//           tends to produce weird unpredictable side effects.
+		//****************************************************************
 		//check for a new incoming connection on command port
 		if(FD_ISSET(cmdFD, &readfds))
 		{
