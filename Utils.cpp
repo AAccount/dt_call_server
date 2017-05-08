@@ -11,6 +11,10 @@
 
 using namespace std;
 
+//make the random generator components once and reuse
+uniform_int_distribution<int> Utils::dist(0,61);
+mt19937 Utils::mt(random_device{}());
+
 //https://stackoverflow.com/questions/1798112/removing-leading-and-trailing-spaces-from-a-string
 std::string Utils::trim (std::string str)
 {//
@@ -55,10 +59,6 @@ std::string Utils::randomString(int length)
     "q","r","s","t","u",
     "v","w","x","y","z"
     };
-
-	random_device rd;
-	uniform_int_distribution<int> dist(0, 61);
-	mt19937 mt(rd());
 
 	string randomized = "";
 	for(int i=0; i<length; i++)
