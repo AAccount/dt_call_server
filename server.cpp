@@ -271,49 +271,14 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 				cout << "socket descriptor: " << sd << " was marked as set\n";
 #endif
-				//when a client disconnects, for some reason, the socket is marked as having "stuff" on it.
-				//however that "stuff" is no good for ssl, so use eventful boolean to indicate if there was
-				//any ssl work done for this actively marked socket descriptor. if not, drop the socket.
-				bool waiting = true;
 				uint64_t iterationKey = dist(mt);
 
-				//read from the socket into the buffer
-				bufferRead = 0;
-				bzero(inputBuffer, BUFFERSIZE+1);
-				do
-				{//wait for the input chunk to come in first before doing something
-					amountRead = SSL_read(sdssl, inputBuffer, BUFFERSIZE-bufferRead);
-					if(amountRead > 0)
-					{
-						bufferRead = bufferRead + amountRead;
-					}
-					int sslerr = SSL_get_error(sdssl, amountRead);
-					switch (sslerr)
-					{
-						case SSL_ERROR_NONE:
-							waiting = false;
-							break;
-						//other cases when necessary. right now only no error signals a successful read
-					}
-				} while(waiting && SSL_pending(sdssl));
-
-				///SSL_read return 0 = dead socket
+				//read the socket and make sure it wasn't just a socket death notice
+				amountRead = readSSL(sdssl, inputBuffer, iterationKey);
 				if(amountRead == 0)
 				{
-					string user;
-					if(sdinfo[sd] == SOCKCMD)
-					{
-						user = userUtils->userFromFd(sd, COMMAND);
-					}
-					else
-					{
-						user = userUtils->userFromFd(sd, MEDIA);
-					}
-					string ip = ipFromSd(sd);
-					string error = "socket has died";
-					userUtils->insertLog(Log(TAG_DEADSOCK, error, user, ERRORLOG, ip, iterationKey));
 					removals.push_back(sd);
-					goto skipfd;
+					continue;
 				}
 
 				int sdstate = sdinfo[sd];
@@ -348,15 +313,8 @@ int main(int argc, char *argv[])
 							uint64_t mins = timeDifference/60;
 							uint64_t seconds = timeDifference - mins*60;
 							string error = "command received was outside the "+to_string(MARGIN_OF_ERROR)+" minute margin of error: " + to_string(mins)+"mins, "+to_string(seconds) + "seconds";
+							error = error + " (" + originalBufferCmd + ")";
 							string user = userUtils->userFromFd(sd, COMMAND);
-							if(originalBufferCmd.find("login") == string::npos)
-							{//don't accidentally leak passwords for bad login timestamps
-								error = error + " (" + originalBufferCmd + ")";
-							}
-							else
-							{
-								error = error + commandContents.at(0) + "|login|" + user + "|????????"; //never store plain text passwords ANYWHERE
-							}
 							userUtils->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip, iterationKey));
 
 							//send the rejection to the client
@@ -446,7 +404,7 @@ int main(int argc, char *argv[])
 							uint64_t sessionid = dist(mt);
 							userUtils->setUserSession(username, sessionid);
 							userUtils->setFd(sessionid, sd, COMMAND);
-							userUtils->setUserChallenge(username, ""); //reset after successful competion
+							userUtils->setUserChallenge(username, ""); //reset after successful completion
 
 							//send an ok
 							string resp = to_string(now) + "|resp|login2|" + to_string(sessionid);
@@ -1185,11 +1143,11 @@ string stringify(unsigned char *bytes, int length)
 	{
 		string number = to_string(bytes[i]);
 		if(bytes[i] < 10)
-		{
+		{//for 1,2,3 to keep everything as 3 digit #s make it 001, 002 etc
 			number = "00" + number;
 		}
 		else if (bytes[i] < 100)
-		{
+		{//for 10,11,12 make it 010,011,012
 			number = "0" + number;
 		}
 		result = result + number;
@@ -1197,7 +1155,48 @@ string stringify(unsigned char *bytes, int length)
 	return result;
 }
 
+int readSSL(SSL *sdssl, char inputBuffer[], uint64_t iterationKey)
+{
+	//read from the socket into the buffer
+	int bufferRead=0, totalRead=0;
+	bool waiting;
+	bzero(inputBuffer, BUFFERSIZE+1);
+	do
+	{//wait for the input chunk to come in first before doing something
+		totalRead = SSL_read(sdssl, inputBuffer, BUFFERSIZE-bufferRead);
+		if(totalRead > 0)
+		{
+			bufferRead = bufferRead + totalRead;
+		}
+		int sslerr = SSL_get_error(sdssl, totalRead);
+		switch (sslerr)
+		{
+			case SSL_ERROR_NONE:
+				waiting = false;
+				break;
+			//other cases when necessary. right now only no error signals a successful read
+		}
+	} while(waiting && SSL_pending(sdssl));
 
+	///SSL_read return 0 = dead socket
+	if(totalRead == 0)
+	{
+		int sd = SSL_get_fd(sdssl);
+		string user;
+		if(sdinfo[sd] == SOCKCMD)
+		{
+			user = userUtils->userFromFd(sd, COMMAND);
+		}
+		else
+		{
+			user = userUtils->userFromFd(sd, MEDIA);
+		}
+		string ip = ipFromSd(sd);
+		string error = "socket has died";
+		userUtils->insertLog(Log(TAG_DEADSOCK, error, user, ERRORLOG, ip, iterationKey));
+	}
+	return totalRead;
+}
 
 
 

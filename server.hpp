@@ -22,3 +22,6 @@ string ipFromSd(int sd);
 
 //turn unsigned char array into string of #s
 string stringify(unsigned char *bytes, int length);
+
+//read an SSL socket into param inputBuffer. maximum read size in const.h
+int readSSL(SSL *sdssl, char inputBuffer[], uint64_t iterationKey);

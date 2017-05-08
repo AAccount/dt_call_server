@@ -4,8 +4,6 @@
 #VERBOSE: print out a summary of what happened every single select call. (the old cout, pre dblog, debugging output)
 MATH = -lm
 OPENSSL = -lssl -lcrypto
-SCRYPT = -lscrypt
-PTHREAD = -pthread
 
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
@@ -28,7 +26,7 @@ ifeq ($(UNAME),FreeBSD)
 endif
 
 server: server.o server_init.o UserUtils.o Log.o Utils.o User.o
-	${CXX} ${CFLAGS} ${LDFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o ${SCRYPT} ${OPENSSL} ${MATH} ${PTHREAD} ${INC} ${LIB}
+	${CXX} ${CFLAGS} ${LDFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o ${OPENSSL} ${MATH} ${INC} ${LIB}
 
 server.o : server.cpp server.hpp
 	${CXX} ${CFLAGS} -c server.cpp ${INC}
