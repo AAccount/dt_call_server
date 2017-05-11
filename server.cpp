@@ -67,7 +67,6 @@ int main(int argc, char *argv[])
 	
 	int cmdFD, incomingCmd, cmdPort = DEFAULTCMD; //command port stuff
 	int mediaFD, incomingMedia, mediaPort = DEFAULTMEDIA, bufferRead; //media port stuff
-	int amountRead; //for counting how much was ssl read
 	int maxsd, sd; //select related vars
 	SSL *sdssl; //used for iterating through the ordered map
 	char inputBuffer[BUFFERSIZE+1];
@@ -278,8 +277,8 @@ int main(int argc, char *argv[])
 				uint64_t iterationKey = dist(mt);
 
 				//read the socket and make sure it wasn't just a socket death notice
-				amountRead = readSSL(sdssl, inputBuffer, iterationKey);
-				if(amountRead == 0)
+				bufferRead = readSSL(sdssl, inputBuffer, iterationKey);
+				if(bufferRead == 0)
 				{
 					removals.push_back(sd);
 					continue;
