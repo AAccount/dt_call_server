@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
 							if(publicKey == NULL)
 							{
 								//not a real user. send login rejection
-								string invalid = to_string(now) + "|resp|invalid|command\n";
+								string invalid = to_string(now) + "|resp|invalid|command";
 								userUtils->insertLog(Log(TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, iterationKey));
 								write2Client(invalid, sdssl, iterationKey);
 								removals.push_back(sd); //nothing useful can come from this socket
@@ -380,7 +380,6 @@ int main(int argc, char *argv[])
 							write2Client(resp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
 							userUtils->insertLog(Log(TAG_LOGIN, "challenge gibberish: " + challenge, username, SYSTEMLOG, ip, iterationKey));
-
 						}
 						else if(command == "login2")
 						{//timestamp|login2|username|challenge
@@ -393,10 +392,13 @@ int main(int argc, char *argv[])
 							//	an obvious loophole: send "" as the challenge since that's the default value
 							//	DON'T accept the default ""
 							string answer = userUtils->getUserChallenge(username);
+#ifdef VERBOSE
+							cout << "@username: " << username << " answer: " << answer << " attempt: " << triedChallenge << "\n";
+#endif
 							if (answer == "" || triedChallenge != answer) //no challenge registered for this person or wrong answer
 							{
 								//person doesn't have a challenge to answer or isn't supposed to be
-								string invalid = to_string(now) + "|resp|invalid|command\n";
+								string invalid = to_string(now) + "|resp|invalid|command";
 								userUtils->insertLog(Log(TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, iterationKey));
 								write2Client(invalid, sdssl, iterationKey);
 								removals.push_back(sd); //nothing useful can come from this socket
@@ -432,7 +434,7 @@ int main(int argc, char *argv[])
 								string error = " INVALID SESSION ID. refusing to start call";
 								userUtils->insertLog(Log(TAG_CALL, error, touma, ERRORLOG, ip, iterationKey));
 
-								string invalid = to_string(now) + "|resp|invalid|command\n";
+								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
@@ -442,7 +444,7 @@ int main(int argc, char *argv[])
 							int toumaMediaFd = userUtils->userFd(touma, MEDIA);
 							if(toumaMediaFd == 0)
 							{
-								string invalid = to_string(now) + "|resp|invalid|command\n";
+								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
@@ -509,7 +511,7 @@ int main(int argc, char *argv[])
 								string error = "invalid sessionid attempting to do a user lookup";
 								userUtils->insertLog(Log(TAG_LOOKUP, error, from, ERRORLOG, ip, iterationKey));
 
-								string invalid = to_string(now) + "|resp|invalid|command\n";
+								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_LOOKUP, invalid, from, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
@@ -534,7 +536,7 @@ int main(int argc, char *argv[])
 								string error = touma + " never made a call request to " + zapper;
 								userUtils->insertLog(Log(TAG_ACCEPT, error, zapper, ERRORLOG, ip, iterationKey));
 
-								string invalid = to_string(now) + "|resp|invalid|command\n";
+								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_ACCEPT, invalid, zapper, OUTBOUNDLOG, ip , iterationKey));
 								goto invalidcmd;
@@ -573,7 +575,7 @@ int main(int argc, char *argv[])
 								string error = touma + " never made a call request to " + zapper;
 								userUtils->insertLog(Log(TAG_REJECT, error, zapper, ERRORLOG, ip, iterationKey));
 
-								string invalid = to_string(now) + "|resp|invalid|command\n";
+								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_REJECT, invalid, zapper, OUTBOUNDLOG, ip , iterationKey));
 								goto invalidcmd;
@@ -612,7 +614,7 @@ int main(int argc, char *argv[])
 								string error = stillTalking + " isn't in a call with " + wants2End;
 								userUtils->insertLog(Log(TAG_END, error, wants2End, ERRORLOG, ip, iterationKey));
 
-								string invalid = to_string(now) + "|resp|invalid|command\n";
+								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_END, invalid, wants2End, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
@@ -649,7 +651,7 @@ int main(int argc, char *argv[])
 								string error = touma + " never called " + zapper + " so there is nothing to timeout";
 								userUtils->insertLog(Log(TAG_TIMEOUT, error, touma, ERRORLOG, ip, iterationKey));
 
-								string invalid = to_string(now) + "|resp|invalid|command\n";
+								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_TIMEOUT, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
 								goto invalidcmd;
@@ -683,7 +685,7 @@ int main(int argc, char *argv[])
 						string error =  "INVALID ARGUMENT EXCEPTION: (uint64_t)stoull (string too long) could not parse timestamp";
 						userUtils->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip, iterationKey));
 
-						string invalid = to_string(now) + "|resp|invalid|command\n";
+						string invalid = to_string(now) + "|resp|invalid|command";
 						write2Client(invalid, sdssl, iterationKey);
 						userUtils->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, iterationKey));
 					}
@@ -695,7 +697,7 @@ int main(int argc, char *argv[])
 						string error = "OUT OF RANGE (vector<string> parsed from command) EXCEPTION: client sent a misformed command";
 						userUtils->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip, iterationKey));
 
-						string invalid = to_string(now) + "|resp|invalid|command\n";
+						string invalid = to_string(now) + "|resp|invalid|command";
 						write2Client(invalid, sdssl, iterationKey);
 						userUtils->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, iterationKey));
 					}

@@ -171,8 +171,9 @@ void UserUtils::clearSession(string username)
 		mediafdMap.erase(user->getMediafd());
 		user->setMediafd(0);
 
-		//remove challenge
-		user->setChallenge("");
+		//don't reset the challenge because when old fds exist when doing login1
+		//	the challenge that is set will be erased at the end of that select round.
+		//	on the next round when doing login2 it will look like a fake/hacked login
 	}
 }
 
