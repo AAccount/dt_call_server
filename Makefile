@@ -8,7 +8,7 @@ OPENSSL = -lssl -lcrypto
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
  LEGACYDBGCFLAGS = -g -m32 -Werror -DJSTOPMEDIA -fPIE
- OPTCFLAGS = -flto -O3 -march=native -Werror -DJSTOPMEDIA -fPIE -D_FORTIFY_SOURCE=2
+ OPTCFLAGS = -flto -O2 -march=native -Werror -DJSTOPMEDIA -fPIE -D_FORTIFY_SOURCE=2
  CFLAGS = -g -Werror -DJSTOPMEDIA -DJCALLDIAG -fPIE
  LDFLAGS = -pie
  CC = gcc
@@ -16,7 +16,7 @@ ifeq ($(UNAME),Linux)
 endif
 
 ifeq ($(UNAME),FreeBSD)
- CFLAGS = -O3 -march=native -Werror -DJSTOPMEDIA -fPIE
+ CFLAGS = -O2 -march=native -Werror -DJSTOPMEDIA -fPIE
  DBGFLAGS = -g -Werror -DJCALLDIAG -DJSTOPMEDIA -DJCALLDIAG -fPIE
  LDFLAGS = -pie
  INC = -I /usr/local/include
