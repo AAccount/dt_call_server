@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
 							string resp = to_string(now) + "|resp|login1|" + encString;
 							write2Client(resp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
-							userUtils->insertLog(Log(TAG_LOGIN, "challenge gibberish: " + challenge, username, OUTBOUNDLOG, ip, iterationKey));
+							userUtils->insertLog(Log(TAG_LOGIN, "challenge gibberish: " + challenge, username, SYSTEMLOG, ip, iterationKey));
 
 						}
 						else if(command == "login2")
