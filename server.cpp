@@ -104,7 +104,10 @@ int main(int argc, char *argv[])
 
 	//sigpipe is thrown for closing the broken connection. it's gonna happen for a voip server handling mobile clients
 	//what're you gonna do about it... IGNORE IT!!
-	signal(SIGPIPE, SIG_IGN);
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGPIPE);
+	sigprocmask(SIG_BLOCK, &set, NULL);
 
 	fd_set readfds;
 	fd_set writefds;
