@@ -18,7 +18,6 @@
 #define TAG_INIT "init"
 #define TAG_INCOMINGCMD "incoming command socket"
 #define TAG_INCOMINGMEDIA "incoming media socket"
-#define TAG_ALARM "alarm killed"
 #define TAG_DEADSOCK "socket died"
 #define TAG_BADCMD "bad command"
 #define TAG_LOGIN "login"
