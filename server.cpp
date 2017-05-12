@@ -57,7 +57,8 @@ int main(int argc, char *argv[])
 	uniform_int_distribution<uint64_t> dist (0, (uint64_t)9223372036854775807);
 	uint64_t initkey = dist(mt);
 
-	userUtils->insertLog(Log(TAG_INIT, "starting call operator", SELF, SYSTEMLOG, SELFIP, initkey));
+	string start = (string)"starting call operator V" +(string)VERSION;
+	userUtils->insertLog(Log(TAG_INIT, start, SELF, SYSTEMLOG, SELFIP, initkey));
 
 #ifdef JSTOPMEDIA
 	userUtils->insertLog(Log(TAG_INIT, "compiled with JSTOPMEDIA flag", SELF, SYSTEMLOG , SELFIP, initkey));
@@ -361,7 +362,7 @@ int main(int argc, char *argv[])
 							}
 
 							//generate the challenge gibberish
-							string challenge = Utils::randomString(CHALLENGELENGTH);
+							string challenge = Utils::randomString(CHALLENGE_LENGTH);
 #ifdef VERBOSE
 							cout << "challenge: " << challenge << "\n";
 #endif
@@ -405,13 +406,13 @@ int main(int argc, char *argv[])
 							}
 
 							//challenge was correct and wasn't "", set the info
-							uint64_t sessionid = dist(mt);
-							userUtils->setUserSession(username, sessionid);
-							userUtils->setFd(sessionid, sd, COMMAND);
+							string sessionkey = Utils::randomString(SESSION_KEY_LENGTH);
+							userUtils->setUserSession(username, sessionkey);
+							userUtils->setFd(sessionkey, sd, COMMAND);
 							userUtils->setUserChallenge(username, ""); //reset after successful completion
 
 							//send an ok
-							string resp = to_string(now) + "|resp|login2|" + to_string(sessionid);
+							string resp = to_string(now) + "|resp|login2|" + sessionkey;
 							write2Client(resp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
 						}
@@ -420,12 +421,12 @@ int main(int argc, char *argv[])
 						else if (command == "call")
 						{//timestamp|call|zapper|toumaid
 
-							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
+							string sessionkey = commandContents.at(3);
 							string zapper = commandContents.at(2);
-							string touma = userUtils->userFromSessionid(sessionid);
+							string touma = userUtils->userFromSessionKey(sessionkey);
 							userUtils->insertLog(Log(TAG_CALL, originalBufferCmd, touma, INBOUNDLOG, ip, iterationKey));
 
-							if(!userUtils->verifySessionid(sessionid, sd))
+							if(!userUtils->verifySessionKey(sessionkey, sd))
 							{
 								string error = " INVALID SESSION ID. refusing to start call";
 								userUtils->insertLog(Log(TAG_CALL, error, touma, ERRORLOG, ip, iterationKey));
@@ -498,13 +499,13 @@ int main(int argc, char *argv[])
 						else if (command == "lookup")
 						{
 							string who = commandContents.at(2);
-							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string from = userUtils->userFromSessionid(sessionid);
+							string sessionkey = commandContents.at(3);
+							string from = userUtils->userFromSessionKey(sessionkey);
 							userUtils->insertLog(Log(TAG_LOOKUP, originalBufferCmd, from, INBOUNDLOG, ip, iterationKey));
 
-							if(!userUtils->verifySessionid(sessionid, sd))
+							if(!userUtils->verifySessionKey(sessionkey, sd))
 							{
-								string error = "invalid sessionid attempting to do a user lookup";
+								string error = "invalid session key attempting to do a user lookup";
 								userUtils->insertLog(Log(TAG_LOOKUP, error, from, ERRORLOG, ip, iterationKey));
 
 								string invalid = to_string(now) + "|resp|invalid|command";
@@ -522,8 +523,8 @@ int main(int argc, char *argv[])
 						//command will come from zapper's cmd fd
 						else if (command == "accept")
 						{//timestamp|accept|touma|zapperid
-							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string zapper = userUtils->userFromSessionid(sessionid);
+							string sessionkey = commandContents.at(3);
+							string zapper = userUtils->userFromSessionKey(sessionkey);
 							string touma = commandContents.at(2);
 							userUtils->insertLog(Log(TAG_ACCEPT, originalBufferCmd, zapper, INBOUNDLOG, ip, iterationKey));
 
@@ -560,9 +561,9 @@ int main(int argc, char *argv[])
 						//variables modeled after setup touma calling zapper for easier readability
 						//reject command would come from zapper's cmd fd
 						else if (command == "reject")
-						{//timestamp|reject|touma|sessionid
-							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string zapper = userUtils->userFromSessionid(sessionid);
+						{//timestamp|reject|touma|sessionkey
+							string sessionkey = commandContents.at(3);
+							string zapper = userUtils->userFromSessionKey(sessionkey);
 							string touma = commandContents.at(2);
 							userUtils->insertLog(Log(TAG_REJECT, originalBufferCmd, zapper, INBOUNDLOG, ip, iterationKey));
 
@@ -600,8 +601,8 @@ int main(int argc, char *argv[])
 							//timestamp|end|touma|zappersid : zapper wants to end the call with touma
 							//timestamp|end|zapper|toumasid : touma wants to end the call with zapper
 
-							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string wants2End = userUtils->userFromSessionid(sessionid);
+							string sessionkey = commandContents.at(3);
+							string wants2End = userUtils->userFromSessionKey(sessionkey);
 							string stillTalking = commandContents.at(2);
 							userUtils->insertLog(Log(TAG_END, originalBufferCmd, wants2End, INBOUNDLOG, ip, iterationKey));
 
@@ -638,8 +639,8 @@ int main(int argc, char *argv[])
 						else if(command =="timeout")
 						{
 							string zapper = commandContents.at(2);
-							uint64_t sessionid = (uint64_t)stoull(commandContents.at(3));
-							string touma = userUtils->userFromSessionid(sessionid);
+							string sessionkey = commandContents.at(3);
+							string touma = userUtils->userFromSessionKey(sessionkey);
 							userUtils->insertLog(Log(TAG_TIMEOUT, originalBufferCmd, touma, INBOUNDLOG, ip, iterationKey));
 
 							if(!isRealCall(touma, zapper))
@@ -699,7 +700,7 @@ int main(int argc, char *argv[])
 					}
 				}
 				else if(sdstate == SOCKMEDIANEW)
-				{//timestamp|sessionid (of the user this media fd should be registered/associated to)
+				{//timestamp|sessionkey (of the user this media fd should be registered/associated to)
 					//workaround for jclient sending first byte of a command separately
 					//after the initial login
 					string bufferString(inputBuffer);
@@ -719,8 +720,8 @@ int main(int argc, char *argv[])
 
 					try
 					{
-						uint64_t sessionid = (uint64_t)stoull(commandContents.at(1));
-						string intendedUser = userUtils->userFromSessionid(sessionid);
+						string sessionkey = commandContents.at(1);
+						string intendedUser = userUtils->userFromSessionKey(sessionkey);
 
 						//check timestamp is ok
 						time_t now = time(NULL);
@@ -736,7 +737,7 @@ int main(int argc, char *argv[])
 							continue;
 						}
 
-						//check sessionid belongs to a signed in user
+						//check session key belongs to a signed in user
 						if(intendedUser == "")
 						{
 							string error = "user cannot be identified from session id";
@@ -749,13 +750,13 @@ int main(int argc, char *argv[])
 						//get the user's command fd to do an ip lookup of which ip the command fd is associated with
 						int cmdfd = userUtils->userFd(intendedUser, COMMAND);
 						if(cmdfd == 0)
-						{//with a valid timestamp, valid sessionid, there is no cmd fd for this user??? how??? you must log in through a cmd fd to get a sessionid
-							string error = "(possible bug) valid timestamp and sessionid but " + intendedUser + " has no command fd. can't continue association of media socket";
+						{//with a valid timestamp, valid session key, there is no cmd fd for this user??? how??? you must log in through a cmd fd to get a sessionid
+							string error = "(possible bug) valid timestamp and session key but " + intendedUser + " has no command fd. can't continue association of media socket";
 							userUtils->insertLog(Log(TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, iterationKey));
 							continue;
 						}
 
-						//besides presenting the right sessionid to associate with the user (which could be a lucky guess)
+						//besides presenting the right session key to associate with the user (which could be a lucky guess)
 						//	try and match the ip address of the media and command. not a 100% guarantee still, but if this
 						//	fails, that is at least another way to figure out something isn't right.	
 						// https://stackoverflow.com/questions/20472072/c-socket-get-ip-adress-from-filedescriptor-returned-from-accept
@@ -770,14 +771,14 @@ int main(int argc, char *argv[])
 						int cmdip = cmdFdInfo.sin_addr.s_addr;
 
 						if(thisfdip != cmdip)
-						{//valid timestamp, valid sessionid, sessionid has command fd... but the media port association came from a different ip than the command fd...??? HOW??? all requests come from a cell phone app with 1 ip...
-							string error = "SOMETHING IS REALLY WRONG. with a valid timestamp, sessionid, and a command fd associated with the sessionid, the request to associate the media fd is coming from another ip???\n";
+						{//valid timestamp, valid session key, session key has command fd... but the media port association came from a different ip than the command fd...??? HOW??? all requests come from a cell phone app with 1 ip...
+							string error = "SOMETHING IS REALLY WRONG. with a valid timestamp, session key, and a command fd associated with the session key, the request to associate the media fd is coming from another ip???\n";
 							error = error + " last registered from ip address:" + string(inet_ntoa(cmdFdInfo.sin_addr)) + "\n";
 							error = error + " is CURRENTLY registering from ip address: " + string(inet_ntoa(thisfd.sin_addr));
 							userUtils->insertLog(Log(TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, iterationKey));
 							continue;
 						}
-						userUtils->setFd(sessionid, sd, MEDIA);
+						userUtils->setFd(sessionkey, sd, MEDIA);
 						sdinfo[sd] = SOCKMEDIAIDLE;
 
 					}
@@ -873,16 +874,16 @@ int main(int argc, char *argv[])
 
 						//drop the call for the user
 						time_t now = time(NULL);
-						uint64_t sessionid = userUtils->userSessionId(user);
-						if(sessionid == 0)
+						string sessionkey = userUtils->userSessionKey(user);
+						if(sessionkey == "")
 						{
-							string error = "call was dropped but the user had no session id?? possible bug";
+							string error = "call was dropped but the user had no session key?? possible bug";
 							userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
 							continue;
 						}
 
 						//write to the person who got dropped's command fd that the call was dropped
-						string drop = to_string(now) + "|call|drop|" + to_string(sessionid);
+						string drop = to_string(now) + "|call|drop|" + sessionkey;
 						int commandfd = userUtils->userFd(user, COMMAND);
 						SSL *cmdSsl = clientssl[commandfd];
 						write2Client(drop, cmdSsl, iterationKey);
@@ -940,14 +941,14 @@ int main(int argc, char *argv[])
 vector<string> parse(char command[])
 {
 //timestamp|login|username|passwd
-//timestamp|call|otheruser|sessionid
-//timestamp|lookup|user|sessionid
-//timestamp|reject|user|sessionid
-//timestamp|accept|user|sessionid
-//timestamp|timeout|user|sessionid
-//timestamp|end|user|sessionid
+//timestamp|call|otheruser|sessionkey
+//timestamp|lookup|user|sessionkey
+//timestamp|reject|user|sessionkey
+//timestamp|accept|user|sessionkey
+//timestamp|timeout|user|sessionkey
+//timestamp|end|user|sessionkey
 
-//timestamp|sessionid : for registering media port
+//timestamp|sessionkey : for registering media port
 	char *token;
 	int i = 0;
 	vector<string> result;

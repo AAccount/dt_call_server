@@ -15,7 +15,7 @@ User::User(string cuname, RSA *ckey)
 	publicKey = ckey;
 	commandfd = 0;
 	mediafd = 0;
-	sessionkey = 0;
+	sessionkey = "";
 	challenge = "";
 }
 
@@ -67,12 +67,12 @@ void User::setMediafd(uint32_t newMediafd)
 	mediafd = newMediafd;
 }
 
-uint64_t User::getSessionkey()
+string User::getSessionkey()
 {
 	return sessionkey;
 }
 
-void User::setSessionkey(uint64_t newSessionkey)
+void User::setSessionkey(string newSessionkey)
 {
 	sessionkey = newSessionkey;
 }

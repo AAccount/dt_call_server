@@ -1,9 +1,12 @@
+#define VERSION "2.1"
+
 #define BUFFERSIZE 1024 //how much media is transferred between users at a time
 					//media buffer must be larger than media frame (amr in this case) or it won't work
 					//example: amr encodes 32 bytes, making the buffer 64 bytes
 #define MAXLISTENWAIT 5
 #define MARGIN_OF_ERROR 5 //+- amount the command timestamp can be off by in minutes
-#define CHALLENGELENGTH 200
+#define CHALLENGE_LENGTH 200
+#define SESSION_KEY_LENGTH 59
 
 //which fd to set
 #define COMMAND 1

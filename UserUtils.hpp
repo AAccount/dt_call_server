@@ -37,19 +37,19 @@ public:
 	RSA *getUserPublicKey(string username);
 	string getUserChallenge(string username);
 	void setUserChallenge(string username, string challenge);
-	void setUserSession(string username, uint64_t sessionid);
-	void setFd(uint64_t sessionid, int fd, int which);
+	void setUserSession(string username, string sessionkey);
+	void setFd(string sessionkey, int fd, int which);
 	void clearSession(string username);
 
 	//db verification functions
-	bool verifySessionid(uint64_t sessionid, int fd);
+	bool verifySessionKey(string sessionkey, int fd);
 	bool doesUserExist(string name);
 
 	//db lookup functions
 	string userFromFd(int fd, int which);
-	string userFromSessionid(uint64_t sessionid);
+	string userFromSessionKey(string sessionkey);
 	int userFd(string user, int which);
-	uint64_t userSessionId(string uname);
+	string userSessionKey(string uname);
 	void killInstance();
 
 	//log related functions
@@ -65,7 +65,7 @@ private:
 	unordered_map<string, User*> nameMap;
 	unordered_map<uint32_t, User*> commandfdMap;
 	unordered_map<uint32_t, User*> mediafdMap;
-	unordered_map<uint64_t, User*> sessionkeyMap;
+	unordered_map<string, User*> sessionkeyMap;
 
 	//output log (changed every 24 hours)
 	ofstream logfile;

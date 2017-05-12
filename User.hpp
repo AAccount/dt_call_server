@@ -11,16 +11,14 @@
 #include <string>
 #include <openssl/pem.h>
 
-using namespace std;
-
 class User
 {
 public:
-	User(string cunmae, RSA *ckey);
-	string getUname();
+	User(std::string cunmae, RSA *ckey);
+	std::string getUname();
 	RSA* getPublicKey();
-	string getChallenge();
-	void setChallenge(string ch);
+	std:: string getChallenge();
+	void setChallenge(std::string ch);
 
 	uint32_t getCommandfd();
 	void setCommandfd(uint32_t newCommandfd);
@@ -28,18 +26,18 @@ public:
 	uint32_t getMediafd();
 	void setMediafd(uint32_t newMediafd);
 
-	uint64_t getSessionkey();
-	void setSessionkey(uint64_t newSessionkey);
+	std::string getSessionkey();
+	void setSessionkey(std::string newSessionkey);
 
 	virtual ~User();
 
 private:
 	uint32_t commandfd;
 	uint32_t mediafd;
-	string uname;
+	std::string uname;
 	RSA *publicKey;
-	string challenge;
-	uint64_t sessionkey;
+	std::string challenge;
+	std::string sessionkey;
 };
 
 #endif /* USER_HPP_ */

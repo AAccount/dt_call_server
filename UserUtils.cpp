@@ -126,7 +126,7 @@ void UserUtils::setUserChallenge(string username, string challenge)
 	}
 }
 
-void UserUtils::setUserSession(string username, uint64_t sessionid)
+void UserUtils::setUserSession(string username, string sessionid)
 {
 	if(nameMap.count(username) > 0)
 	{
@@ -136,7 +136,7 @@ void UserUtils::setUserSession(string username, uint64_t sessionid)
 	}
 }
 
-void UserUtils::setFd(uint64_t sessionid, int fd, int which)
+void UserUtils::setFd(string sessionid, int fd, int which)
 {
 
 	User *user = sessionkeyMap[sessionid];
@@ -177,7 +177,7 @@ void UserUtils::clearSession(string username)
 	}
 }
 
-bool UserUtils::verifySessionid(uint64_t sessionid, int fd)
+bool UserUtils::verifySessionKey(string sessionid, int fd)
 {
 	if(sessionkeyMap.count(sessionid) == 0)
 	{
@@ -207,7 +207,7 @@ string UserUtils::userFromFd(int fd, int which)
 	return "";
 }
 
-string UserUtils::userFromSessionid(uint64_t sessionid)
+string UserUtils::userFromSessionKey(string sessionid)
 {
 	if(sessionkeyMap.count(sessionid) > 0)
 	{
@@ -239,13 +239,13 @@ bool UserUtils::doesUserExist(string name)
 	return nameMap.count(name) > 0;
 }
 
-uint64_t UserUtils::userSessionId(string uname)
+string UserUtils::userSessionKey(string uname)
 {
 	if(nameMap.count(uname) > 0)
 	{
 		return nameMap[uname]->getSessionkey();
 	}
-	return 0;
+	return "";
 }
 
 void UserUtils::killInstance()
