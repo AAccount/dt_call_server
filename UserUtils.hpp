@@ -38,7 +38,7 @@ public:
 	string getUserChallenge(string username);
 	void setUserChallenge(string username, string challenge);
 	void setUserSession(string username, string sessionkey);
-	void setFd(string sessionkey, int fd, int which);
+	void setFd(string sessionkey, int fd, fdtype which);
 	void clearSession(string username);
 
 	//db verification functions
@@ -46,9 +46,9 @@ public:
 	bool doesUserExist(string name);
 
 	//db lookup functions
-	string userFromFd(int fd, int which);
+	string userFromFd(int fd, fdtype which);
 	string userFromSessionKey(string sessionkey);
-	int userFd(string user, int which);
+	int userFd(string user, fdtype which);
 	string userSessionKey(string uname);
 	void killInstance();
 

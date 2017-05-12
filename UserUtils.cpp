@@ -136,7 +136,7 @@ void UserUtils::setUserSession(string username, string sessionid)
 	}
 }
 
-void UserUtils::setFd(string sessionid, int fd, int which)
+void UserUtils::setFd(string sessionid, int fd, fdtype which)
 {
 
 	User *user = sessionkeyMap[sessionid];
@@ -188,7 +188,7 @@ bool UserUtils::verifySessionKey(string sessionid, int fd)
 	return user->getCommandfd() == fd;
 }
 
-string UserUtils::userFromFd(int fd, int which)
+string UserUtils::userFromFd(int fd, fdtype which)
 {
 	if(which == COMMAND)
 	{
@@ -217,7 +217,7 @@ string UserUtils::userFromSessionKey(string sessionid)
 	return "";
 }
 
-int UserUtils::userFd(string user, int which)
+int UserUtils::userFd(string user, fdtype which)
 {
 	if(nameMap.count(user) > 0)
 	{

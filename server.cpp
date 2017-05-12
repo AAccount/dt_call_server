@@ -34,7 +34,7 @@
 using namespace std;
 
 //information on what each socket descriptor is (command, media) and what it's supposed to be doing if it's a media socket
-unordered_map<int, int> sdinfo; 
+unordered_map<int, state> sdinfo;
 
 //associates socket descriptors to their ssl structs
 unordered_map<int, SSL*>clientssl;
@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
 					continue;
 				}
 
-				int sdstate = sdinfo[sd];
+				state sdstate = sdinfo[sd];
 				if(sdstate == SOCKCMD)
 				{
 					//what was previously a workaround now has an official purpose: heartbeat/ping ignore byte
@@ -459,7 +459,7 @@ int main(int argc, char *argv[])
 							}
 
 							//make sure zapper isn't already in a call
-							int currentState = sdinfo[zapperMediaFd];
+							state currentState = sdinfo[zapperMediaFd];
 							if(currentState != SOCKMEDIAIDLE)
 							{
 								string busy = to_string(now) + "|ring|busy|" + zapper;
@@ -1086,7 +1086,7 @@ bool isRealCall(string persona, string personb)
 	}
 
 	//check if either is in or waiting for a call
-	int astatus = sdinfo[afd];
+	state astatus = sdinfo[afd];
 	if(!((astatus ==  SOCKMEDIADIALING) || (astatus == SOCKMEDIALIVE)))
 	{
 #ifdef VERBOSE
@@ -1095,7 +1095,7 @@ bool isRealCall(string persona, string personb)
 		return false;
 	}
 
-	int bstatus = sdinfo[bfd];
+	state bstatus = sdinfo[bfd];
 	if(!((bstatus == SOCKMEDIADIALING) || (bstatus == SOCKMEDIALIVE)))
 	{
 #ifdef VERBOSE

@@ -8,18 +8,6 @@
 #define CHALLENGE_LENGTH 200
 #define SESSION_KEY_LENGTH 59
 
-//which fd to set
-#define COMMAND 1
-#define MEDIA 2
-
-//socket state
-// state > 0 : incall with that descriptor
-#define SOCKCMD -1
-#define SOCKMEDIANEW -2
-#define SOCKMEDIAIDLE -3
-#define SOCKMEDIADIALING -4
-#define SOCKMEDIALIVE -5
-
 //java 1 byte ignored character
 #define JBYTE "D"
 
@@ -47,3 +35,9 @@
 #define DEFAULTCMD 1991
 #define DEFAULTMEDIA 2014
 #define DEFAULTCIPHERS "DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:AES256-GCM-SHA384:AES256-SHA256:AES256-SHA:AES128-GCM-SHA256:AES128-SHA256:AES128-SHA"
+
+#ifndef CONST_INCLUDE
+#define CONST_INCLUDE
+	typedef enum {SOCKCMD, SOCKMEDIANEW, SOCKMEDIAIDLE, SOCKMEDIADIALING,SOCKMEDIALIVE} state; //socket state
+	typedef enum {COMMAND, MEDIA} fdtype; //which fd to set
+#endif
