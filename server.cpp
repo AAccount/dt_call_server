@@ -33,8 +33,6 @@
 
 using namespace std;
 
-//using goto in general to avoid excessive indentation and else statements
-
 //information on what each socket descriptor is (command, media) and what it's supposed to be doing if it's a media socket
 unordered_map<int, int> sdinfo; 
 
@@ -172,7 +170,7 @@ int main(int argc, char *argv[])
 				string error = "accept system call error";
 				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, DONTKNOW, relatedKey));
 				perror(error.c_str());
-				goto skipNewCmd;
+				continue;
 			}
 			string ip = inet_ntoa(cli_addr.sin_addr);
 
@@ -184,7 +182,7 @@ int main(int argc, char *argv[])
 				perror(error.c_str());
 				shutdown(incomingMedia, 2);
 				close(incomingMedia);
-				goto skipNewMedia;
+				continue;
 			}
 
 			//setup ssl connection
@@ -211,7 +209,6 @@ int main(int argc, char *argv[])
 				failCount[incomingCmd] = 0;
 			}
 		}
-		skipNewCmd:;
 
 		//check for a new incoming connection on media port
 		if(FD_ISSET(mediaFD, &readfds))
@@ -224,7 +221,7 @@ int main(int argc, char *argv[])
 				string error = "accept system call error";
 				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, DONTKNOW, relatedKey));
 				perror(error.c_str());
-				goto skipNewMedia;
+				continue;
 			}
 			string ip = inet_ntoa(cli_addr.sin_addr);
 
@@ -236,7 +233,7 @@ int main(int argc, char *argv[])
 				perror(error.c_str());
 				shutdown(incomingMedia, 2);
 				close(incomingMedia);
-				goto skipNewMedia;
+				continue;
 			}
 
 			SSL *connssl = SSL_new(sslcontext);
@@ -261,7 +258,6 @@ int main(int argc, char *argv[])
 				failCount[incomingMedia] = 0;
 			}
 		}
-		skipNewMedia:;
 
 		//check for data on an existing connection
 		//reuse the same iterator variable (reinitialize it too)
@@ -298,7 +294,7 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 						cout << "Got a " << JBYTE << " cap for media sd " << sd << "\n";
 #endif
-						goto skipfd;
+						continue;
 					}
 					string originalBufferCmd = string(inputBuffer); //save original command string before it gets mutilated by strtok
 					vector<string> commandContents = parse(inputBuffer);
@@ -326,7 +322,7 @@ int main(int argc, char *argv[])
 							//send the rejection to the client
 							string invalid = to_string(now) + "|resp|invalid|command\n";
 							write2Client(invalid, sdssl, iterationKey);
-							goto invalidcmd;
+							continue;
 						}
 						if(command == "login1") //you can do string comparison like this in c++
 						{//timestamp|login1|username
@@ -361,7 +357,7 @@ int main(int argc, char *argv[])
 								userUtils->insertLog(Log(TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip, iterationKey));
 								write2Client(invalid, sdssl, iterationKey);
 								removals.push_back(sd); //nothing useful can come from this socket
-								goto invalidcmd;
+								continue;
 							}
 
 							//generate the challenge gibberish
@@ -405,7 +401,7 @@ int main(int argc, char *argv[])
 
 								//reset challenge in case it was wrong
 								userUtils->setUserChallenge(username, "");
-								goto invalidcmd;
+								continue;
 							}
 
 							//challenge was correct and wasn't "", set the info
@@ -437,7 +433,7 @@ int main(int argc, char *argv[])
 								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
-								goto invalidcmd;
+								continue;
 							}
 
 							//double check touma has a mediafd
@@ -447,7 +443,7 @@ int main(int argc, char *argv[])
 								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
-								goto invalidcmd;
+								continue;
 							}
 
 							//find out if zapper has both a command and media fd
@@ -458,7 +454,7 @@ int main(int argc, char *argv[])
 								string na = to_string(now) + "|ring|notavailable|" + zapper;
 								write2Client(na, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, na, touma, OUTBOUNDLOG, ip, iterationKey));
-								goto invalidcmd; //while not really an invalid command, there's no point of continuing
+								continue; //while not really an invalid command, there's no point of continuing
 							}
 
 							//make sure zapper isn't already in a call
@@ -468,7 +464,7 @@ int main(int argc, char *argv[])
 								string busy = to_string(now) + "|ring|busy|" + zapper;
 								write2Client(busy, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_CALL, busy, touma, OUTBOUNDLOG, ip, iterationKey));
-								goto invalidcmd; //not really invalid either but can't continue any further at this point
+								continue; //not really invalid either but can't continue any further at this point
 							}
 
 							//make sure touma didn't accidentally dial himself
@@ -478,7 +474,7 @@ int main(int argc, char *argv[])
 								write2Client(busy, sdssl, iterationKey);
 								busy = "(self dialed) " + busy;
 								userUtils->insertLog(Log(TAG_CALL, busy, touma, OUTBOUNDLOG, ip, iterationKey));
-								goto invalidcmd; //not really invalid either but can't continue any further at this point
+								continue; //not really invalid either but can't continue any further at this point
 							}
 
 							//setup the media fd statuses
@@ -514,7 +510,7 @@ int main(int argc, char *argv[])
 								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_LOOKUP, invalid, from, OUTBOUNDLOG, ip, iterationKey));
-								goto invalidcmd;
+								continue;
 							}
 							string exists = (userUtils->doesUserExist(who)) ? "exists" : "doesntexist";
 							string resp = to_string(now) + "|lookup|" + who + "|" + exists;
@@ -539,7 +535,7 @@ int main(int argc, char *argv[])
 								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_ACCEPT, invalid, zapper, OUTBOUNDLOG, ip , iterationKey));
-								goto invalidcmd;
+								continue;
 							}
 
 							int zapperMediaFd = userUtils->userFd(zapper, MEDIA);
@@ -578,7 +574,7 @@ int main(int argc, char *argv[])
 								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_REJECT, invalid, zapper, OUTBOUNDLOG, ip , iterationKey));
-								goto invalidcmd;
+								continue;
 							}
 
 							//set touma's and zapper's media socket state back to idle
@@ -617,7 +613,7 @@ int main(int argc, char *argv[])
 								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_END, invalid, wants2End, OUTBOUNDLOG, ip, iterationKey));
-								goto invalidcmd;
+								continue;
 							}
 
 							//set touma's and zapper's media socket state back to idle
@@ -654,7 +650,7 @@ int main(int argc, char *argv[])
 								string invalid = to_string(now) + "|resp|invalid|command";
 								write2Client(invalid, sdssl, iterationKey);
 								userUtils->insertLog(Log(TAG_TIMEOUT, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
-								goto invalidcmd;
+								continue;
 							}
 
 							//set touma's and zapper's media socket state back to idle
@@ -701,7 +697,6 @@ int main(int argc, char *argv[])
 						write2Client(invalid, sdssl, iterationKey);
 						userUtils->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, iterationKey));
 					}
-					invalidcmd:; //bad timestamp, invalid sessionid, not real call... etc.
 				}
 				else if(sdstate == SOCKMEDIANEW)
 				{//timestamp|sessionid (of the user this media fd should be registered/associated to)
@@ -715,7 +710,7 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 						cout << "Got a " << JBYTE << " cap for media sd " << sd << "\n";
 #endif
-						goto skipfd;
+						continue;
 					}
 					string ip = ipFromSd(sd);
 					//need to write the string to the db before it gets mutilated by strtok in parse(bufferMedia)
@@ -738,7 +733,7 @@ int main(int argc, char *argv[])
 							uint64_t seconds = timeDifference - mins*60;
 							string error = "timestamp " + to_string(mins) + ":" + to_string(seconds) + " outside 5min window of error";
 							userUtils->insertLog(Log(TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, iterationKey));
-							goto skipreg;
+							continue;
 						}
 
 						//check sessionid belongs to a signed in user
@@ -746,7 +741,7 @@ int main(int argc, char *argv[])
 						{
 							string error = "user cannot be identified from session id";
 							userUtils->insertLog(Log(TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, iterationKey));
-							goto skipreg;
+							continue;
 						}
 						string message = "According to the session id, the media socket is for: " + intendedUser;
 						userUtils->insertLog(Log(TAG_MEDIANEW, message, intendedUser, INBOUNDLOG, ip, iterationKey));
@@ -757,7 +752,7 @@ int main(int argc, char *argv[])
 						{//with a valid timestamp, valid sessionid, there is no cmd fd for this user??? how??? you must log in through a cmd fd to get a sessionid
 							string error = "(possible bug) valid timestamp and sessionid but " + intendedUser + " has no command fd. can't continue association of media socket";
 							userUtils->insertLog(Log(TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, iterationKey));
-							goto skipreg;
+							continue;
 						}
 
 						//besides presenting the right sessionid to associate with the user (which could be a lucky guess)
@@ -780,7 +775,7 @@ int main(int argc, char *argv[])
 							error = error + " last registered from ip address:" + string(inet_ntoa(cmdFdInfo.sin_addr)) + "\n";
 							error = error + " is CURRENTLY registering from ip address: " + string(inet_ntoa(thisfd.sin_addr));
 							userUtils->insertLog(Log(TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, iterationKey));
-							goto skipreg;
+							continue;
 						}
 						userUtils->setFd(sessionid, sd, MEDIA);
 						sdinfo[sd] = SOCKMEDIAIDLE;
@@ -796,8 +791,6 @@ int main(int argc, char *argv[])
 						string error = "client sent a misformed media port association request, out of range exception";
 						userUtils->insertLog(Log(TAG_MEDIANEW, error, DONTKNOW, ERRORLOG, ip, iterationKey));
 					}
-
-					skipreg:; //skip media fd registration. something didn't check out ok.
 				}
 #ifdef VERBOSE
 				else if(sdstate == SOCKMEDIAIDLE)
@@ -885,7 +878,7 @@ int main(int argc, char *argv[])
 						{
 							string error = "call was dropped but the user had no session id?? possible bug";
 							userUtils->insertLog(Log(TAG_MEDIACALL, error, user, ERRORLOG, ip, iterationKey));
-							goto skipfd;
+							continue;
 						}
 
 						//write to the person who got dropped's command fd that the call was dropped
@@ -902,7 +895,6 @@ int main(int argc, char *argv[])
 				}
 
 			}// if FD_ISSET : figure out command or voice and handle appropriately
-		skipfd:; //fd was dead. removed it. go on to the next one
 		}// for loop going through the fd set
 
 		//now that all fds are finished inspecting, remove any of them that are dead.
