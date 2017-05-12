@@ -31,12 +31,16 @@
 #define FAILMAX 10
 
 //where the configuration file is
-//#define CONFFILE "/etc/dtoperator/dtoperator.conf"
-//#define USERSFILE "/etc/dtoperator/users"
-//#define LOGFOLDER "/var/log/dtoperator/"
-#define CONFFILE "/home/Daniel/dtoperator/dtoperator.conf"
-#define USERSFILE "/home/Daniel/dtoperator/users"
-#define LOGFOLDER "/tmp/"
+//#define LIVE
+#ifdef LIVE
+	#define CONFFILE "/etc/dtoperator/dtoperator.conf"
+	#define USERSFILE "/etc/dtoperator/users"
+	#define LOGFOLDER "/var/log/dtoperator/"
+#else
+	#define CONFFILE "/home/Daniel/dtoperator/dtoperator.conf"
+	#define USERSFILE "/home/Daniel/dtoperator/users"
+	#define LOGFOLDER "/tmp/"
+#endif
 
 #define LOGPREFIX "log "
 
