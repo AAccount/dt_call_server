@@ -163,7 +163,7 @@ void UserUtils::clearSession(string username)
 
 		//remove session key
 		sessionkeyMap.erase(user->getSessionkey());
-		user->setSessionkey(0);
+		user->setSessionkey("");
 
 		//remove command and media fds
 		commandfdMap.erase(user->getCommandfd());
