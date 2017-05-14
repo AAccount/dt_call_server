@@ -726,13 +726,13 @@ int main(int argc, char *argv[])
 						//check timestamp is ok
 						time_t now = time(NULL);
 						uint64_t timestamp = (uint64_t)stoull(commandContents.at(0));
-						uint64_t fivemins = 60*5;
+						uint64_t fivemins = 60*MARGIN_OF_ERROR;
 						uint64_t timeDifference = max((uint64_t)now, timestamp) - min((uint64_t)now, timestamp);
 						if(timeDifference > fivemins)
 						{
 							uint64_t mins = timeDifference/60;
 							uint64_t seconds = timeDifference - mins*60;
-							string error = "timestamp " + to_string(mins) + ":" + to_string(seconds) + " outside 5min window of error";
+							string error = "timestamp " + to_string(mins) + ":" + to_string(seconds) + " outside " + to_string(MARGIN_OF_ERROR) + "min window of error";
 							userUtils->insertLog(Log(TAG_MEDIANEW, error, intendedUser, ERRORLOG, ip, iterationKey));
 							continue;
 						}
