@@ -388,6 +388,7 @@ int main(int argc, char *argv[])
 							write2Client(resp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
 							userUtils->insertLog(Log(TAG_LOGIN, "challenge gibberish: " + challenge, username, SYSTEMLOG, ip, iterationKey));
+							continue; //login command, no session key to verify, continue to the next fd after proccessing login1
 						}
 						else if(command == "login2")
 						{//timestamp|login2|username|challenge
@@ -428,27 +429,32 @@ int main(int argc, char *argv[])
 							string resp = to_string(now) + "|resp|login2|" + sessionkey;
 							write2Client(resp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
+							continue; //login command, no session key to verify, continue to the next fd after proccessing login2
 						}
+
+						//done processing login commands.
+						//all (non login) commands have the format timestamp|COMMAND|PERSON_OF_INTEREST|sessionkey
+						string sessionkey = commandContents.at(3);
+						string user = userUtils->userFromFd(sd, COMMAND);
+						if(!userUtils->verifySessionKey(sessionkey, sd))
+						{
+							string error = "INVALID SESSION ID. refusing command ("+originalBufferCmd+")";
+							userUtils->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip, iterationKey));
+
+							string invalid = to_string(now) + "|resp|invalid|command";
+							write2Client(invalid, sdssl, iterationKey);
+							userUtils->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip, iterationKey));
+							continue;
+						}
+
 						//variables written from touma calling zapper perspective
 						//command will come from touma's cmd fd
-						else if (command == "call")
-						{//timestamp|call|zapper|toumaid
+						if (command == "call")
+						{//timestamp|call|zapper|toumakey
 
-							string sessionkey = commandContents.at(3);
 							string zapper = commandContents.at(2);
-							string touma = userUtils->userFromSessionKey(sessionkey);
+							string touma = user;
 							userUtils->insertLog(Log(TAG_CALL, originalBufferCmd, touma, INBOUNDLOG, ip, iterationKey));
-
-							if(!userUtils->verifySessionKey(sessionkey, sd))
-							{
-								string error = " INVALID SESSION ID. refusing to start call";
-								userUtils->insertLog(Log(TAG_CALL, error, touma, ERRORLOG, ip, iterationKey));
-
-								string invalid = to_string(now) + "|resp|invalid|command";
-								write2Client(invalid, sdssl, iterationKey);
-								userUtils->insertLog(Log(TAG_CALL, invalid, touma, OUTBOUNDLOG, ip, iterationKey));
-								continue;
-							}
 
 							//double check touma has a mediafd
 							int toumaMediaFd = userUtils->userFd(touma, MEDIA);
@@ -510,22 +516,11 @@ int main(int argc, char *argv[])
 							userUtils->insertLog(Log(TAG_CALL, notifyZapper, zapper, OUTBOUNDLOG, ip, iterationKey));
 						}
 						else if (command == "lookup")
-						{
+						{//timestamp|lookup|who|fromkey
 							string who = commandContents.at(2);
-							string sessionkey = commandContents.at(3);
-							string from = userUtils->userFromSessionKey(sessionkey);
+							string from = user;
 							userUtils->insertLog(Log(TAG_LOOKUP, originalBufferCmd, from, INBOUNDLOG, ip, iterationKey));
 
-							if(!userUtils->verifySessionKey(sessionkey, sd))
-							{
-								string error = "invalid session key attempting to do a user lookup";
-								userUtils->insertLog(Log(TAG_LOOKUP, error, from, ERRORLOG, ip, iterationKey));
-
-								string invalid = to_string(now) + "|resp|invalid|command";
-								write2Client(invalid, sdssl, iterationKey);
-								userUtils->insertLog(Log(TAG_LOOKUP, invalid, from, OUTBOUNDLOG, ip, iterationKey));
-								continue;
-							}
 							string exists = (userUtils->doesUserExist(who)) ? "exists" : "doesntexist";
 							string resp = to_string(now) + "|lookup|" + who + "|" + exists;
 							write2Client(resp, sdssl, iterationKey);
@@ -535,9 +530,8 @@ int main(int argc, char *argv[])
 						//variables written when zapper accepets touma's call
 						//command will come from zapper's cmd fd
 						else if (command == "accept")
-						{//timestamp|accept|touma|zapperid
-							string sessionkey = commandContents.at(3);
-							string zapper = userUtils->userFromSessionKey(sessionkey);
+						{//timestamp|accept|touma|zapperkey
+							string zapper = user;
 							string touma = commandContents.at(2);
 							userUtils->insertLog(Log(TAG_ACCEPT, originalBufferCmd, zapper, INBOUNDLOG, ip, iterationKey));
 
@@ -580,9 +574,8 @@ int main(int argc, char *argv[])
 						//variables modeled after setup touma calling zapper for easier readability
 						//reject command would come from zapper's cmd fd
 						else if (command == "reject")
-						{//timestamp|reject|touma|sessionkey
-							string sessionkey = commandContents.at(3);
-							string zapper = userUtils->userFromSessionKey(sessionkey);
+						{//timestamp|reject|touma|zapperkey
+							string zapper = user;
 							string touma = commandContents.at(2);
 							userUtils->insertLog(Log(TAG_REJECT, originalBufferCmd, zapper, INBOUNDLOG, ip, iterationKey));
 
@@ -617,10 +610,9 @@ int main(int argc, char *argv[])
 						//nothing has to be sent to touma because his phone will automatically take care of itself
 						//	to back back to the home screen
 						else if(command =="timeout")
-						{
+						{//timestamp|timeout|zapper|toumakey
 							string zapper = commandContents.at(2);
-							string sessionkey = commandContents.at(3);
-							string touma = userUtils->userFromSessionKey(sessionkey);
+							string touma = user;
 							userUtils->insertLog(Log(TAG_TIMEOUT, originalBufferCmd, touma, INBOUNDLOG, ip, iterationKey));
 
 							if(!isRealCall(touma, zapper))
@@ -643,7 +635,7 @@ int main(int argc, char *argv[])
 							liveList.erase(zapper);
 
 							//tell zapper that time's up for answering touma's call
-							string resp = to_string(now) + "|ring|timeout|" + touma;
+							string resp = to_string(now) + "|call|end|" + touma;
 							int zapperCmdFd = userUtils->userFd(zapper, COMMAND);
 							SSL *zapperCmdSsl = clientssl[zapperCmdFd];
 							write2Client(resp, zapperCmdSsl, iterationKey);
@@ -940,6 +932,11 @@ void* callThreadFx(void *ptr)
 					pthread_mutex_lock(&removalsMutex);
 					removals.push_back(otherfd);
 					pthread_mutex_unlock(&removalsMutex);
+
+					string ip = ipFromSd(otherfd);
+					string recepientName = mediafds.at(other).second;
+					string error = "reached maximum media socket write failure of: " + to_string(FAILMAX);
+					userUtils->insertLog(Log(TAG_MEDIACALL, error, recepientName, ERRORLOG, ip, iterationKey));
 					quit = true;
 				}
 			}
@@ -979,7 +976,9 @@ void* callThreadFx(void *ptr)
 //use a vector to prevent reading out of bounds
 vector<string> parse(char command[])
 {
-//timestamp|login|username|passwd
+//timestamp|login1|username
+//timestamp|login2|username|challenge_decrypted
+
 //timestamp|call|otheruser|sessionkey
 //timestamp|lookup|user|sessionkey
 //timestamp|reject|user|sessionkey
