@@ -4,6 +4,9 @@
 
 using namespace std;
 
+//dedicated function for handling a call. each call is processed on its own thread.
+void* callThreadFx(void *ptr);
+
 //parse incoming server commands (split the incoming command string by the | character)
 vector<string> parse(char command[]);
 

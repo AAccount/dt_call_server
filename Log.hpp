@@ -30,6 +30,7 @@
 #define TAG_MEDIANEW "new media socket"
 #define TAG_MEDIACALL "media socket event"
 #define TAG_SSLCMD "ssl command write"
+#define TAG_CALLTHREAD "call thread"
 
 #include <string>
 #include <iostream>

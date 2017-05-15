@@ -1,23 +1,21 @@
-#JAVA1BYTE: workaround for java sending the first byte over a socket separately on the second and subsequent writes
 #JCALLDIAG: show the call contents as text for jclient. won't show anything meaningful in a real call
-#JSTOPMEDIA: for removeClient, only remove both command and media if the given socket descriptor was a command. currently media is being killed and restarted by jclient to stop the 2 media r/w threads. you don't want to be kicked out by having the command socket closed because you're using THE ONLY known workaround for stopping a blocking thread in java
 #VERBOSE: print out a summary of what happened every single select call. (the old cout, pre dblog, debugging output)
 MATH = -lm
 OPENSSL = -lssl -lcrypto
-
+PTHREAD = -pthread
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
- LEGACYDBGCFLAGS = -g -m32 -Werror -DJSTOPMEDIA -fPIE
- OPTCFLAGS = -flto -O2 -march=native -Werror -DJSTOPMEDIA -fPIE -D_FORTIFY_SOURCE=2
- CFLAGS = -g -Werror -DJSTOPMEDIA -DJCALLDIAG -fPIE
+ LEGACYDBGCFLAGS = -g -m32 -Werror -fPIE
+ OPTCFLAGS = -flto -O2 -march=native -Werror -fPIE -D_FORTIFY_SOURCE=2
+ CFLAGS = -g -Werror -fPIE
  LDFLAGS = -pie
  CC = gcc
  CXX = g++ -std=c++11
 endif
 
 ifeq ($(UNAME),FreeBSD)
- CFLAGS = -O2 -march=native -Werror -DJSTOPMEDIA -fPIE
- DBGFLAGS = -g -Werror -DJCALLDIAG -DJSTOPMEDIA -DJCALLDIAG -fPIE
+ CFLAGS = -O2 -march=native -Werror -fPIE
+ DBGFLAGS = -g -Werror -fPIE
  LDFLAGS = -pie
  INC = -I /usr/local/include
  LIB = -L /usr/local/lib
@@ -26,7 +24,7 @@ ifeq ($(UNAME),FreeBSD)
 endif
 
 server: server.o server_init.o UserUtils.o Log.o Utils.o User.o
-	${CXX} ${CFLAGS} ${LDFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o ${OPENSSL} ${MATH} ${INC} ${LIB}
+	${CXX} ${CFLAGS} ${LDFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o ${OPENSSL} ${MATH} ${PTHREAD} ${INC} ${LIB}
 
 server.o : server.cpp server.hpp
 	${CXX} ${CFLAGS} -c server.cpp ${INC}
