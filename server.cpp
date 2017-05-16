@@ -336,27 +336,8 @@ int main(int argc, char *argv[])
 							string ip = ipFromSd(sd);
 							userUtils->insertLog(Log(TAG_LOGIN, originalBufferCmd, username, INBOUNDLOG, ip, iterationKey));
 
-							int oldcmd = userUtils->userFd(username, COMMAND);
-							if(oldcmd > 0)
-							{//remove old SSL structs to prevent memory leak
-#ifdef VERBOSE
-								cout << "previous command socket/SSL* exists, will remove\n";
-#endif
-								pthread_mutex_lock(&removalsMutex);
-								removals.push_back(oldcmd);
-								pthread_mutex_unlock(&removalsMutex);
-							}
-
-							int oldmedia = userUtils->userFd(username, MEDIA);
-							if(oldmedia > 0)
-							{//remove old SSL structs to prevent memory leak
-#ifdef VERBOSE
-								cout << "previous meida socket/SSL* exists, will remove\n";
-#endif
-								pthread_mutex_lock(&removalsMutex);
-								removals.push_back(oldmedia);
-								pthread_mutex_unlock(&removalsMutex);
-							}
+							//don't immediately remove old command and media fd. this would allow anyone
+							//	to send a login1 command and kick out a legitimately logged in person.
 
 							//get the user's public key
 							RSA *publicKey = userUtils->getUserPublicKey(username);
@@ -417,6 +398,31 @@ int main(int argc, char *argv[])
 								//reset challenge in case it was wrong
 								userUtils->setUserChallenge(username, "");
 								continue;
+							}
+
+							//now that the person has successfully logged in, remove the old information.
+							//	this person has established new connections so it's 100% sure the old ones aren't
+							//	needed anymore.
+							int oldcmd = userUtils->userFd(username, COMMAND);
+							if(oldcmd > 0)
+							{//remove old SSL structs to prevent memory leak
+#ifdef VERBOSE
+								cout << "previous command socket/SSL* exists, will remove\n";
+#endif
+								pthread_mutex_lock(&removalsMutex);
+								removals.push_back(oldcmd);
+								pthread_mutex_unlock(&removalsMutex);
+							}
+
+							int oldmedia = userUtils->userFd(username, MEDIA);
+							if(oldmedia > 0)
+							{//remove old SSL structs to prevent memory leak
+#ifdef VERBOSE
+								cout << "previous meida socket/SSL* exists, will remove\n";
+#endif
+								pthread_mutex_lock(&removalsMutex);
+								removals.push_back(oldmedia);
+								pthread_mutex_unlock(&removalsMutex);
 							}
 
 							//challenge was correct and wasn't "", set the info
