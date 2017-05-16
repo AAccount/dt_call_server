@@ -368,7 +368,9 @@ int main(int argc, char *argv[])
 							string resp = to_string(now) + "|resp|login1|" + encString;
 							write2Client(resp, sdssl, iterationKey);
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
-							userUtils->insertLog(Log(TAG_LOGIN, "challenge gibberish: " + challenge, username, SYSTEMLOG, ip, iterationKey));
+#ifdef VERBOSE
+							cout << "challenge gibberish: " << challenge << "\n";
+#endif
 							continue; //login command, no session key to verify, continue to the next fd after proccessing login1
 						}
 						else if(command == "login2")
