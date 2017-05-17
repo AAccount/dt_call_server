@@ -414,6 +414,11 @@ int main(int argc, char *argv[])
 								pthread_mutex_lock(&removalsMutex);
 								removals.push_back(oldcmd);
 								pthread_mutex_unlock(&removalsMutex);
+								//dissociate old fd from user otherwise the person will have 2 commandfds listed in
+								//	comamandfdMap. however the User object pointed to in commandfd map will have the
+								//	new fd. clear session will clear all the new login information at the end of this
+								//	select round. don't wait until then. do it now.
+								userUtils->clearSession(username);
 							}
 
 							int oldmedia = userUtils->userFd(username, MEDIA);
@@ -425,6 +430,7 @@ int main(int argc, char *argv[])
 								pthread_mutex_lock(&removalsMutex);
 								removals.push_back(oldmedia);
 								pthread_mutex_unlock(&removalsMutex);
+								userUtils->clearSession(username);
 							}
 
 							//challenge was correct and wasn't "", set the info
