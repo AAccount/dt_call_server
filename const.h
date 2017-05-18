@@ -7,6 +7,7 @@
 #define MARGIN_OF_ERROR 5 //+- amount the command timestamp can be off by in minutes
 #define CHALLENGE_LENGTH 200
 #define SESSION_KEY_LENGTH 59
+#define SESSION_KEY_PLACEHOLDER "SESSION_KEY_HERE"
 
 //java 1 byte ignored character
 #define JBYTE "D"

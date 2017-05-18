@@ -375,6 +375,8 @@ int main(int argc, char *argv[])
 						}
 						else if(command == "login2")
 						{//timestamp|login2|username|challenge
+
+							//ok to store challenge answer in the log. challenge is single use, disposable
 							string username = commandContents.at(2);
 							string ip = ipFromSd(sd);
 							userUtils->insertLog(Log(TAG_LOGIN, originalBufferCmd, username, INBOUNDLOG, ip, iterationKey));
@@ -442,6 +444,9 @@ int main(int argc, char *argv[])
 							//send an ok
 							string resp = to_string(now) + "|resp|login2|" + sessionkey;
 							write2Client(resp, sdssl, iterationKey);
+#ifndef VERBOSE
+							resp = to_string(now) + "|resp|login2|" + SESSION_KEY_PLACEHOLDER;
+#endif
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
 							continue; //login command, no session key to verify, continue to the next fd after proccessing login2
 						}
@@ -450,6 +455,9 @@ int main(int argc, char *argv[])
 						//all (non login) commands have the format timestamp|COMMAND|PERSON_OF_INTEREST|sessionkey
 						string sessionkey = commandContents.at(3);
 						string user = userUtils->userFromFd(sd, COMMAND);
+#ifndef VERBOSE //unless needed, don't log session keys as they're still in use
+						originalBufferCmd = commandContents.at(0) + "|" + commandContents.at(1) + "|" + commandContents.at(2) + "|" + SESSION_KEY_PLACEHOLDER;
+#endif
 						if(!userUtils->verifySessionKey(sessionkey, sd))
 						{
 							string error = "INVALID SESSION ID. refusing command ("+originalBufferCmd+")";
@@ -699,10 +707,14 @@ int main(int argc, char *argv[])
 #endif
 						continue;
 					}
+					vector<string> commandContents = parse(inputBuffer);
+					string originalBufferContents(inputBuffer);
+#ifndef VERBOSE //don't leak session keys here either
+					originalBufferContents = commandContents.at(0) + "|" + SESSION_KEY_PLACEHOLDER;
+#endif
 					string ip = ipFromSd(sd);
 					//need to write the string to the db before it gets mutilated by strtok in parse(bufferMedia)
-					userUtils->insertLog(Log(TAG_MEDIANEW, string(inputBuffer), DONTKNOW, INBOUNDLOG, ip, iterationKey));
-					vector<string> commandContents = parse(inputBuffer);
+					userUtils->insertLog(Log(TAG_MEDIANEW, originalBufferContents, DONTKNOW, INBOUNDLOG, ip, iterationKey));
 
 					try
 					{
