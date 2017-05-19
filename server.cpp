@@ -416,11 +416,9 @@ int main(int argc, char *argv[])
 								pthread_mutex_lock(&removalsMutex);
 								removals.push_back(oldcmd);
 								pthread_mutex_unlock(&removalsMutex);
-								//dissociate old fd from user otherwise the person will have 2 commandfds listed in
-								//	comamandfdMap. however the User object pointed to in commandfd map will have the
-								//	new fd. clear session will clear all the new login information at the end of this
-								//	select round. don't wait until then. do it now.
-								userUtils->clearSession(username);
+
+								//don't erase the session in here otherwise the old media fd won't be findable
+								//	and its resources leaked
 							}
 
 							int oldmedia = userUtils->userFd(username, MEDIA);
@@ -432,8 +430,13 @@ int main(int argc, char *argv[])
 								pthread_mutex_lock(&removalsMutex);
 								removals.push_back(oldmedia);
 								pthread_mutex_unlock(&removalsMutex);
-								userUtils->clearSession(username);
 							}
+
+							//dissociate old fd from user otherwise the person will have 2 commandfds listed in
+							//	comamandfdMap. remove client will see the old fd pointing to the user and will clear
+							//	the user's session key and fds. don't want them cleared as they're now the new ones.
+							//	immediately clean up this person's records before all the new stuff goes in
+							userUtils->clearSession(username);
 
 							//challenge was correct and wasn't "", set the info
 							string sessionkey = Utils::randomString(SESSION_KEY_LENGTH);
@@ -1042,36 +1045,30 @@ void removeClient(int sd)
 	cout << "removing " << uname << "'s socket descriptors (cmd, media): (" << cmd << "," << media << ")\n";
 #endif
 
-	if (cmd > 4) //0 stdin, 1 stdout, 2 stderr, 3 command receive, 4, media receive
+	if (clientssl.count(cmd) > 0) //0 stdin, 1 stdout, 2 stderr, 3 command receive, 4, media receive
 	{
+
+		SSL_shutdown(clientssl[cmd]);
+		SSL_free(clientssl[cmd]);
+		shutdown(cmd, 2);
+		close(cmd);
 
 		sdinfo.erase(cmd);
 		failCount.erase(cmd);
-
-		if (clientssl.count(cmd) > 0)
-		{
-			SSL_shutdown(clientssl[cmd]);
-			SSL_free(clientssl[cmd]);
-			shutdown(cmd, 2);
-			close(cmd);
-			clientssl.erase(cmd);
-		}
+		clientssl.erase(cmd);
 	}
 
-	if (media > 4)
-	{
+	if (clientssl.count(media) > 0) //in case the media socket gets erased first it won't be there anymore when
+	{                               //it gets identified in userUtils->userFromFd(sd, COMMAND)
+
+		SSL_shutdown(clientssl[media]);
+		SSL_free(clientssl[media]);
+		shutdown(media, 2);
+		close(media);
 
 		sdinfo.erase(media);
 		failCount.erase(media);
-
-		if (clientssl.count(media) > 0)
-		{
-			SSL_shutdown(clientssl[media]);
-			SSL_free(clientssl[media]);
-			shutdown(media, 2);
-			close(media);
-			clientssl.erase(media);
-		}
+		clientssl.erase(media);
 	}
 
 	//if this really is a media fd being removed, remove the live call stuff and free its pthread
