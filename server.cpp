@@ -1042,19 +1042,13 @@ void removeClient(int sd)
 	cout << "removing " << uname << "'s socket descriptors (cmd, media): (" << cmd << "," << media << ")\n";
 #endif
 
-	if(cmd > 4) //0 stdin, 1 stdout, 2 stderr, 3 command receive, 4, media receive
+	if (cmd > 4) //0 stdin, 1 stdout, 2 stderr, 3 command receive, 4, media receive
 	{
-		if(sdinfo.count(cmd) > 0)
-		{
-			sdinfo.erase(cmd);
-		}
-		
-		if(failCount.count(cmd > 0))
-		{
-			failCount.erase(cmd);
-		}
 
-		if(clientssl.count(cmd) > 0)
+		sdinfo.erase(cmd);
+		failCount.erase(cmd);
+
+		if (clientssl.count(cmd) > 0)
 		{
 			SSL_shutdown(clientssl[cmd]);
 			SSL_free(clientssl[cmd]);
@@ -1064,19 +1058,13 @@ void removeClient(int sd)
 		}
 	}
 
-	if(media > 4)
+	if (media > 4)
 	{
-		if(sdinfo.count(media) > 0)
-		{
-			sdinfo.erase(media);
-		}
-		
-		if(failCount.count(cmd > 0))
-		{
-			failCount.erase(cmd);
-		}
 
-		if(clientssl.count(media) > 0)
+		sdinfo.erase(media);
+		failCount.erase(media);
+
+		if (clientssl.count(media) > 0)
 		{
 			SSL_shutdown(clientssl[media]);
 			SSL_free(clientssl[media]);
