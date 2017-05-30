@@ -367,9 +367,6 @@ int main(int argc, char *argv[])
 							//send the challenge
 							string resp = to_string(now) + "|resp|login1|" + encString;
 							write2Client(resp, sdssl, iterationKey);
-#ifndef VERBOSE
-							resp = to_string(now) + "|resp|login1|" + CHALLENGE_PLACEHOLDER;
-#endif
 							userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip, iterationKey));
 							continue; //login command, no session key to verify, continue to the next fd after proccessing login1
 						}
