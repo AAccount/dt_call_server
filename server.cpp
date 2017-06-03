@@ -976,11 +976,11 @@ void* callThreadFx(void *ptr)
 	//only way to exit the loop is if somebody's socket dies, whether on purpose or not
 
 	//reset the media connection state
+	sendDrop = string(sendDropBuffer);
 	int media = userUtils->userFd(sendDrop, MEDIA);
 	sdinfo[media] = SOCKMEDIAIDLE;
 
 	//send the call end
-	sendDrop = string(sendDropBuffer);
 	sendCallEnd(sendDrop, iterationKey);
 
 	return NULL;
