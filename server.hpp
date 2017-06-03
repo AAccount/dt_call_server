@@ -28,3 +28,6 @@ string stringify(unsigned char *bytes, int length);
 
 //read an SSL socket into param inputBuffer. maximum read size in const.h
 int readSSL(SSL *sdssl, char inputBuffer[], uint64_t iterationKey);
+
+//send a call end/drop to this person
+void sendCallEnd(string who, uint64_t iterationKey);

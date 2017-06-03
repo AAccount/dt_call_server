@@ -973,27 +973,15 @@ void* callThreadFx(void *ptr)
 			break;
 		}
 	}
-
 	//only way to exit the loop is if somebody's socket dies, whether on purpose or not
-	sendDrop = string(sendDropBuffer);
-	int command = userUtils->userFd(sendDrop, COMMAND);
-	int media = userUtils->userFd(sendDrop, MEDIA);
-
-	//logging related stuff
-	string ip = ipFromSd(command);
 
 	//reset the media connection state
+	int media = userUtils->userFd(sendDrop, MEDIA);
 	sdinfo[media] = SOCKMEDIAIDLE;
 
-	//drop the call for the user
-	time_t now = time(NULL);
-	string other = (sendDrop == persona) ? personb : persona;
-
-	//write to the person who got dropped's command fd that the call was dropped
-	string end = to_string(now) + "|call|end|" + other;
-	SSL *cmdSsl = clientssl[command];
-	write2Client(end, cmdSsl, iterationKey);
-	userUtils->insertLog(Log(TAG_CALLTHREAD, end, sendDrop, OUTBOUNDLOG, ip, iterationKey));
+	//send the call end
+	sendDrop = string(sendDropBuffer);
+	sendCallEnd(sendDrop, iterationKey);
 
 	return NULL;
 }
@@ -1037,7 +1025,6 @@ void removeClient(int sd)
 	cmd = sd;
 	media = userUtils->userFd(uname, MEDIA);
 
-
 #ifdef VERBOSE
 	cout << "removing " << uname << "'s socket descriptors (cmd, media): (" << cmd << "," << media << ")\n";
 #endif
@@ -1069,18 +1056,37 @@ void removeClient(int sd)
 	}
 
 	//if this really is a media fd being removed, remove the live call stuff and free its pthread
-	string medaiaFdOwner = userUtils->userFromFd(cmd, MEDIA);
-	if(pthreads.count(medaiaFdOwner) > 0)
+	//any kind of call end: drop, end live call, "never mind" a call that was placed but got response
+	//	will cause the media socket to die (by design so that the death of a media socket is the universal
+	//	signal to stop the call session whether live or in the process of hooking up): want only 1 signal
+	//	to simplify code on the server and the client. avoid multiple signals/code chunks that do almost the same thing.
+	//	this will cause overcomplications and "mountain-ing" of code. AVOID MOUNTAIN-ING
+	string mediaFdOwner = userUtils->userFromFd(cmd, MEDIA);
+	if(liveList.count(mediaFdOwner) > 0) //for calls placed but not yet answered
 	{
-		string other = liveList[medaiaFdOwner];
-		pthread_t *callThread = pthreads[medaiaFdOwner];
-		pthreads.erase(medaiaFdOwner);
-		pthreads.erase(other);
-		liveList.erase(medaiaFdOwner);
+		string other = liveList[mediaFdOwner];
+		liveList.erase(mediaFdOwner);
 		liveList.erase(other);
-		free(callThread);
-	}
 
+		//reset the other person's media fd status
+		int otherMediaFd = userUtils->userFd(other, MEDIA);
+		if(otherMediaFd > 0)
+		{
+			sdinfo[otherMediaFd] = SOCKMEDIAIDLE;
+		}
+
+		if(pthreads.count(mediaFdOwner) > 0)
+		{//for calls placed and answered the thread will immediately tell the other person to hang up
+			pthread_t *callThread = pthreads[mediaFdOwner];
+			pthreads.erase(mediaFdOwner);
+			pthreads.erase(other);
+			free(callThread);
+		}
+		else
+		{//for cases where you call and get "cold feet", this function will tell the other person never mind
+			sendCallEnd(other, 0);
+		}
+	}
 	//incase of crash, there will be no entires in the hash table and tree. skip these pairs and just flush out
 	//	the irrelevant db info
 	userUtils->clearSession(uname);
@@ -1224,8 +1230,23 @@ int readSSL(SSL *sdssl, char inputBuffer[], uint64_t iterationKey)
 	return totalRead;
 }
 
+void sendCallEnd(string who, uint64_t iterationKey)
+{
+	int command = userUtils->userFd(who, COMMAND);
 
+	//logging related stuff
+	string ip = ipFromSd(command);
 
+	//drop the call for the user
+	time_t now = time(NULL);
+	string other = liveList[who];
+
+	//write to the person who got dropped's command fd that the call was dropped
+	string end = to_string(now) + "|call|end|" + other;
+	SSL *cmdSsl = clientssl[command];
+	write2Client(end, cmdSsl, iterationKey);
+	userUtils->insertLog(Log(TAG_END, end, who, OUTBOUNDLOG, ip, iterationKey));
+}
 
 
 
