@@ -191,24 +191,46 @@ int main(int argc, char *argv[])
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingCmd);
 
-			//in case something happened before the incoming connection can be made ssl.
-			if(SSL_accept(connssl) <= 0)
+			//give 10 tries to get an ssl connection because first try isn't always successful
+			int sslerr = SSL_ERROR_NONE;
+			bool proceed = false;
+			int retries = SSL_ACCEPT_RETRIES;
+			while(retries > 0)
 			{
-				string error = "Problem initializing new command tls connection from " + ip;
-				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
-				SSL_shutdown(connssl);
-				SSL_free(connssl);
-				shutdown(incomingCmd, 2);
-				close(incomingCmd);
+				int result = SSL_accept(connssl);
+				sslerr = SSL_get_error(connssl, result);
+				if(sslerr == SSL_ERROR_NONE) //everything ok, proceed
+				{
+					proceed = true;
+					break;
+				}
+				else if (sslerr == SSL_ERROR_WANT_READ)
+				{//incomplete handshake, try again
+					retries--;
+				}
+				else
+				{//some other error. stop
+					break;
+				}
 			}
-			else
+
+			if(proceed)
 			{
-				//add the new socket descriptor to the client self balancing tree
 				string message = "new command socket from " + ip;
 				userUtils->insertLog(Log(TAG_INCOMINGCMD, message, SELF, INBOUNDLOG, ip, relatedKey));
 				clientssl[incomingCmd] = connssl;
 				sdinfo[incomingCmd] = SOCKCMD;
 				failCount[incomingCmd] = 0;
+			}
+			else
+			{
+				string error = "Problem initializing new command tls connection (err: " +  to_string(sslerr) +") from " + ip;
+				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip, relatedKey));
+				SSL_shutdown(connssl);
+				SSL_free(connssl);
+				shutdown(incomingCmd, 2);
+				close(incomingCmd);
+
 			}
 		}
 
@@ -243,23 +265,46 @@ int main(int argc, char *argv[])
 			SSL *connssl = SSL_new(sslcontext);
 			SSL_set_fd(connssl, incomingMedia);
 
-			//in case something happened before the incoming connection can be made ssl
-			if(SSL_accept(connssl) <= 0)
+			//give 10 tries to get an ssl connection because first try isn't always successful
+			int sslerr = SSL_ERROR_NONE;
+			bool proceed = false;
+			int retries = SSL_ACCEPT_RETRIES;
+			while(retries > 0)
 			{
-				string error = "Problem initializing new command tls connection from " + ip;
-				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
-				SSL_shutdown(connssl);
-				SSL_free(connssl);
-				shutdown(incomingMedia, 2);
-				close(incomingMedia);
+				int result = SSL_accept(connssl);
+				sslerr = SSL_get_error(connssl, result);
+				if(sslerr == SSL_ERROR_NONE) //everything ok, proceed
+				{
+					proceed = true;
+					break;
+				}
+				else if (sslerr == SSL_ERROR_WANT_READ)
+				{//incomplete handshake, try again
+					retries--;
+				}
+				else
+				{//some other error. stop
+					break;
+				}
 			}
-			else
+
+			if(proceed)
 			{
 				string message = "new media socket from " + ip;
 				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, message, SELF, INBOUNDLOG, ip, relatedKey));
 				clientssl[incomingMedia] = connssl;
 				sdinfo[incomingMedia] = SOCKMEDIANEW;
 				failCount[incomingMedia] = 0;
+			}
+			else
+			{
+				string error = "Problem initializing new media tls connection (err: " +  to_string(sslerr) +") from " + ip;
+				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
+				SSL_shutdown(connssl);
+				SSL_free(connssl);
+				shutdown(incomingMedia, 2);
+				close(incomingMedia);
+
 			}
 		}
 
@@ -900,16 +945,31 @@ void* callThreadFx(void *ptr)
 		{
 			string error = "read fds select system call error";
 			userUtils->insertLog(Log(TAG_CALLTHREAD, error, SELF, ERRORLOG, SELFIP, iterationKey));
-			exit(1); //stop the whole thing. let it all come crashing down
-			//assuming params ok only a kernel error will produce sockets < 0.
-			//exit and cut your losses
+
+			sendCallEnd(persona, iterationKey);
+			sendCallEnd(personb, iterationKey);
+
+			pthread_mutex_lock(&removalsMutex);
+			removals.push_back(amedia);
+			removals.push_back(bmedia);
+			pthread_mutex_unlock(&removalsMutex);
+			return NULL;
+
 		}
 		sockets = select(maxmedia+1, NULL, &writefds, NULL, NULL);
 		if(sockets < 0)
 		{
 			string error = "write fds select system call error";
 			userUtils->insertLog(Log(TAG_CALLTHREAD, error, SELF, ERRORLOG, SELFIP, iterationKey));
-			exit(1);
+
+			sendCallEnd(persona, iterationKey);
+			sendCallEnd(personb, iterationKey);
+
+			pthread_mutex_lock(&removalsMutex);
+			removals.push_back(amedia);
+			removals.push_back(bmedia);
+			pthread_mutex_unlock(&removalsMutex);
+			return NULL;
 		}
 
 		for(int iterator=0; iterator<2; iterator++) //there's only 2 media fds

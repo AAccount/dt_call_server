@@ -8,6 +8,7 @@
 #define CHALLENGE_LENGTH 200
 #define SESSION_KEY_LENGTH 59
 #define SESSION_KEY_PLACEHOLDER "SESSION_KEY_HERE"
+#define SSL_ACCEPT_RETRIES 10
 
 //java 1 byte ignored character
 #define JBYTE "D"
