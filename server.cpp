@@ -1014,7 +1014,7 @@ void* callThreadFx(void *ptr)
 #ifdef VERBOSE
 					cout << mediafds.at(other).second << "'s media fd has had too many problems\n";
 #endif
-					mediafds.at(iteratorfd).second.copy(sendDropBuffer, mediafds.at(iteratorfd).second.length(), 0);
+					mediafds.at(iterator).second.copy(sendDropBuffer, mediafds.at(iterator).second.length(), 0);
 					pthread_mutex_lock(&removalsMutex);
 					removals.push_back(otherfd);
 					pthread_mutex_unlock(&removalsMutex);
