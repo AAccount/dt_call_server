@@ -1,4 +1,4 @@
-#define VERSION "3.0"
+#define VERSION "3.0:28f40d850b8edbae99f3bf6e1dfff82ed21b9e38"
 
 #define BUFFERSIZE 1024 //how much media is transferred between users at a time
 					//media buffer must be larger than media frame (amr in this case) or it won't work

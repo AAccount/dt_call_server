@@ -946,9 +946,6 @@ void* callThreadFx(void *ptr)
 			string error = "read fds select system call error";
 			userUtils->insertLog(Log(TAG_CALLTHREAD, error, SELF, ERRORLOG, SELFIP, iterationKey));
 
-			sendCallEnd(persona, iterationKey);
-			sendCallEnd(personb, iterationKey);
-
 			pthread_mutex_lock(&removalsMutex);
 			removals.push_back(amedia);
 			removals.push_back(bmedia);
@@ -961,9 +958,6 @@ void* callThreadFx(void *ptr)
 		{
 			string error = "write fds select system call error";
 			userUtils->insertLog(Log(TAG_CALLTHREAD, error, SELF, ERRORLOG, SELFIP, iterationKey));
-
-			sendCallEnd(persona, iterationKey);
-			sendCallEnd(personb, iterationKey);
 
 			pthread_mutex_lock(&removalsMutex);
 			removals.push_back(amedia);
