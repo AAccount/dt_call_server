@@ -1119,8 +1119,6 @@ void removeClient(int sd)
 	if(liveList.count(mediaFdOwner) > 0) //for calls placed but not yet answered
 	{
 		string other = liveList[mediaFdOwner];
-		liveList.erase(mediaFdOwner);
-		liveList.erase(other);
 
 		//reset the other person's media fd status
 		int otherMediaFd = userUtils->userFd(other, MEDIA);
@@ -1140,6 +1138,8 @@ void removeClient(int sd)
 		{//for cases where you call and get "cold feet", this function will tell the other person never mind
 			sendCallEnd(other, 0);
 		}
+		liveList.erase(mediaFdOwner);
+		liveList.erase(other);
 	}
 	//incase of crash, there will be no entires in the hash table and tree. skip these pairs and just flush out
 	//	the irrelevant db info
