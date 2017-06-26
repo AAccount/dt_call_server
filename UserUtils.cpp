@@ -68,6 +68,7 @@ UserUtils::UserUtils()
 			cout << "Could not generate a public key from file for: " << name << "\n";
 			continue;
 		}
+		fclose(publicKeyFile);
 
 		User *user = new User(name, rsaPublic);
 
