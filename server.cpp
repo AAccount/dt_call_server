@@ -10,6 +10,7 @@
 #include <sys/time.h> 
 #include <sys/select.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #include <signal.h>
 #include <arpa/inet.h>
 
@@ -255,6 +256,17 @@ int main(int argc, char *argv[])
 			if(setsockopt(incomingMedia, SOL_SOCKET, SO_RCVTIMEO, (char*) &readTimeout, sizeof(readTimeout)) < 0)
 			{
 				string error = "cannot set timeout for incoming media socket from " + ip;
+				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
+				perror(error.c_str());
+				shutdown(incomingMedia, 2);
+				close(incomingMedia);
+				continue;
+			}
+
+			int tos = IPTOS_DSCP_EF;
+			if(setsockopt(incomingMedia, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0)
+			{
+				string error = "cannot set tos for media socket" ;
 				userUtils->insertLog(Log(TAG_INCOMINGMEDIA, error, SELF, ERRORLOG, ip, relatedKey));
 				perror(error.c_str());
 				shutdown(incomingMedia, 2);
@@ -991,14 +1003,25 @@ void* callThreadFx(void *ptr)
 
 				if(FD_ISSET(otherfd, &writefds)) //can i write to the other person?
 				{
-					int err = SSL_write(clientssl[otherfd], buffer, amount);
-					if(err <= 0)
+					int ret = SSL_write(clientssl[otherfd], buffer, amount);
+					if(ret <= 0)
 					{//something bad happened when writing to the other person. increase the fail count
-						failCount[otherfd]++;
+						int err = SSL_get_error(clientssl[otherfd], ret);
+						cout << mediafds.at(other).second << " write err: " << to_string(err) << "\n";
+						if(err == SSL_ERROR_SSL)
+						{ //assume fail count came from here (due to crappy wifi). "tolerate" this error
+							ERR_print_errors_fp(stderr);
+							failCount[otherfd] = 0;
+						}
+						else
+						{
+							failCount[otherfd]++;
+						}
 					}
 				}
 				else //i can't write to the other person, increase the fail count
 				{
+					cout << mediafds.at(other).second << "'s media fd is having problems. fail count of: " << failCount[otherfd] << "\n";
 					failCount[otherfd]++;
 				}
 

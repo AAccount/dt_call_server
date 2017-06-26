@@ -18,7 +18,7 @@
 #define WSELECTTIMEOUT 100 //microseconds
 
 //maximum amount of times a socket can write fail before killing
-#define FAILMAX 10
+#define FAILMAX 100
 
 //where the configuration file is
 //#define LIVE
