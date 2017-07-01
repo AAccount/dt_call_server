@@ -965,7 +965,7 @@ void* callThreadFx(void *ptr)
 			return NULL;
 
 		}
-		sockets = select(maxmedia+1, NULL, &writefds, NULL, NULL);
+		sockets = select(maxmedia+1, NULL, &writefds, NULL, &writeTimeout);
 		if(sockets < 0)
 		{
 			string error = "write fds select system call error";
@@ -1005,16 +1005,16 @@ void* callThreadFx(void *ptr)
 				{
 					int ret = SSL_write(clientssl[otherfd], buffer, amount);
 					if(ret <= 0)
-					{//something bad happened when writing to the other person. increase the fail count
+					{//something bad happened when writing to the other person
 						int err = SSL_get_error(clientssl[otherfd], ret);
-						cout << mediafds.at(other).second << " write err: " << to_string(err) << "\n";
+						cout << "write to " << mediafds.at(other).second << " err: " << to_string(err) << "\n";
 						if(err == SSL_ERROR_SSL)
-						{ //assume fail count came from here (due to crappy wifi). "tolerate" this error
+						{//SSL_ERROR_SSL type fails are usually due to crappy wifi. "tolerate" this error
 							ERR_print_errors_fp(stderr);
 							failCount[otherfd] = 0;
 						}
 						else
-						{
+						{//until another type of failure shows up, assume it to be problematic
 							failCount[otherfd]++;
 						}
 					}
