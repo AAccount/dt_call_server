@@ -133,7 +133,7 @@ void UserUtils::setChallenge(std::string username, std::string challenge)
 	else
 	{
 		std::string error = "trying to set challenge for somebody that doesn't exist: " + username;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -148,7 +148,7 @@ void UserUtils::setSessionKey(std::string username, std::string sessionkey)
 	else
 	{
 		std::string error = "trying to set a session key for somebody that doesn't exist: " + username;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -164,7 +164,7 @@ void UserUtils::setCommandFd(std::string sessionid, int fd)
 	else
 	{
 		std::string error = "trying to set a command file descriptor for a session that isn't registered";
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -193,7 +193,7 @@ void UserUtils::clearSession(std::string username)
 	else
 	{
 		std::string error = "trying to clear a session for somebody that doesn't exist: " + username;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -216,7 +216,7 @@ std::string UserUtils::userFromCommandFd(int fd)
 	}
 
 	std::string error="no user matches the command fd supplied";
-	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return "";
 }
 
@@ -227,7 +227,7 @@ std::string UserUtils::userFromSessionKey(std::string sessionid)
 		return sessionkeyMap[sessionid]->getUname();
 	}
 	std::string error = "no user matches the session id supplied";
-	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return "";
 }
 
@@ -239,7 +239,7 @@ int UserUtils::getCommandFd(std::string user)
 		return userObj->getCommandfd();
 	}
 	std::string error = "tried to get a comamnd fd for somebody that doesn't exist: " + user;
-	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return 0;
 }
 
@@ -250,7 +250,7 @@ std::string UserUtils::getSessionKey(std::string uname)
 		return nameMap[uname]->getSessionkey();
 	}
 	std::string error = "tried to get a session key for somebody that doesn't exist: " + uname;
-	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return "";
 }
 
@@ -274,7 +274,7 @@ void UserUtils::setUdpSummary(std::string sessionkey, std::string summary)
 	else
 	{
 		std::string error = "tried to set a udp summary for an unregistered session key";
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -288,7 +288,7 @@ void UserUtils::setUdpInfo(std::string sessionkey, struct sockaddr_in info)
 	else
 	{
 		std::string error = "tried to set a udp sockaddr_in for an unregistered session key";
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -312,7 +312,7 @@ void UserUtils::clearUdpInfo(std::string uname)
 	else
 	{
 		std::string error = "tried to clear udp info for somebody that doesn't exist: " + uname;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -334,7 +334,7 @@ void UserUtils::setUserState(std::string uname, ustate newstate)
 	else
 	{
 		std::string error = "tried to set user state for somebody that doesn't exist: " + uname;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP, 0));
+		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 

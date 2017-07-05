@@ -45,11 +45,11 @@ void removeClient(int sd);
 
 //verify the call is real and not a malicious hand crafted command
 //persona is the one who will be sent an invalid command if it is not real.
-bool isRealCall(std::string persona, std::string personb, std::string tag, uint64_t iterationKey);
+bool isRealCall(std::string persona, std::string personb, std::string tag);
 
 //convert the string to c char[] and send it by ssl* (when sending, send only as many bytes as there are characters
 // and not the whole command string buffer [] size
-void write2Client(std::string response, SSL *respSsl, uint64_t relatedKey);
+void write2Client(std::string response, SSL *respSsl);
 
 //get the ip address of a socket descriptor in human readable 192.168.1.1 format
 std::string ipFromFd(int sd);
@@ -58,9 +58,9 @@ std::string ipFromFd(int sd);
 std::string stringify(unsigned char *bytes, int length);
 
 //read an SSL socket into param inputBuffer. maximum read size in const.h
-int readSSL(SSL *sdssl, char inputBuffer[], uint64_t iterationKey);
+int readSSL(SSL *sdssl, char inputBuffer[]);
 
 //send a call end/drop to this person
-void sendCallEnd(std::string who, uint64_t iterationKey);
+void sendCallEnd(std::string who);
 
 #endif

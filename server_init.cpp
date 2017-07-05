@@ -9,7 +9,7 @@
  */
 #include "server_init.hpp"
 
-void readServerConfig(int *cmdPort, int *mediaPort, std::string *publicKeyFile, std::string *privateKeyFile, std::string *ciphers, std::string *dhfile, UserUtils *userUtils, uint64_t initkey)
+void readServerConfig(int *cmdPort, int *mediaPort, std::string *publicKeyFile, std::string *privateKeyFile, std::string *ciphers, std::string *dhfile, UserUtils *userUtils)
 {
 	std::ifstream conffile(CONFFILE);
 	std::string line;
@@ -78,7 +78,7 @@ void readServerConfig(int *cmdPort, int *mediaPort, std::string *publicKeyFile, 
 		else
 		{
 			std::string unknown = "unknown variable parsed: " + line;
-			userUtils->insertLog(Log(TAG_INIT, unknown, SELF, SYSTEMLOG, SELFIP, initkey));
+			userUtils->insertLog(Log(TAG_INIT, unknown, SELF, SYSTEMLOG, SELFIP));
 		}
 	}
 
@@ -89,17 +89,17 @@ void readServerConfig(int *cmdPort, int *mediaPort, std::string *publicKeyFile, 
 		if(!gotPublicKey)
 		{
 			std::string error = "Your did not specify a PUBLIC key pem in: " + conffile + "\n";
-			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		}
 		if(!gotPublicKey)
 		{
 			std::string error = "Your did not specify a PRIVATE key pem in: " + conffile + "\n";
-			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		}
 		if(!gotDhFile)
 		{
 			std::string error = "Your did not specify a DH file for DHE ciphers in: " + conffile + "\n";
-			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		}
 		exit(1);
 	}
@@ -108,22 +108,22 @@ void readServerConfig(int *cmdPort, int *mediaPort, std::string *publicKeyFile, 
 	if(!gotCmdPort)
 	{
 		std::string message =  "Using default command port of: " + std::to_string(*cmdPort);
-		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP));
 	}
 	if(!gotMediaPort)
 	{
 		std::string message= "Using default media port of: " + std::to_string(*mediaPort);
-		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP));
 	}
 	if(!gotCiphers)
 	{
 		std::string message = "Using default ciphers (no ECDHE): " + *ciphers;
-		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP));
 	}
 
 }
 
-SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::string publicKeyFile, std::string dhfile, UserUtils *userUtils, uint64_t initkey)
+SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::string publicKeyFile, std::string dhfile, UserUtils *userUtils)
 {
 	//openssl setup
 	SSL_load_error_strings();
@@ -136,7 +136,7 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	if(result <= 0)
 	{
 		std::string error = "ssl initialization problem";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		perror(error.c_str());
 		exit(1);
 	}
@@ -148,7 +148,7 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	if(SSL_CTX_use_PrivateKey_file(result, privateKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
 	{
 		std::string error = "problems with the private key";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		perror(error.c_str());
 		exit(1);
 	}
@@ -157,7 +157,7 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	if(SSL_CTX_use_certificate_file(result, publicKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
 	{
 		std::string error = "problems with the public key";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		perror(error.c_str());
 		exit(1);
 	}
@@ -170,7 +170,7 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	if(!paramfile)
 	{
 		std::string error = "problems opening dh param file at: " +  dhfile;
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		perror(error.c_str());
 		exit(1);
 	}
@@ -179,14 +179,14 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	if(dh == NULL)
 	{
 		std::string error = "dh param file opened but openssl could not use dh param file at: " + dhfile;
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		perror(error.c_str());
 		exit(1);
 	}
 	if(SSL_CTX_set_tmp_dh(result, dh) != 1)
 	{
 		std::string error = "dh param file opened and interpreted but reject by context: " + dhfile;
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		perror(error.c_str());
 		exit(1);
 	}
@@ -194,14 +194,14 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	return result;
 }
 
-void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct sockaddr_in *info, int port, UserUtils *userUtils, uint64_t initkey)
+void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct sockaddr_in *info, int port, UserUtils *userUtils)
 {
 	//setup command port to accept new connections
 	*fd = socket(AF_INET, type, 0); //tcp socket
 	if(*fd < 0)
 	{
 		std::string error = "cannot establish socket";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		perror(error.c_str());
 		exit(1);
 	}
@@ -212,7 +212,7 @@ void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct soc
 	if(bind(*fd, (struct sockaddr *)info, sizeof(struct sockaddr_in)) < 0)
 	{
 		std::string error = "cannot bind socket to a nic";
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		perror(error.c_str());
 		exit(1);
 	}
@@ -222,7 +222,7 @@ void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct soc
 		if(setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, (char*)timeout, sizeof(struct timeval)) < 0)
 		{
 			std::string error="cannot set tcp socket options";
-			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP, initkey));
+			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 			perror(error.c_str());
 			exit(1);
 		}

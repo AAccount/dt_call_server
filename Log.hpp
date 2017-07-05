@@ -41,11 +41,10 @@ private:
 	std::string user;
 	std::string type;
 	std::string ip;
-	uint64_t relatedKey;
 	friend std::ostream& operator<<(std::ostream &strm, const Log&);
 
 public:
-	Log(std::string ctag, std::string cmessage, std::string user, std::string type, std::string ip, uint64_t crelatedKey);
+	Log(std::string ctag, std::string cmessage, std::string user, std::string type, std::string ip);
 	std::string getType();
 };
 
