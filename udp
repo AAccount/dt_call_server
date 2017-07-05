@@ -1,0 +1,100 @@
+redo all outgoing ts|direct_cmd|...
+merge ring|busy ring|notavailable call|reject as reject|
+
+server:
+insert log
+check other command fd exists
+check user state (incall, callwaiting, callready)
+	send reject
+check self dial
+	send reject
+set both user states (call waiting, call waiting)
+set both users live list
+send available
+
+android:
+sender receives available
+canInit(true)
+
+android:
+other receives available
+wake up phone
+show screen
+
+server:
+reject
+is real call: check live list
+reset both user states
+clear both call with
+send reject
+
+server:
+accept
+is real call: check call with
+send ts|prepare|(public key pem string)
+	public key to the first person (livelist[person accepting]) <-- person accepting is the second person
+
+android:
+first person prepare
+send ts|pass|rcv|(aes key enc)|sessionkey
+send udp enc[ts|session key]
+wait udp ok --> set timeout
+reset timeout 0 (infinite)
+send ts|ready
+
+server:
+passthrough
+is real call (rcv, sessionkey)
+send it
+
+android:
+second person prepare
+send udp enc[ts|session key]
+wait udp ok --> set timeout
+got passthrough of aes key? --> timer task every 100ms to try again
+	cmd listener wait for passthrough
+	decrypt aes key
+	set aes key
+reset timeout 0
+send ts|ready
+
+server:
+ready
+is real call
+is the other person ready
+yes?
+	mark both states in call
+	send start
+
+server:
+end
+is real call
+send call end to other
+clear live list
+reset both users's state
+
+callthreadFx()
+	create udp port
+	while(true)
+		listen on udp port
+		combination sender ip << 16 + port in the udp state table
+		no?
+			RSA_public_decrypt
+			check return -1 (error)
+			find out who the sender is based on session key
+			is the owner in a call? no? continue;
+			userUtils->addUdpInfo(sender ip << 16 + port, user)
+			userUtils->store struct
+			send ok
+		yes? and not in a call
+			RSA_public_decrypt
+			check return -1 (error) continue; (person is in the table --> legit user and in a call)
+			owner NOT in a call? remove udp state table entry --> log for bugs
+			send ok
+		udp state in call
+			look up other person's userUtils->getUserFromUdp(sender ip << 16 + port)
+			userUtils->getUserUdpInfo(owner)
+			passthrough packet untouched
+
+
+
