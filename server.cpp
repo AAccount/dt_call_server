@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 #endif
 						userUtils->setChallenge(username, challenge);
 						unsigned char* enc=(unsigned char*) malloc(RSA_size(publicKey));
-						int encLength=RSA_public_encrypt(challenge.length(), (const unsigned char*) challenge.c_str(), enc, publicKey, RSA_PKCS1_PADDING);
+						int encLength=RSA_public_encrypt(challenge.length(), (const unsigned char*) challenge.c_str(), enc, publicKey, RSA_PKCS1_OAEP_PADDING);
 						std::string encString=stringify(enc, encLength);
 						free(enc);
 
@@ -588,12 +588,12 @@ void* udpThread(void *ptr)
 		unsigned char mediaBuffer[BUFFERSIZE+1];
 		memset(mediaBuffer, 0, BUFFERSIZE+1);
 		struct sockaddr_in sender;
-		socklen_t senderLength = sizeof(sender);
+		socklen_t senderLength = sizeof(struct sockaddr_in);
 
 		int receivedLength = recvfrom(mediaFd, mediaBuffer, BUFFERSIZE, 0, (struct sockaddr*)&sender, &senderLength);
 		if(receivedLength < 0)
 		{
-			userUtils->insertLog(Log(TAG_UDPTHREAD, "udp read error", SELF, SYSTEMLOG, SELFIP));
+			userUtils->insertLog(Log(TAG_UDPTHREAD, "udp read error", SELF, ERRORLOG, SELFIP));
 			perror("udp thread");
 		}
 
@@ -603,10 +603,9 @@ void* udpThread(void *ptr)
 		std::string summary = std::to_string(sender.sin_addr.s_addr) + std::to_string(sender.sin_port);
 		std::string user = userUtils->userFromUdpSummary(summary);
 
-		//either a new media port is being registered or a registered or, need to resend an ack on existing non-live one
+		//need to send an ack whether it's for the first time or because the first one went missing.
 		if((user == "") || (userUtils->getUserState(user) != INCALL))
-		{//need to send an ack whether it's for the first time or because the first one went missing
-
+		{
 			if(receivedLength > 256)//registration is really 10+1+59 = 70 chars which is pkcs1 padded to 256
 			{
 				//probably garbage or left over voice data from 3G/LTE from an old call
@@ -616,7 +615,7 @@ void* udpThread(void *ptr)
 			//decrypt media port register command
 			unsigned char *dec = (unsigned char*)malloc(RSA_size(privateKey));
 			memset(dec, 0, RSA_size(privateKey));
-			int decLength = RSA_private_decrypt(receivedLength, mediaBuffer, dec, privateKey, RSA_PKCS1_PADDING);
+			int decLength = RSA_private_decrypt(receivedLength, mediaBuffer, dec, privateKey, RSA_PKCS1_OAEP_PADDING);
 			if(decLength < 0)
 			{
 				ERR_print_errors_fp(stderr);
@@ -664,7 +663,7 @@ void* udpThread(void *ptr)
 				std::string ack = std::to_string(now) + "|ok";
 				RSA* userKey = userUtils->getPublicKey(user);
 				unsigned char* ackEnc = (unsigned char*)malloc(RSA_size(userKey));
-				int encLength = RSA_public_encrypt(ack.length(), (const unsigned char*)ack.c_str(), ackEnc, userKey, RSA_PKCS1_PADDING);
+				int encLength = RSA_public_encrypt(ack.length(), (const unsigned char*)ack.c_str(), ackEnc, userKey, RSA_PKCS1_OAEP_PADDING);
 				unsigned char ackEncTrimmed[encLength];
 				memcpy(ackEncTrimmed, ackEnc, encLength);
 				free(ackEnc);

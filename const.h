@@ -18,7 +18,6 @@
 
 //timeouts
 #define READTIMEOUT 500000 //microseconds
-#define WSELECTTIMEOUT 100 //microseconds
 
 //where the configuration file is
 //#define LIVE
