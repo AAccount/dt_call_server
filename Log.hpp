@@ -17,20 +17,19 @@
 //define all the tags here to make it easy to keep track of
 #define TAG_INIT "init"
 #define TAG_INCOMINGCMD "incoming command socket"
-#define TAG_INCOMINGMEDIA "incoming media socket"
 #define TAG_DEADSOCK "socket died"
 #define TAG_BADCMD "bad command"
 #define TAG_LOGIN "login"
 #define TAG_CALL "place call"
 #define TAG_LOOKUP "lookup"
 #define TAG_ACCEPT "accept"
+#define TAG_PASSTHROUGH "passthrough"
+#define TAG_READY "ready"
 #define TAG_REJECT "reject"
 #define TAG_END "call end"
-#define TAG_TIMEOUT "call timeout"
-#define TAG_MEDIANEW "new media socket"
-#define TAG_MEDIACALL "media socket event"
-#define TAG_SSLCMD "ssl command write"
-#define TAG_CALLTHREAD "call thread"
+#define TAG_SSL "ssl socket write"
+#define TAG_UDPTHREAD "udp thread"
+#define TAG_USERUTILS "user utils"
 
 #include <string>
 #include <iostream>
@@ -43,10 +42,11 @@ private:
 	std::string type;
 	std::string ip;
 	uint64_t relatedKey;
+	friend std::ostream& operator<<(std::ostream &strm, const Log&);
 
 public:
 	Log(std::string ctag, std::string cmessage, std::string user, std::string type, std::string ip, uint64_t crelatedKey);
-	std::string toString();
+	std::string getType();
 };
 
 #endif //DBLOG_H

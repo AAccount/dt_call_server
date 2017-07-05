@@ -1,8 +1,9 @@
 /*
  * UserUtils.hpp
  *
- *  Created on: May 1, 2017
+ *  Created on: 2nd half December 2015
  *      Author: Daniel
+ *      Rebranded from DbUtils
  */
 
 #ifndef USERUTILS_HPP_
@@ -20,55 +21,61 @@
 #include <stdio.h>
 
 #include <openssl/pem.h>
+#include <netinet/in.h>
 
 #include "Utils.hpp"
 #include "const.h"
 #include "Log.hpp"
 #include "User.hpp"
 
-using namespace std;
 
 class UserUtils
 {
 public:
 	static UserUtils* getInstance();
 
-	//db set/write functions
-	RSA *getUserPublicKey(string username);
-	string getUserChallenge(string username);
-	void setUserChallenge(string username, string challenge);
-	void setUserSession(string username, string sessionkey);
-	void setFd(string sessionkey, int fd, fdtype which);
-	void clearSession(string username);
+	RSA *getPublicKey(std::string username);
+	std::string getPublicKeyDump(std::string uname);
 
-	//db verification functions
-	bool verifySessionKey(string sessionkey, int fd);
-	bool doesUserExist(string name);
+	std::string getChallenge(std::string username);
+	void setChallenge(std::string username, std::string challenge);
 
-	//db lookup functions
-	string userFromFd(int fd, fdtype which);
-	string userFromSessionKey(string sessionkey);
-	int userFd(string user, fdtype which);
-	string userSessionKey(string uname);
-	void killInstance();
+	std::string userFromSessionKey(std::string sessionkey);
+	std::string getSessionKey(std::string uname);
+	void setSessionKey(std::string username, std::string sessionkey);
+	bool verifySessionKey(std::string sessionkey, int fd);
+	void clearSession(std::string username);
 
-	//log related functions
+	std::string userFromCommandFd(int fd);
+	int getCommandFd(std::string user);
+	void setCommandFd(std::string sessionkey, int fd);
+
+	std::string userFromUdpSummary(std::string summary);
+	void setUdpSummary(std::string sessionkey, std::string summary);
+	struct sockaddr_in getUdpInfo(std::string uname);
+	void setUdpInfo(std::string sessionkey, struct sockaddr_in info);
+	void clearUdpInfo(std::string uname);
+
+	ustate getUserState(std::string uname);
+	void setUserState(std::string uname, ustate newstate);
+
 	void insertLog(Log l);
+	void killInstance();
 
 private:
 	UserUtils();
 	~UserUtils();
 	static UserUtils *instance;
 
-	//various hash maps to lookup the user by
-	//	a crude in memory db
-	unordered_map<string, User*> nameMap;
-	unordered_map<uint32_t, User*> commandfdMap;
-	unordered_map<uint32_t, User*> mediafdMap;
-	unordered_map<string, User*> sessionkeyMap;
+	//various hash maps to lookup the user by.
+	//	a crude in memory db.
+	std::unordered_map<std::string, User*> nameMap;
+	std::unordered_map<uint32_t, User*> commandfdMap;
+	std::unordered_map<std::string, User*> sessionkeyMap;
+	std::unordered_map<std::string, User*> udpMap;
 
 	//output log (changed every 24 hours)
-	ofstream logfile;
+	std::ofstream logfile;
 	time_t logTimeT;
 };
 

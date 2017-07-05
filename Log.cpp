@@ -1,9 +1,8 @@
 #include "Log.hpp"
 
 #include <iostream>
-using namespace std;
 
-Log::Log(string ctag, string cmessage, string cuser, string ctype, string cip, uint64_t crelatedKey)
+Log::Log(std::string ctag, std::string cmessage, std::string cuser, std::string ctype, std::string cip, uint64_t crelatedKey)
 {
 	tag = ctag;
 	message=cmessage;
@@ -13,12 +12,17 @@ Log::Log(string ctag, string cmessage, string cuser, string ctype, string cip, u
 	relatedKey = crelatedKey;
 }
 
-string Log::toString()
+std::ostream& operator<<(std::ostream &strm, const Log &l)
 {
 	time_t now = time(0);
-	string nowStamp = string(ctime(&now));
+	std::string nowStamp = std::string(ctime(&now));
 	nowStamp = nowStamp.substr(0, nowStamp.length()-1);
-	return  nowStamp + " tag=" + tag
-			+ "; message=" + message + "; user=" + user + "; type=" + type + "; ip="
-			+ ip + "; relatedkey=" + to_string(relatedKey);
+	return strm << nowStamp << " tag=" << l.tag
+			<< "; message=" << l.message << "; user=" << l.user << "; type=" << l.type << "; ip="
+			<< l.ip + "; relatedkey=" << std::to_string(l.relatedKey);
+}
+
+std::string Log::getType()
+{
+	return type;
 }

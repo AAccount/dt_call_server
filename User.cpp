@@ -7,16 +7,18 @@
 
 #include "User.hpp"
 
-using namespace std;
-
-User::User(string cuname, RSA *ckey)
+User::User(std::string cuname, RSA *ckey, std::string cdump)
 {
 	uname = cuname;
 	publicKey = ckey;
+	publicKeyDump = cdump;
 	commandfd = 0;
-	mediafd = 0;
 	sessionkey = "";
 	challenge = "";
+
+	udpSummary = "";
+	userState = NONE;
+	//ok not to initialize the struct since the summary is 0. with a 0 summary nobody will look at the struct
 }
 
 User::~User()
@@ -24,17 +26,17 @@ User::~User()
 	RSA_free(publicKey);
 }
 
-string User::getChallenge()
+std::string User::getChallenge()
 {
 	return challenge;
 }
 
-void User::setChallenge(string pchallenge)
+void User::setChallenge(std::string pchallenge)
 {
 	challenge = pchallenge;
 }
 
-string User::getUname()
+std::string User::getUname()
 {
 	return uname;
 }
@@ -44,6 +46,10 @@ RSA* User::getPublicKey()
 	return publicKey;
 }
 
+std::string User::getPublicKeyDump()
+{
+	return publicKeyDump;
+}
 
 uint32_t User::getCommandfd()
 {
@@ -56,23 +62,42 @@ void User::setCommandfd(uint32_t newCommandfd)
 	commandfd = newCommandfd;
 }
 
-uint32_t User::getMediafd()
+std::string User::getUdpSummary()
 {
-	return mediafd;
+	return udpSummary;
 }
 
-void User::setMediafd(uint32_t newMediafd)
+void User::setUdpSummary(std::string newSummary)
 {
-
-	mediafd = newMediafd;
+	udpSummary = newSummary;
 }
 
-string User::getSessionkey()
+struct sockaddr_in User::getUdpInfo()
+{
+	return udpInfo;
+}
+
+void User::setUdpInfo(struct sockaddr_in newInfo)
+{
+	udpInfo = newInfo;
+}
+
+ustate User::getUserState()
+{
+	return userState;
+}
+
+void User::setUserState(ustate newState)
+{
+	userState = newState;
+}
+
+std::string User::getSessionkey()
 {
 	return sessionkey;
 }
 
-void User::setSessionkey(string newSessionkey)
+void User::setSessionkey(std::string newSessionkey)
 {
 	sessionkey = newSessionkey;
 }
