@@ -450,6 +450,7 @@ int main(int argc, char *argv[])
 					{//timestamp|ready|touma|zapperkey
 						std::string zapper = user;
 						std::string touma = commandContents.at(2);
+						userUtils->insertLog(Log(TAG_READY, originalBufferCmd, user, INBOUNDLOG, ip));
 						if(!isRealCall(zapper, touma, TAG_READY))
 						{
 							continue;
@@ -600,11 +601,11 @@ void* udpThread(void *ptr)
 		//need to send an ack whether it's for the first time or because the first one went missing.
 		if((user == "") || (state  == INIT))
 		{
-			std::cout << "sending ack for summary: " << summary << " belonging to " << user << "\n";
-			if(receivedLength != 512)//registration is really 10+1+59 = 70 chars which is pkcs+oaep padded to 512
+			std::cout << "sending ack for summary: " << summary << " belonging to " << user << "/\n";
+			if(receivedLength > RSA_size(privateKey))//registration is really 10+1+59 = 70 chars which is pkcs+oaep padded to 512
 			{
 				//probably garbage or left over voice data from 3G/LTE from an old call
-				std::cout << "received invalid length of " << std::to_string(receivedLength) << "\n";
+				std::cout << "received invalid length of " << std::to_string(receivedLength) << "/\n";
 				continue;
 			}
 
@@ -690,7 +691,6 @@ void* udpThread(void *ptr)
 		}
 		else if(state == INCALL)
 		{//in call, passthrough audio untouched (end to end encryption if only to avoid touching more openssl apis)
-			std::cout << "mailing udp to: " << liveList[user] << "\n";
 			struct sockaddr_in otherPerson = userUtils->getUdpInfo(liveList[user]);
 			int sent = sendto(mediaFd, mediaBuffer, receivedLength, 0, (struct sockaddr*)&otherPerson, sizeof(otherPerson));
 			if(sent < 0)
