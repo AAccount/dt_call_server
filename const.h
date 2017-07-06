@@ -10,6 +10,7 @@
 #define CHALLENGE_LENGTH 200
 #define SESSION_KEY_LENGTH 59
 #define SESSION_KEY_PLACEHOLDER "SESSION_KEY_HERE"
+#define AES_PLACEHOLDER "ENCRYPTED_AES_KEY_HERE"
 #define DT_SSL_ACCEPT_RETRIES 10 //prefix my initials to make it NOT look like an official openssl SSL_... constant
 #define COMMAND_MAX_SEGMENTS 5 //to prevent the command parser from going on and on from a malicious command
 

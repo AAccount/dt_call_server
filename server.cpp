@@ -432,6 +432,7 @@ int main(int argc, char *argv[])
 						std::string zapper = commandContents.at(2);
 						std::string touma = user;
 						std::string aes = commandContents.at(3);
+						originalBufferCmd.replace(originalBufferCmd.find(aes), aes.length(), AES_PLACEHOLDER);
 						userUtils->insertLog(Log(TAG_PASSTHROUGH, originalBufferCmd, user, INBOUNDLOG, ip));
 
 						if(!isRealCall(touma, zapper, TAG_PASSTHROUGH))
@@ -443,6 +444,7 @@ int main(int argc, char *argv[])
 						SSL *zapperssl = clientssl[zapperfd];
 						std::string direct = std::to_string(now) + "|direct|" + aes + "|" + touma;//as in "directly" from touma, not from the server
 						write2Client(direct, zapperssl);
+						direct.replace(direct.find(aes), aes.length(), AES_PLACEHOLDER);
 						userUtils->insertLog(Log(TAG_PASSTHROUGH, direct, zapper, OUTBOUNDLOG, ipFromFd(zapperfd)));
 
 					}
@@ -602,7 +604,7 @@ void* udpThread(void *ptr)
 		if((user == "") || (state  == INIT))
 		{
 			std::cout << "sending ack for summary: " << summary << " belonging to " << user << "/\n";
-			if(receivedLength > RSA_size(privateKey))//registration is really 10+1+59 = 70 chars which is pkcs+oaep padded to 512
+			if(receivedLength > RSA_size(privateKey))
 			{
 				//probably garbage or left over voice data from 3G/LTE from an old call
 				std::cout << "received invalid length of " << std::to_string(receivedLength) << "/\n";
