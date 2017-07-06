@@ -60,7 +60,7 @@ std::string stringify(unsigned char *bytes, int length);
 //read an SSL socket into param inputBuffer. maximum read size in const.h
 int readSSL(SSL *sdssl, char inputBuffer[]);
 
-//send a call end/drop to this person
-void sendCallEnd(std::string who);
+//remove both people off the live list hash table and set their states to none
+void resetLiveList(std::string username);
 
 #endif

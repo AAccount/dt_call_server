@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 
 				//read the socket and make sure it wasn't just a socket death notice
 				char inputBuffer[COMMANDSIZE + 1];
-				int amountRead=readSSL(sdssl, inputBuffer);
+				int amountRead = readSSL(sdssl, inputBuffer);
 				if(amountRead == 0)
 				{
 					removals.push_back(sd);
@@ -304,8 +304,6 @@ int main(int argc, char *argv[])
 						std::cout << "previous command socket/SSL* exists, will remove\n";
 #endif
 							removals.push_back(oldcmd);
-							//don't erase the session in here otherwise the old media fd won't be findable
-							//	and its resources leaked
 						}
 
 						//dissociate old fd from user otherwise the person will have 2 commandfds listed in
@@ -313,12 +311,7 @@ int main(int argc, char *argv[])
 						//	the user's session key and fds. don't want them cleared as they're now the new ones.
 						//	immediately clean up this person's records before all the new stuff goes in
 						userUtils->clearSession(username);
-						if(liveList.count(username) > 0)
-						{
-							std::string other=liveList[username];
-							liveList.erase(username);
-							liveList.erase(other);
-						}
+						resetLiveList(username);
 
 						//challenge was correct and wasn't "", set the info
 						std::string sessionkey=Utils::randomString(SESSION_KEY_LENGTH);
@@ -593,24 +586,29 @@ void* udpThread(void *ptr)
 		int receivedLength = recvfrom(mediaFd, mediaBuffer, BUFFERSIZE, 0, (struct sockaddr*)&sender, &senderLength);
 		if(receivedLength < 0)
 		{
-			userUtils->insertLog(Log(TAG_UDPTHREAD, "udp read error", SELF, ERRORLOG, SELFIP));
-			perror("udp thread");
+			std::string error = "udp read error with errno " + std::to_string(errno) + ": " + std::string(strerror(errno));
+			userUtils->insertLog(Log(TAG_UDPTHREAD, error, SELF, ERRORLOG, SELFIP));
 		}
 
 		//quick representation of ip:port that is 32 and 64 bit friendly: glue address and port together
 		//	to make the string address_port. doesn't matter it's in network byte order instead of host order.
 		//	what matters is consistency (always network order in this case). consistently wrong is consistently right
-		std::string summary = std::to_string(sender.sin_addr.s_addr) + std::to_string(sender.sin_port);
+		std::string summary = std::string(inet_ntoa(sender.sin_addr)) + ":" + std::to_string(ntohs(sender.sin_port));
 		std::string user = userUtils->userFromUdpSummary(summary);
+		ustate state = userUtils->getUserState(user);
 
 		//need to send an ack whether it's for the first time or because the first one went missing.
-		if((user == "") || (userUtils->getUserState(user) != INCALL))
+		if((user == "") || (state  == INIT))
 		{
-			if(receivedLength > 256)//registration is really 10+1+59 = 70 chars which is pkcs1 padded to 256
+			std::cout << "sending ack for summary: " << summary << " belonging to " << user << "\n";
+			if(receivedLength != 512)//registration is really 10+1+59 = 70 chars which is pkcs+oaep padded to 512
 			{
 				//probably garbage or left over voice data from 3G/LTE from an old call
+				std::cout << "received invalid length of " << std::to_string(receivedLength) << "\n";
 				continue;
 			}
+
+			std::string ip = std::string(inet_ntoa(sender.sin_addr));
 
 			//decrypt media port register command
 			unsigned char *dec = (unsigned char*)malloc(RSA_size(privateKey));
@@ -618,14 +616,16 @@ void* udpThread(void *ptr)
 			int decLength = RSA_private_decrypt(receivedLength, mediaBuffer, dec, privateKey, RSA_PKCS1_OAEP_PADDING);
 			if(decLength < 0)
 			{
-				ERR_print_errors_fp(stderr);
+				std::string error = "media port registration error: " + std::string(ERR_error_string(ERR_get_error(), NULL));
+				userUtils->insertLog(Log(TAG_UDPTHREAD, error, user, ERRORLOG, ip));
 				free(dec);
 				continue;
 			}
 			std::string decryptedCommand(reinterpret_cast<const char *>(dec), decLength);
 			free(dec);
 			char decryptedArray[decLength+1];
-			strcpy(decryptedArray, decryptedCommand.c_str());
+			strncpy(decryptedArray, decryptedCommand.c_str(), decLength);
+			decryptedArray[decLength] = 0;
 
 			//try to parse decrypted command
 			std::vector<std::string> parsed = parse(decryptedArray);
@@ -638,7 +638,8 @@ void* udpThread(void *ptr)
 				uint64_t timeDifference = std::max((uint64_t) now, timestamp) - std::min((uint64_t) now, timestamp);
 				if(timeDifference > maxError)
 				{
-					//TODO: log
+					std::string error = "register media port timestamp too far off by " + std::to_string(timeDifference) + " seconds";
+					userUtils->insertLog(Log(TAG_UDPTHREAD, error, user, ERRORLOG, ip));
 					continue;
 				}
 
@@ -654,13 +655,12 @@ void* udpThread(void *ptr)
 				//if the person is not in a call, there is no need to register a media port
 				if(liveList.count(user) == 0)
 				{
-					//TODO: log unnecessary registering
 					userUtils->clearUdpInfo(user);
 					continue;
 				}
 
 				//create and encrypt ack
-				std::string ack = std::to_string(now) + "|ok";
+				std::string ack = std::to_string(now) + "|" + userUtils->getSessionKey(user) + "|ok";
 				RSA* userKey = userUtils->getPublicKey(user);
 				unsigned char* ackEnc = (unsigned char*)malloc(RSA_size(userKey));
 				int encLength = RSA_public_encrypt(ack.length(), (const unsigned char*)ack.c_str(), ackEnc, userKey, RSA_PKCS1_OAEP_PADDING);
@@ -672,27 +672,32 @@ void* udpThread(void *ptr)
 				int sent = sendto(mediaFd, ackEncTrimmed, encLength, 0, (struct sockaddr*)&sender, senderLength);
 				if(sent < 0)
 				{
-					//TODO: log udp send fail
+					std::string error = "udp sendto failed during media port registration with errno (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+					userUtils->insertLog(Log(TAG_UDPTHREAD, error, user , ERRORLOG, ip));
 				}
 			}
 			catch(std::invalid_argument &badarg)
 			{ //timestamp couldn't be parsed. assume someone is trying something fishy
-				std::cout << "invalid argument\n";
+				std::string error = "invalid argument exception, udp thread: " + decryptedCommand;
+				userUtils->insertLog(Log(TAG_UDPTHREAD, error, user, ERRORLOG, ip));
 			}
 			catch(std::out_of_range &exrange)
 			{ //command was not in the expected format
-				std::cout << "out of range exception\n";
+				std::string error = "out of range excpetion, udp thread: " + decryptedCommand;
+				userUtils->insertLog(Log(TAG_UDPTHREAD, error, user, ERRORLOG, ip));
 			}
 
 		}
-		else //implied user != "" and user state == INCALL
+		else if(state == INCALL)
 		{//in call, passthrough audio untouched (end to end encryption if only to avoid touching more openssl apis)
+			std::cout << "mailing udp to: " << liveList[user] << "\n";
 			struct sockaddr_in otherPerson = userUtils->getUdpInfo(liveList[user]);
 			int sent = sendto(mediaFd, mediaBuffer, receivedLength, 0, (struct sockaddr*)&otherPerson, sizeof(otherPerson));
 			if(sent < 0)
 			{
-				//TODO: log udp send fail
-			}
+				std::string error = "udp sendto failed during live call with errno (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+				std::string ip = std::string(inet_ntoa(otherPerson.sin_addr));
+				userUtils->insertLog(Log(TAG_UDPTHREAD, error, user , ERRORLOG, ip));			}
 		}
 	}
 	return NULL;
@@ -739,12 +744,7 @@ void removeClient(int sd)
 	clientssl.erase(sd);
 
 	//clean up the live list if needed
-	if(liveList.count(uname) > 0)
-	{
-		std::string other=liveList[uname];
-		liveList.erase(uname);
-		liveList.erase(other);
-	}
+	resetLiveList(uname);
 	userUtils->clearSession(uname);
 }
 
@@ -794,7 +794,7 @@ void write2Client(std::string response, SSL *respSsl)
 	int errValue = SSL_write(respSsl, response.c_str(), response.size());
 	if(errValue <= 0)
 	{
-		std::string error = "ssl_write returned an error of: " + std::to_string(errValue);
+		std::string error = "ssl_write returned an error of " + std::string(ERR_error_string(ERR_get_error(), NULL));
 		userUtils->insertLog(Log(TAG_SSL, error, user, ERRORLOG, ip));
 	}
 }
@@ -861,7 +861,18 @@ int readSSL(SSL *sdssl, char inputBuffer[])
 	return totalRead;
 }
 
+void resetLiveList(std::string username)
+{
+	if(liveList.count(username) > 0)
+	{
+		std::string other=liveList[username];
+		liveList.erase(username);
+		liveList.erase(other);
 
+		userUtils->setUserState(username, NONE);
+		userUtils->setUserState(other, NONE);
+	}
+}
 
 
 

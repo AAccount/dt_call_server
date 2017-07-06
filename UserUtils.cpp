@@ -185,7 +185,8 @@ void UserUtils::clearSession(std::string username)
 		//remove udp info
 		clearUdpInfo(username);
 
-		setSessionKey(username, "");
+		user->setSessionkey("");
+		user->setUserState(NONE);
 		//don't reset the challenge because when old fds exist when doing login1
 		//	the challenge that is set will be erased at the end of that select round.
 		//	on the next round when doing login2 it will look like a fake/hacked login
