@@ -147,18 +147,16 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	//private key
 	if(SSL_CTX_use_PrivateKey_file(result, privateKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
 	{
-		std::string error = "problems with the private key";
+		std::string error = "problems with the private key " + std::string(ERR_error_string(ERR_get_error(), NULL));
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
-		perror(error.c_str());
 		exit(1);
 	}
 
 	//public key
 	if(SSL_CTX_use_certificate_file(result, publicKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
 	{
-		std::string error = "problems with the public key";
+		std::string error = "problems with the public key" + std::string(ERR_error_string(ERR_get_error(), NULL));
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
-		perror(error.c_str());
 		exit(1);
 	}
 
@@ -169,25 +167,22 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	paramfile = fopen(dhfile.c_str(), "r");
 	if(!paramfile)
 	{
-		std::string error = "problems opening dh param file at: " +  dhfile;
+		std::string error = "problems opening dh param file at: " +  dhfile + " (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
-		perror(error.c_str());
 		exit(1);
 	}
 	dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
 	fclose(paramfile);
 	if(dh == NULL)
 	{
-		std::string error = "dh param file opened but openssl could not use dh param file at: " + dhfile;
+		std::string error = "dh param file opened but openssl could not use dh param file at: " + dhfile + "; " + std::string(ERR_error_string(ERR_get_error(), NULL));
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
-		perror(error.c_str());
 		exit(1);
 	}
 	if(SSL_CTX_set_tmp_dh(result, dh) != 1)
 	{
-		std::string error = "dh param file opened and interpreted but reject by context: " + dhfile;
+		std::string error = "dh param file opened and interpreted but reject by context: " + dhfile + "; " + std::string(ERR_error_string(ERR_get_error(), NULL));
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
-		perror(error.c_str());
 		exit(1);
 	}
 	//for ecdhe see SSL_CTX_set_tmp_ecdh
@@ -200,9 +195,8 @@ void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct soc
 	*fd = socket(AF_INET, type, 0); //tcp socket
 	if(*fd < 0)
 	{
-		std::string error = "cannot establish socket";
+		std::string error = "cannot establish socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
-		perror(error.c_str());
 		exit(1);
 	}
 	memset((char *) info, 0, sizeof(struct sockaddr_in));
@@ -211,9 +205,8 @@ void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct soc
 	info->sin_port = htons(port);
 	if(bind(*fd, (struct sockaddr *)info, sizeof(struct sockaddr_in)) < 0)
 	{
-		std::string error = "cannot bind socket to a nic";
+		std::string error = "cannot bind socket to a nic (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
-		perror(error.c_str());
 		exit(1);
 	}
 
@@ -221,9 +214,8 @@ void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct soc
 	{
 		if(setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, (char*)timeout, sizeof(struct timeval)) < 0)
 		{
-			std::string error="cannot set tcp socket options";
+			std::string error="cannot set tcp socket options (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
-			perror(error.c_str());
 			exit(1);
 		}
 		listen(*fd, MAXLISTENWAIT);

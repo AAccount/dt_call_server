@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
 	RSA *privateKey = PEM_read_RSAPrivateKey(privateKeyFilefopen, NULL, NULL, NULL);
 	if(privateKey == NULL)
 	{
-		userUtils->insertLog(Log(TAG_INIT, "cannot generate private key object", SELF, SYSTEMLOG, SELFIP));
+		std::string error = "cannot generate private key object " + std::string(ERR_error_string(ERR_get_error(), NULL));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, SYSTEMLOG, SELFIP));
 		exit(1);
 	}
 	fclose(privateKeyFilefopen);
@@ -84,9 +85,8 @@ int main(int argc, char *argv[])
 		int sockets = select(maxsd+1, &readfds, NULL, NULL, NULL);
 		if(sockets < 0)
 		{
-			std::string error = "read fds select system call error";
+			std::string error = "read fds select system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
-			perror(error.c_str());
 			exit(1); //see call thread fx for why
 		}
 #ifdef VERBOSE
@@ -102,9 +102,8 @@ int main(int argc, char *argv[])
 			int incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
 			if(incomingCmd < 0)
 			{
-				std::string error = "accept system call error";
+				std::string error = "accept system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, DONTKNOW));
-				perror(error.c_str());
 				continue;
 			}
 			std::string ip = inet_ntoa(cli_addr.sin_addr);
@@ -112,9 +111,8 @@ int main(int argc, char *argv[])
 			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
 			if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*) &readTimeout, sizeof(readTimeout)) < 0)
 			{
-				std::string error = "cannot set timeout for incoming media socket from " + ip;
+				std::string error = "cannot set timeout for incoming media socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip));
-				perror(error.c_str());
 				shutdown(incomingCmd, 2);
 				close(incomingCmd);
 				continue;
