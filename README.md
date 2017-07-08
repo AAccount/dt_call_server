@@ -1,27 +1,23 @@
 # dt_call_server
-VoIP server for android and test java client. Makes **encrypted** calls.
+VoIP server for android and test java client. Makes **end to end encrypted** calls.
 
 The VoIP server for my android and test java client.
 Its only dependancies is openssl for encrypting data and **public key authentication**.
-This server does not use passwords for authentication.
+This will not accept passwords for authentication.
 
 The server works on Linux and FreeBSD.
 ![Linux Screenshot](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20Fedora24.png "Call server running on Fedora 24 x64")
 ![FreeBSD Screenshot](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20FreeBSD11.png "Call server running on FreeBSD 11 amd64")
 
-Commands are generally sent in the following fomrat: time stamp | command | (arg1) | session id OR (arg 2)
-Commands are parsed by the "|" character.
+Commands are generally sent as a string of characters delimited by the "|" character.
 
-Each user has 2 sockets: a command socket (to send commands on) and media socket (to send/receive voice data).
-Timestamp is to help guard against replay. The window for acceptable timestamps is configurable.
+Each user has 2 sockets: a TCP command socket (to send commands on) and an ondemand UDP media socket (to send/receive voice data). 
+
+UDP for voice is required for very crowded wifi networks where tcp's perfectionist attitude will cause it to severly delay voice packets and possibly close the connection for only a handful of unreceived packets. In VoIP (like high school English), quantity is more important than quality.
+
+Timestamps are to help guard against replay. The window for acceptable timestamps is configurable.
 
 All constants are stored in const.h
-
-When a socket is created it is assigned a state: 
-* command: a command socket to receive and parse commands.
-* media new: a new media socket that has not been associated with a user yet.
-* media idle: a media socket that has been associated with a user but isn't doing anything.
-* (another user's media socket fd#): media socket is used in a call. Send voice data to this person's media socket.
 
 There is a special "jbyte", which when sent to a socket is ignored. 
 Its purpose is for the client to periodically ping the server to keep the nat pathways open. 
@@ -47,6 +43,4 @@ All test accounts are based on characters from: https://myanimelist.net/anime/46
 (Watch it and its spinoff. They're really good.)
 
 
-Footnote: the design of this server makes it fully possible to do a MitM decryption of calls from the server. 
-It is not designed for end to end encryption but rather client to server encrytption.
-It is assumed you trust the person running the server.
+Footnote: MitM attack is no longer possible as of V4.0. Single use AES keys are RSA encrypted from client to client so not even the server will know what is being said. Any RSA key relay commands have the encrypted RSA censored out from the logs too.
