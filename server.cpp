@@ -577,6 +577,13 @@ void* udpThread(void *ptr)
 	struct sockaddr_in mediaInfo;
 	setupListeningSocket(SOCK_DGRAM, NULL, &mediaFd, &mediaInfo, mediaPort, userUtils);
 
+	int express = IPTOS_DSCP_EF;
+	if(setsockopt(mediaFd, IPPROTO_IP, IP_TOS, (char*)&express, sizeof(int)) < 0)
+	{
+		std::string error="cannot set udp socket dscp expedited (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		userUtils->insertLog(Log(TAG_UDPTHREAD, error, SELF, ERRORLOG, SELFIP));
+	}
+
 	while(true)
 	{
 		unsigned char mediaBuffer[BUFFERSIZE+1];
