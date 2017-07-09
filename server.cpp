@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 			}
 			else
 			{
-				std::string error = "Problem initializing new command tls connection (err: " +  std::to_string(sslerr) +") from " + ip;
+				std::string error = "Problem initializing new command tls connection" + std::string(ERR_error_string(ERR_get_error(), NULL));
 				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip));
 				SSL_shutdown(connssl);
 				SSL_free(connssl);
