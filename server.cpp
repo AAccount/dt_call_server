@@ -3,9 +3,6 @@
 //associates socket descriptors to their ssl structs
 std::unordered_map<int, SSL*>clientssl;
 
-//media port for the udp thread
-int mediaPort = DEFAULTMEDIA;
-
 //list of who is a live call with whom
 std::unordered_map<std::string, std::string> liveList;
 
@@ -17,6 +14,7 @@ int main(int argc, char *argv[])
 	userUtils->insertLog(Log(TAG_INIT, start, SELF, SYSTEMLOG, SELFIP));
 
 	int cmdFD, cmdPort = DEFAULTCMD; //command port stuff
+	int mediaPort = DEFAULTMEDIA;
 
 	std::string publicKeyFile;
 	std::string privateKeyFile;
@@ -60,8 +58,12 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	fclose(privateKeyFilefopen);
+
+	struct UdpArgs *args = (struct UdpArgs*)malloc(sizeof(struct UdpArgs));
+	args->port = mediaPort;
+	args->privateKey = privateKey;
 	pthread_t callThread;
-	pthread_create(&callThread, NULL, udpThread, (void*)privateKey);
+	pthread_create(&callThread, NULL, udpThread, args);
 
 	while(true) //forever
 	{
@@ -571,7 +573,10 @@ int main(int argc, char *argv[])
 
 void* udpThread(void *ptr)
 {
-	RSA *privateKey = (RSA*)ptr;
+	struct UdpArgs *receivedArgs = (struct UdpArgs*)ptr;
+	RSA *privateKey = receivedArgs->privateKey;
+	int mediaPort = receivedArgs->port;
+	free(ptr);
 
 	int mediaFd;
 	struct sockaddr_in mediaInfo;

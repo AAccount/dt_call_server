@@ -34,6 +34,12 @@
 #include "Utils.hpp"
 #include "server_init.hpp"
 
+struct UdpArgs
+{
+	int port;
+	RSA *privateKey;
+};
+
 //dedicated function for handling a call. each call is processed on its own thread.
 void* udpThread(void *ptr);
 
