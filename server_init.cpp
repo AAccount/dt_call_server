@@ -130,7 +130,12 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	SSL_library_init();
 	OpenSSL_add_all_algorithms();
 
-	SSL_CTX *result = SSL_CTX_new(TLSv1_2_method());
+#if OPENSSL_VERSION_NUMBER >= 0x10100000 //openssl 1.1 requires the "flexible" tls_method
+	SSL_CTX *result = SSL_CTX_new(TLS_method());
+	SSL_CTX_set_min_proto_version(result, TLS1_2_VERSION); //force the "flexible" method's hand for only 1.2
+#else
+	SSL_CTX *result = SSL_CTX_new(TLSv1_2_server_method());
+#endif
 
 	//set ssl properties
 	if(result <= 0)
