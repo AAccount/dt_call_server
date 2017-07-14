@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 		FD_SET(cmdFD, &readfds);
 		int maxsd = cmdFD;
 
-		//build the fd watch list consisting of command, and NON live media fds
+		//build the fd watch list of command fds
 		for(auto it = clientssl.begin(); it != clientssl.end(); ++it)
 		{
 			int sd = it->first;
@@ -114,10 +114,10 @@ int main(int argc, char *argv[])
 			}
 			std::string ip = inet_ntoa(cli_addr.sin_addr);
 
-			//if this socket has problems in the future, give it 1sec to get its act together or giveup on that operation
+			//if this socket has problems in the future, give it a fraction of a second to get its act together or giveup on that operation
 			if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*) &readTimeout, sizeof(readTimeout)) < 0)
 			{
-				std::string error = "cannot set timeout for incoming media socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+				std::string error = "cannot set timeout for incoming command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip));
 				shutdown(incomingCmd, 2);
 				close(incomingCmd);
@@ -178,9 +178,9 @@ int main(int argc, char *argv[])
 
 		std::vector<int> removals;
 
-		//check for data on an existing connection
+		//check for new commands
 		for(auto it = clientssl.begin(); it != clientssl.end(); ++it)
-		{ //figure out if it's a command, or voice data. handle appropriately
+		{
 
 			//get the socket descriptor and associated ssl struct from the iterator round
 			int sd=it->first;
@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
 				if(bufferString == JBYTE)
 				{
 #ifdef VERBOSE
-					std::cout << "Got a " << JBYTE << " cap for media sd " << sd << "\n";
+					std::cout << "Got a heartbeat byte on " << sd << "\n";
 #endif
 					continue;
 				}
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 						std::string ip=ipFromFd(sd);
 						userUtils->insertLog(Log(TAG_LOGIN, originalBufferCmd, username, INBOUNDLOG, ip));
 
-						//don't immediately remove old command and media fd. this would allow anyone
+						//don't immediately remove old command fd. this would allow anyone
 						//	to send a login1 command and kick out a legitimately logged in person.
 
 						//get the user's public key
@@ -396,7 +396,7 @@ int main(int argc, char *argv[])
 							continue; //not really invalid either but can't continue any further at this point
 						}
 
-						//setup the media fd statuses
+						//setup the user statuses and register the call with user utils
 						userUtils->setUserState(zapper, INIT);
 						userUtils->setUserState(touma, INIT);
 						userUtils->setCallPair(touma, zapper);
