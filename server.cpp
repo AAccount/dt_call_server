@@ -3,9 +3,6 @@
 //associates socket descriptors to their ssl structs
 std::unordered_map<int, SSL*>clientssl;
 
-//list of who is a live call with whom
-std::unordered_map<std::string, std::string> liveList;
-
 UserUtils *userUtils = UserUtils::getInstance();
 
 int main(int argc, char *argv[])
@@ -59,11 +56,18 @@ int main(int argc, char *argv[])
 	}
 	fclose(privateKeyFilefopen);
 
+	//package the stuff to start the udp thread and start it
 	struct UdpArgs *args = (struct UdpArgs*)malloc(sizeof(struct UdpArgs));
 	args->port = mediaPort;
 	args->privateKey = privateKey;
 	pthread_t callThread;
-	pthread_create(&callThread, NULL, udpThread, args);
+	if(pthread_create(&callThread, NULL, udpThread, args) != 0)
+	{
+		std::string error = "cannot create the udp thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+		exit(1); //with no udp thread the server cannot handle any calls
+	}
+	pthread_setname_np(callThread, "VoUDP"); //not fatal if the name is too long
 
 	while(true) //forever
 	{
@@ -118,6 +122,14 @@ int main(int argc, char *argv[])
 				shutdown(incomingCmd, 2);
 				close(incomingCmd);
 				continue;
+			}
+
+			//disable nagle delay for heartbeat which is a 1 char payload
+			int nagle = 0;
+			if(setsockopt(incomingCmd, IPPROTO_TCP, TCP_NODELAY, (char*)&nagle, sizeof(int)))
+			{
+				std::string error = "cannot disable nagle delay (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip));
 			}
 
 			//setup ssl connection
@@ -311,7 +323,6 @@ int main(int argc, char *argv[])
 						//	the user's session key and fds. don't want them cleared as they're now the new ones.
 						//	immediately clean up this person's records before all the new stuff goes in
 						userUtils->clearSession(username);
-						resetLiveList(username);
 
 						//challenge was correct and wasn't "", set the info
 						std::string sessionkey=Utils::randomString(SESSION_KEY_LENGTH);
@@ -367,7 +378,7 @@ int main(int argc, char *argv[])
 						}
 
 						//make sure zapper isn't already in a call or waiting for one to connect
-						if(liveList.count(zapper) > 0) //won't be in the live list if you're not making a call
+						if(userUtils->getCallWith(zapper) != "") //won't be in the live list if you're not making a call
 						{
 							std::string busy=std::to_string(now) + "|end|" + zapper;
 							write2Client(busy, sdssl);
@@ -388,8 +399,7 @@ int main(int argc, char *argv[])
 						//setup the media fd statuses
 						userUtils->setUserState(zapper, INIT);
 						userUtils->setUserState(touma, INIT);
-						liveList[zapper]=touma;
-						liveList[touma]=zapper;
+						userUtils->setCallPair(touma, zapper);
 
 						//tell touma that zapper is being rung
 						std::string notifyTouma = std::to_string(now) + "|available|" + zapper;
@@ -491,8 +501,7 @@ int main(int argc, char *argv[])
 						//set touma's and zapper's user state to idle/none
 						userUtils->setUserState(touma, NONE);
 						userUtils->setUserState(zapper, NONE);
-						liveList.erase(touma);
-						liveList.erase(zapper);
+						userUtils->removeCallPair(touma);
 
 						//tell zapper to hang up whether it's a call end or time's up to answer a call
 						std::string resp = std::to_string(now) + "|end|" + touma;
@@ -573,15 +582,18 @@ int main(int argc, char *argv[])
 
 void* udpThread(void *ptr)
 {
+	//unpackage media thread args
 	struct UdpArgs *receivedArgs = (struct UdpArgs*)ptr;
 	RSA *privateKey = receivedArgs->privateKey;
 	int mediaPort = receivedArgs->port;
 	free(ptr);
 
+	//establish the udp socket for voice data
 	int mediaFd;
 	struct sockaddr_in mediaInfo;
 	setupListeningSocket(SOCK_DGRAM, NULL, &mediaFd, &mediaInfo, mediaPort, userUtils);
 
+	//make the socket an expidited one
 	int express = IPTOS_DSCP_EF;
 	if(setsockopt(mediaFd, IPPROTO_IP, IP_TOS, (char*)&express, sizeof(int)) < 0)
 	{
@@ -591,11 +603,13 @@ void* udpThread(void *ptr)
 
 	while(true)
 	{
+		//setup buffer to receive on udp socket
 		unsigned char mediaBuffer[BUFFERSIZE+1];
 		memset(mediaBuffer, 0, BUFFERSIZE+1);
 		struct sockaddr_in sender;
 		socklen_t senderLength = sizeof(struct sockaddr_in);
 
+		//read encrypted voice data or registration
 		int receivedLength = recvfrom(mediaFd, mediaBuffer, BUFFERSIZE, 0, (struct sockaddr*)&sender, &senderLength);
 		if(receivedLength < 0)
 		{
@@ -666,7 +680,7 @@ void* udpThread(void *ptr)
 				}
 
 				//if the person is not in a call, there is no need to register a media port
-				if(liveList.count(user) == 0)
+				if(userUtils->getCallWith(user) == "")
 				{
 					userUtils->clearUdpInfo(user);
 					continue;
@@ -703,13 +717,23 @@ void* udpThread(void *ptr)
 		}
 		else if(state == INCALL)
 		{//in call, passthrough audio untouched (end to end encryption if only to avoid touching more openssl apis)
-			struct sockaddr_in otherPerson = userUtils->getUdpInfo(liveList[user]);
-			int sent = sendto(mediaFd, mediaBuffer, receivedLength, 0, (struct sockaddr*)&otherPerson, sizeof(otherPerson));
+			std::string otherPerson = userUtils->getCallWith(user);
+
+			//if the other person disappears midway through, calling clear session on his socket will cause
+			//	you to have nobody listed in User.callWith (or "" default value). getUdpInfo("") won't end well
+			if(otherPerson == "")
+			{
+				continue;
+			}
+
+			struct sockaddr_in otherSocket = userUtils->getUdpInfo(otherPerson);
+			int sent = sendto(mediaFd, mediaBuffer, receivedLength, 0, (struct sockaddr*)&otherSocket, sizeof(otherSocket));
 			if(sent < 0)
 			{
 				std::string error = "udp sendto failed during live call with errno (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-				std::string ip = std::string(inet_ntoa(otherPerson.sin_addr));
-				userUtils->insertLog(Log(TAG_UDPTHREAD, error, user , ERRORLOG, ip));			}
+				std::string ip = std::string(inet_ntoa(otherSocket.sin_addr));
+				userUtils->insertLog(Log(TAG_UDPTHREAD, error, user , ERRORLOG, ip));
+			}
 		}
 	}
 	return NULL;
@@ -756,7 +780,6 @@ void removeClient(int sd)
 	clientssl.erase(sd);
 
 	//clean up the live list if needed
-	resetLiveList(uname);
 	userUtils->clearSession(uname);
 }
 
@@ -766,12 +789,14 @@ bool isRealCall(std::string persona, std::string personb, std::string tag)
 {
 	bool real = true;
 
-	if((liveList.count(persona) == 0) || (liveList.count(personb) == 0))
+	std::string awith = userUtils->getCallWith(persona);
+	std::string bwith = userUtils->getCallWith(personb);
+	if((awith == "") || (bwith == ""))
 	{
 		real = false;
 	}
 
-	if((liveList[persona] != personb) || (liveList[personb] != persona))
+	if((persona != bwith) || (personb != awith))
 	{
 		real = false;
 	}
@@ -872,20 +897,6 @@ int readSSL(SSL *sdssl, char inputBuffer[])
 	}
 	return totalRead;
 }
-
-void resetLiveList(std::string username)
-{
-	if(liveList.count(username) > 0)
-	{
-		std::string other=liveList[username];
-		liveList.erase(username);
-		liveList.erase(other);
-
-		userUtils->setUserState(username, NONE);
-		userUtils->setUserState(other, NONE);
-	}
-}
-
 
 
 

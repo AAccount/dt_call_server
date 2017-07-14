@@ -59,6 +59,10 @@ public:
 	ustate getUserState(std::string uname);
 	void setUserState(std::string uname, ustate newstate);
 
+	std::string getCallWith(std::string uname);
+	void setCallPair(std::string uname, std::string newOther);
+	void removeCallPair(std::string uname);
+
 	void insertLog(Log l);
 	void killInstance();
 

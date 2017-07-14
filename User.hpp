@@ -38,6 +38,9 @@ public:
 	ustate getUserState();
 	void setUserState(ustate newState);
 
+	std::string getCallWith();
+	void setCallWith(std::string newOther);
+
 	virtual ~User();
 
 private:
@@ -51,6 +54,7 @@ private:
 	std::string udpSummary;
 	struct sockaddr_in udpInfo;
 	ustate userState;
+	std::string callWith;
 };
 
 #endif /* USER_HPP_ */

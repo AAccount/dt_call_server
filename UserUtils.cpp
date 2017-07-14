@@ -187,6 +187,7 @@ void UserUtils::clearSession(std::string username)
 
 		user->setSessionkey("");
 		user->setUserState(NONE);
+		removeCallPair(username);
 		//don't reset the challenge because when old fds exist when doing login1
 		//	the challenge that is set will be erased at the end of that select round.
 		//	on the next round when doing login2 it will look like a fake/hacked login
@@ -346,6 +347,33 @@ std::string UserUtils::getPublicKeyDump(std::string uname)
 		return nameMap[uname]->getPublicKeyDump();
 	}
 	return "";
+}
+
+std::string UserUtils::getCallWith(std::string uname)
+{
+	if(nameMap.count(uname) > 0)
+	{
+		return nameMap[uname]->getCallWith();
+	}
+	return "";
+}
+void UserUtils::setCallPair(std::string uname, std::string newOther)
+{
+	if(nameMap.count(uname) > 0 && nameMap.count(newOther) > 0)
+	{
+		nameMap[uname]->setCallWith(newOther);
+		nameMap[newOther]->setCallWith(uname);
+	}
+}
+
+void UserUtils::removeCallPair(std::string uname)
+{
+	if(nameMap.count(uname) > 0 && nameMap.count(nameMap[uname]->getCallWith()) > 0)
+	{
+		std::string other = nameMap[uname]->getCallWith();
+		nameMap[uname]->setCallWith("");
+		nameMap[other]->setCallWith("");
+	}
 }
 
 void UserUtils::killInstance()

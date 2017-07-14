@@ -18,6 +18,7 @@ User::User(std::string cuname, RSA *ckey, std::string cdump)
 
 	udpSummary = "";
 	userState = NONE;
+	callWith = "";
 	//ok not to initialize the struct since the summary is 0. with a 0 summary nobody will look at the struct
 }
 
@@ -100,4 +101,13 @@ std::string User::getSessionkey()
 void User::setSessionkey(std::string newSessionkey)
 {
 	sessionkey = newSessionkey;
+}
+
+std::string User::getCallWith()
+{
+	return callWith;
+}
+void User::setCallWith(std::string newOther)
+{
+	callWith = newOther;
 }

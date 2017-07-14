@@ -14,6 +14,7 @@
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/tcp.h>
 #include <signal.h>
 #include <arpa/inet.h>
 
@@ -65,8 +66,5 @@ std::string stringify(unsigned char *bytes, int length);
 
 //read an SSL socket into param inputBuffer. maximum read size in const.h
 int readSSL(SSL *sdssl, char inputBuffer[]);
-
-//remove both people off the live list hash table and set their states to none
-void resetLiveList(std::string username);
 
 #endif
