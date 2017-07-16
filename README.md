@@ -9,6 +9,9 @@ The server works on Linux and FreeBSD.
 ![Linux Screenshot](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20Fedora24.png "Call server running on Fedora 24 x64")
 ![FreeBSD Screenshot](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20FreeBSD11.png "Call server running on FreeBSD 11 amd64")
 
+The server is written in C/(self taught)C++ hybrid to minimize resource usage. Coordinating 1 voice call on my 2004 Pentium4 Northwood with 2GB of ram home server running Debian 8 x86 produces an occasional cpu spike of 0.5%.
+![CPU Usage 2004era P4](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20Live%20Call%20CPU.png)
+
 Commands are generally sent as a string of characters delimited by the "|" character.
 
 Each user has 2 sockets: a TCP command socket (to send commands on) and an ondemand UDP media socket (to send/receive voice data). 
@@ -37,7 +40,6 @@ A sample of each is provided with full explanations.
 Server logs are stored in standard unix style plain text files that are automatically rotated every 24 hours.
 If you have any ideas of how to make this better please do say so. 
 
-I'm just going with what I learned in class. The C/C++ hybrid is just what I picked up teaching myself.
 
 All test accounts are based on characters from: https://myanimelist.net/anime/4654/Toaru_Majutsu_no_Index
 (Watch it and its spinoff. They're really good.)
