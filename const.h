@@ -4,7 +4,7 @@
 #define VERSION "4.0:{git revision here}"
 
 #define COMMANDSIZE 2048
-#define BUFFERSIZE 1024
+#define MEDIASIZE 1200
 #define MAXLISTENWAIT 5
 #define MARGIN_OF_ERROR 5 //+- amount the command timestamp can be off by in minutes
 #define CHALLENGE_LENGTH 200

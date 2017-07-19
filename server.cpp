@@ -604,13 +604,13 @@ void* udpThread(void *ptr)
 	while(true)
 	{
 		//setup buffer to receive on udp socket
-		unsigned char mediaBuffer[BUFFERSIZE+1];
-		memset(mediaBuffer, 0, BUFFERSIZE+1);
+		unsigned char mediaBuffer[MEDIASIZE+1];
+		memset(mediaBuffer, 0, MEDIASIZE+1);
 		struct sockaddr_in sender;
 		socklen_t senderLength = sizeof(struct sockaddr_in);
 
 		//read encrypted voice data or registration
-		int receivedLength = recvfrom(mediaFd, mediaBuffer, BUFFERSIZE, 0, (struct sockaddr*)&sender, &senderLength);
+		int receivedLength = recvfrom(mediaFd, mediaBuffer, MEDIASIZE, 0, (struct sockaddr*)&sender, &senderLength);
 		if(receivedLength < 0)
 		{
 			std::string error = "udp read error with errno " + std::to_string(errno) + ": " + std::string(strerror(errno));
