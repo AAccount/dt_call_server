@@ -615,6 +615,7 @@ void* udpThread(void *ptr)
 		{
 			std::string error = "udp read error with errno " + std::to_string(errno) + ": " + std::string(strerror(errno));
 			userUtils->insertLog(Log(TAG_UDPTHREAD, error, SELF, ERRORLOG, SELFIP));
+			continue; //received nothing, this round is a write off
 		}
 
 		//quick representation of ip:port that is 32 and 64 bit friendly: glue address and port together
