@@ -369,31 +369,18 @@ int main(int argc, char *argv[])
 						int zapperCmdFd = userUtils->getCommandFd(zapper);
 
 						//find out if zapper has a command fd (signed in)
-						if(zapperCmdFd == 0)
+						bool offline = (zapperCmdFd == 0);
+						//make sure zapper isn't already in a call or waiting for one to connect
+						bool busy = (userUtils->getCallWith(zapper) != "");
+						//make sure touma didn't accidentally dial himself
+						bool selfDial = (touma == zapper);
+
+						if(offline || busy || selfDial)
 						{
 							std::string na = std::to_string(now) + "|end|" + zapper;
 							write2Client(na, sdssl);
 							userUtils->insertLog(Log(TAG_CALL, na, touma, OUTBOUNDLOG, ip));
 							continue; //nothing more to do
-						}
-
-						//make sure zapper isn't already in a call or waiting for one to connect
-						if(userUtils->getCallWith(zapper) != "") //won't be in the live list if you're not making a call
-						{
-							std::string busy=std::to_string(now) + "|end|" + zapper;
-							write2Client(busy, sdssl);
-							userUtils->insertLog(Log(TAG_CALL, busy, touma, OUTBOUNDLOG, ip));
-							continue; //not really invalid either but can't continue any further at this point
-						}
-
-						//make sure touma didn't accidentally dial himself
-						if(touma == zapper)
-						{
-							std::string busy=std::to_string(now) + "|end|" + zapper; //ye olde landline did this
-							write2Client(busy, sdssl);
-							busy="(self dialed) " + busy;
-							userUtils->insertLog(Log(TAG_CALL, busy, touma, OUTBOUNDLOG, ip));
-							continue; //not really invalid either but can't continue any further at this point
 						}
 
 						//setup the user statuses and register the call with user utils
