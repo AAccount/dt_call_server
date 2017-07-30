@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
 
 					if(!isSign && !isNumber && !isUpperCase && !isLowerCase && !isDelimiter)
 					{//actually only checking for ascii of interest
-						std::string unexpected = "unexpected byte in string: " + std::to_string(byte);
+						std::string unexpected = "unexpected byte in string: " + std::to_string((int)byte);
 						std::string user = userUtils->userFromCommandFd(sd);
 						std::string ip = ipFromFd(sd);
 						userUtils->insertLog(Log(TAG_BADCMD, unexpected, user, ERRORLOG, ip));
@@ -849,8 +849,15 @@ std::string ipFromFd(int sd)
 {
 	struct sockaddr_in thisfd;
 	socklen_t thisfdSize = sizeof(struct sockaddr_in);
-	getpeername(sd, (struct sockaddr*) &thisfd, &thisfdSize);
-	return std::string(inet_ntoa(thisfd.sin_addr));
+	int result = getpeername(sd, (struct sockaddr*) &thisfd, &thisfdSize);
+	if(result == 0)
+	{
+		return std::string(inet_ntoa(thisfd.sin_addr));
+	}
+	else
+	{
+		return "(" +std::to_string(errno) + ": " + std::string(strerror(errno)) + ")";
+	}
 }
 
 std::string stringify(unsigned char *bytes, int length)
