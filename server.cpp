@@ -183,8 +183,8 @@ int main(int argc, char *argv[])
 		{
 
 			//get the socket descriptor and associated ssl struct from the iterator round
-			int sd=it->first;
-			SSL *sdssl=it->second;
+			int sd = it->first;
+			SSL *sdssl = it->second;
 			if(FD_ISSET(sd, &readfds))
 			{
 #ifdef VERBOSE
@@ -198,6 +198,27 @@ int main(int argc, char *argv[])
 				{
 					removals.push_back(sd);
 					continue;
+				}
+
+				//check if the bytes sent are valid ascii like c#
+				for(int i=0; i<amountRead; i++)
+				{
+					char byte = inputBuffer[i];
+
+					bool isSign = ((byte == 45) || (byte == 47));
+					bool isNumber = ((byte >= 48) && (byte <=57));
+					bool isUpperCase = ((byte >= 65) && (byte <=90));
+					bool isLowerCase = ((byte >= 97) && (byte <=122));
+					bool isDelimiter = (byte == 124);
+
+					if(!isSign && !isNumber && !isUpperCase && !isLowerCase && !isDelimiter)
+					{//actually only checking for ascii of interest
+						std::string unexpected = "unexpected byte in string: " + std::to_string(byte);
+						std::string user = userUtils->userFromCommandFd(sd);
+						std::string ip = ipFromFd(sd);
+						userUtils->insertLog(Log(TAG_BADCMD, unexpected, user, ERRORLOG, ip));
+						continue;
+					}
 				}
 
 				//what was previously a workaround now has an official purpose: heartbeat/ping ignore byte
