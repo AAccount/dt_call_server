@@ -67,4 +67,8 @@ std::string stringify(unsigned char *bytes, int length);
 //read an SSL socket into param inputBuffer. maximum read size in const.h
 int readSSL(SSL *sdssl, char inputBuffer[]);
 
+//check to see if the bytes in the buffer are legitimate ascii characters of interest and doesn't contain any junk
+bool legitimateAscii(char buffer[], int length);
+
+
 #endif

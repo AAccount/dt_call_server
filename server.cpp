@@ -201,24 +201,13 @@ int main(int argc, char *argv[])
 				}
 
 				//check if the bytes sent are valid ascii like c#
-				for(int i=0; i<amountRead; i++)
+				if (!legitimateAscii(inputBuffer, amountRead))
 				{
-					char byte = inputBuffer[i];
-
-					bool isSign = ((byte == 45) || (byte == 47));
-					bool isNumber = ((byte >= 48) && (byte <=57));
-					bool isUpperCase = ((byte >= 65) && (byte <=90));
-					bool isLowerCase = ((byte >= 97) && (byte <=122));
-					bool isDelimiter = (byte == 124);
-
-					if(!isSign && !isNumber && !isUpperCase && !isLowerCase && !isDelimiter)
-					{//actually only checking for ascii of interest
-						std::string unexpected = "unexpected byte in string: " + std::to_string((int)byte);
-						std::string user = userUtils->userFromCommandFd(sd);
-						std::string ip = ipFromFd(sd);
-						userUtils->insertLog(Log(TAG_BADCMD, unexpected, user, ERRORLOG, ip));
-						continue;
-					}
+					std::string unexpected = "unexpected byte in string";
+					std::string user = userUtils->userFromCommandFd(sd);
+					std::string ip = ipFromFd(sd);
+					userUtils->insertLog(Log(TAG_BADCMD, unexpected, user, ERRORLOG, ip));
+					continue;
 				}
 
 				//what was previously a workaround now has an official purpose: heartbeat/ping ignore byte
@@ -663,6 +652,14 @@ void* udpThread(void *ptr)
 			strncpy(decryptedArray, decryptedCommand.c_str(), decLength);
 			decryptedArray[decLength] = 0;
 
+			//check the decrypted contents don't have unwanted junk like c#
+			if(!legitimateAscii(decryptedArray, decLength-1))
+			{
+				std::string unexpected = "unexpected byte in string";
+				userUtils->insertLog(Log(TAG_UDPTHREAD, unexpected, user, ERRORLOG, ip));
+				continue;
+			}
+
 			//try to parse decrypted command
 			std::vector<std::string> parsed = parse(decryptedArray);
 			try
@@ -914,5 +911,23 @@ int readSSL(SSL *sdssl, char inputBuffer[])
 	return totalRead;
 }
 
+bool legitimateAscii(char buffer[], int length)
+{
+	for (int i = 0; i < length; i++)
+	{
+		char byte = buffer[i];
 
+		bool isSign = ((byte == 43) || (byte == 45));
+		bool isNumber = ((byte >= 48) && (byte <= 57));
+		bool isUpperCase = ((byte >= 65) && (byte <= 90));
+		bool isLowerCase = ((byte >= 97) && (byte <= 122));
+		bool isDelimiter = (byte == 124);
+
+		if (!isSign && !isNumber && !isUpperCase && !isLowerCase && !isDelimiter)
+		{//actually only checking for ascii of interest
+			return false;
+		}
+	}
+	return true;
+}
 
