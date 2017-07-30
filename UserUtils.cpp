@@ -37,8 +37,8 @@ UserUtils::UserUtils()
 		//read the name and password
 		std::string name, publicKey, publicKeyDump;
 		std::stringstream ss(line);
-		getline(ss, name, ' ');
-		getline(ss, publicKey, ' ');
+		getline(ss, name, '>');
+		getline(ss, publicKey, '>');
 
 		//cleanup the surrounding whitespace and strip the end of line comment
 		name = Utils::trim(name);

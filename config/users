@@ -1,10 +1,9 @@
 #Sample Users File
+#Format USERNAME > PATH_TO_PUBLIC_KEY
 
-righthand /home/Daniel/dtoperator/righthand_public.pem
-libprohibited /home/Daniel/dtoperator/libprohibited_public.pem
-zapper /home/Daniel/dtoperator/zapper_public.pem
-
-#USERNAME PATH_TO_PUBLIC_KEY
+righthand > /home/Daniel/dtoperator/righthand_public.pem
+libprohibited > /home/Daniel/dtoperator/libprohibited_public.pem
+zapper > /home/Daniel/dtoperator/zapper_public.pem
 
 #Since the config file and user file are parsed with the same code, the users file can be commented.
 #All sample accounts based on tv characters seen: https://myanimelist.net/anime/4654/Toaru_Majutsu_no_Index
