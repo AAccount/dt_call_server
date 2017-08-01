@@ -30,13 +30,13 @@ int main(int argc, char *argv[])
 	}
 
 	//socket read timeout option
-	struct timeval readTimeout;
-	readTimeout.tv_sec = 0;
-	readTimeout.tv_usec = READTIMEOUT;
+	struct timeval unauthTimeout; //for new sockets
+	unauthTimeout.tv_sec = 0;
+	unauthTimeout.tv_usec = UNAUTHTIMEOUT;
 
 	//helper to setup the sockets
 	struct sockaddr_in serv_cmd;
-	setupListeningSocket(SOCK_STREAM, &readTimeout, &cmdFD, &serv_cmd, cmdPort, userUtils);
+	setupListeningSocket(SOCK_STREAM, &unauthTimeout, &cmdFD, &serv_cmd, cmdPort, userUtils);
 
 	//sigpipe is thrown for closing the broken connection. it's gonna happen for a voip server handling mobile clients
 	//what're you gonna do about it... IGNORE IT!!
@@ -114,8 +114,8 @@ int main(int argc, char *argv[])
 			}
 			std::string ip = inet_ntoa(cli_addr.sin_addr);
 
-			//if this socket has problems in the future, give it a fraction of a second to get its act together or giveup on that operation
-			if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*) &readTimeout, sizeof(readTimeout)) < 0)
+			//for new sockets that nobody owns, don't give much leniency for timeouts
+			if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*) &unauthTimeout, sizeof(unauthTimeout)) < 0)
 			{
 				std::string error = "cannot set timeout for incoming command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 				userUtils->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip));
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
 				}
 				std::string originalBufferCmd = std::string(inputBuffer); //save original command string before it gets mutilated by strtok
 				std::vector<std::string> commandContents = parse(inputBuffer);
-				std::string ip=ipFromFd(sd);
+				std::string ip = ipFromFd(sd);
 				time_t now=time(NULL);
 
 				try
@@ -252,7 +252,6 @@ int main(int argc, char *argv[])
 					if(command == "login1") //you can do string comparison like this in c++
 					{ //timestamp|login1|username
 						std::string username=commandContents.at(2);
-						std::string ip=ipFromFd(sd);
 						userUtils->insertLog(Log(TAG_LOGIN, originalBufferCmd, username, INBOUNDLOG, ip));
 
 						//don't immediately remove old command fd. this would allow anyone
@@ -277,7 +276,7 @@ int main(int argc, char *argv[])
 #endif
 						userUtils->setChallenge(username, challenge);
 						unsigned char* enc=(unsigned char*) malloc(RSA_size(publicKey));
-						int encLength=RSA_public_encrypt(challenge.length(), (const unsigned char*) challenge.c_str(), enc, publicKey, RSA_PKCS1_OAEP_PADDING);
+						int encLength=RSA_public_encrypt(challenge.length(), (const unsigned char*)challenge.c_str(), enc, publicKey, RSA_PKCS1_OAEP_PADDING);
 						std::string encString=stringify(enc, encLength);
 						free(enc);
 
@@ -292,14 +291,13 @@ int main(int argc, char *argv[])
 
 						//ok to store challenge answer in the log. challenge is single use, disposable
 						std::string username=commandContents.at(2);
-						std::string ip=ipFromFd(sd);
 						userUtils->insertLog(Log(TAG_LOGIN, originalBufferCmd, username, INBOUNDLOG, ip));
 						std::string triedChallenge=commandContents.at(3);
 
 						//check the challenge
 						//	an obvious loophole: send "" as the challenge since that's the default value
 						//	DON'T accept the default ""
-						std::string answer=userUtils->getChallenge(username);
+						std::string answer = userUtils->getChallenge(username);
 #ifdef VERBOSE
 						std::cout << "@username: " << username << " answer: " << answer << " attempt: " << triedChallenge << "\n";
 #endif
@@ -314,6 +312,16 @@ int main(int argc, char *argv[])
 							//reset challenge in case it was wrong
 							userUtils->setChallenge(username, "");
 							continue;
+						}
+
+						//for authenticated connections, allow more timeout in case of bad internet
+						struct timeval authTimeout;
+						authTimeout.tv_sec = AUTHTIMEOUT;
+						authTimeout.tv_usec = 0;
+						if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, (char*)&authTimeout, sizeof(authTimeout)) < 0)
+						{
+							std::string error = "cannot set timeout for authenticated command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+							userUtils->insertLog(Log(TAG_LOGIN, error, SELF, ERRORLOG, ip));
 						}
 
 						//now that the person has successfully logged in, remove the old information.

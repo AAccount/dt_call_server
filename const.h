@@ -18,7 +18,8 @@
 #define JBYTE "D"
 
 //timeouts
-#define READTIMEOUT 500000 //microseconds
+#define UNAUTHTIMEOUT 500000 //microseconds
+#define AUTHTIMEOUT 2 //seconds
 
 //where the configuration file is
 //#define LIVE
