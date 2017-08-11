@@ -3,5 +3,4 @@ Create unix user with nologin shell for program.
 (If fedora --> debian recompile in debian.)
 Copy systemd service.
 Leave root as the owner of the exe and configs,certificates but allow program's user account to read. If the program gets hacked, the account it's running under still can't change the certificates or the exe itself. Change of certificate should be detected and rejected by aclient.
-Make the genscrypt program to generate scrypt hashes for the various user passwords. (See sample users file.)
 Open firewall ports.
