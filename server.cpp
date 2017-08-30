@@ -80,9 +80,9 @@ int main(int argc, char *argv[])
 		int maxsd = cmdFD;
 
 		//build the fd watch list of command fds
-		for(auto it = clientssl.begin(); it != clientssl.end(); ++it)
+		for(auto sslMapping : clientssl)
 		{
-			int sd = it->first;
+			int sd = sslMapping.first;
 			FD_SET(sd, &readfds);
 			maxsd = (sd > maxsd) ? sd : maxsd;
 		}
@@ -179,12 +179,12 @@ int main(int argc, char *argv[])
 		std::vector<int> removals;
 
 		//check for new commands
-		for(auto it = clientssl.begin(); it != clientssl.end(); ++it)
+		for(auto sslMapping : clientssl)
 		{
 
 			//get the socket descriptor and associated ssl struct from the iterator round
-			int sd = it->first;
-			SSL *sdssl = it->second;
+			int sd = sslMapping.first;
+			SSL *sdssl = sslMapping.second;
 			if(FD_ISSET(sd, &readfds))
 			{
 #ifdef VERBOSE
