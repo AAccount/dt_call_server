@@ -556,12 +556,11 @@ int main(int argc, char *argv[])
 #ifdef VERBOSE
 			std::cout << "Removing " << removals.size() << " dead/leftover sockets\n";
 #endif
-			for(auto rmit = removals.begin(); rmit != removals.end(); ++rmit)
+			for(int deadSock : removals)
 			{
-				int kickout = *rmit;
-				if(clientssl.count(kickout) > 0)
+				if(clientssl.count(deadSock) > 0)
 				{
-					removeClient(kickout);
+					removeClient(deadSock);
 				}
 			}
 			removals.clear();

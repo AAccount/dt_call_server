@@ -99,10 +99,10 @@ UserUtils::~UserUtils()
 {
 	//only thing that matters is to remove all user objects in the heap
 	//	no need to undo all maps, they will be killed automatically
-	for(auto it = nameMap.begin(); it != nameMap.end(); ++it)
+	for(auto entry : nameMap)
 	{
-		delete nameMap[it->first];
-		nameMap[it->first] = NULL;
+		delete nameMap[entry.first];
+		nameMap[entry.first] = NULL;
 	}
 }
 
