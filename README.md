@@ -45,4 +45,4 @@ All test accounts are based on characters from: https://myanimelist.net/anime/46
 (Watch it and its spinoff. They're really good.)
 
 
-Footnote: MitM attack is no longer possible as of V4.0. Single use AES keys are RSA encrypted from client to client so not even the server will know what is being said. Any RSA key relay commands have the encrypted RSA censored out from the logs too.
+Footnote: MitM attack is no longer possible as of V4.0. Single use AES keys are RSA encrypted from client to client so not even the server will know what is being said. Any "RSA encrypted AES" key relay commands have the encrypted RSA censored out from the logs too.
