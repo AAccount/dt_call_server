@@ -70,5 +70,7 @@ int readSSL(SSL *sdssl, char inputBuffer[]);
 //check to see if the bytes in the buffer are legitimate ascii characters of interest and doesn't contain any junk
 bool legitimateAscii(char buffer[], int length);
 
+//send a call end command. its own function (unlike the other commands) to detect dropped calls
+void sendCallEnd(std::string user);
 
 #endif

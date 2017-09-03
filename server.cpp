@@ -197,6 +197,14 @@ int main(int argc, char *argv[])
 				if(amountRead == 0)
 				{
 					removals.push_back(sd);
+
+					//check if this person was in a call. send call drop to the other person
+					std::string user = userUtils->userFromCommandFd(sd);
+					std::string other = userUtils->getCallWith(user);
+					if(other != "")
+					{
+						sendCallEnd(other);
+					}
 					continue;
 				}
 
@@ -329,11 +337,19 @@ int main(int argc, char *argv[])
 						//	needed anymore.
 						int oldcmd=userUtils->getCommandFd(username);
 						if(oldcmd > 0)
-						{							//remove old SSL structs to prevent memory leak
+						{//remove old SSL structs to prevent memory leak
 #ifdef VERBOSE
 						std::cout << "previous command socket/SSL* exists, will remove\n";
 #endif
 							removals.push_back(oldcmd);
+						}
+
+						//for cases where you were in a call but your connection died. call record will still be there
+						//	since you didn't formally send a call end
+						std::string other = userUtils->getCallWith(username);
+						if(other != "")
+						{
+							sendCallEnd(other);
 						}
 
 						//dissociate old fd from user otherwise the person will have 2 commandfds listed in
@@ -503,17 +519,7 @@ int main(int argc, char *argv[])
 							continue;
 						}
 
-						//set touma's and zapper's user state to idle/none
-						userUtils->setUserState(touma, NONE);
-						userUtils->setUserState(zapper, NONE);
-						userUtils->removeCallPair(touma);
-
-						//tell zapper to hang up whether it's a call end or time's up to answer a call
-						std::string resp = std::to_string(now) + "|end|" + touma;
-						int zapperCmdFd=userUtils->getCommandFd(zapper);
-						SSL *zapperCmdSsl=clientssl[zapperCmdFd];
-						write2Client(resp, zapperCmdSsl);
-						userUtils->insertLog(Log(TAG_END, resp, zapper, OUTBOUNDLOG, ipFromFd(zapperCmdFd)));
+						sendCallEnd(zapper);
 					}
 					else //commandContents[1] is not a known command... something fishy???
 					{
@@ -938,3 +944,19 @@ bool legitimateAscii(char buffer[], int length)
 	return true;
 }
 
+
+void sendCallEnd(std::string user)
+{
+	//reset both peoples's states and remove the call pair record
+	std::string other = userUtils->getCallWith(user);
+	userUtils->setUserState(user, NONE);
+	userUtils->setUserState(other, NONE);
+	userUtils->removeCallPair(user);
+
+	//send the call end
+	std::string resp = std::to_string(time(NULL)) + "|end|" + other;
+	int cmdFd = userUtils->getCommandFd(user);
+	SSL *ssl = clientssl[cmdFd];
+	write2Client(resp, ssl);
+	userUtils->insertLog(Log(TAG_END, resp, user, OUTBOUNDLOG, ipFromFd(cmdFd)));
+}

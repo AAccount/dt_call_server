@@ -5,11 +5,9 @@ OPENSSL = -lssl -lcrypto
 PTHREAD = -pthread
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
- LEGACYDBGCFLAGS = -g -m32 -Werror -fPIE
  OPTCFLAGS = -flto -O2 -march=native -Werror -fPIE -D_FORTIFY_SOURCE=2
  CFLAGS = -g -Werror -fPIE
  LDFLAGS = -pie
- CC = gcc
  CXX = g++ -std=c++11
 endif
 
@@ -19,7 +17,6 @@ ifeq ($(UNAME),FreeBSD)
  LDFLAGS = -pie
  INC = -I /usr/local/include
  LIB = -L /usr/local/lib
- CC = clang
  CXX = clang++ -std=c++11
 endif
 
