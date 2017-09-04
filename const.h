@@ -1,7 +1,7 @@
 #ifndef CONST_INCLUDE
 #define CONST_INCLUDE
 
-#define VERSION "4.1:{git revision here}"
+#define VERSION "4.2:{git revision here}"
 
 #define COMMANDSIZE 2048
 #define MEDIASIZE 1200
