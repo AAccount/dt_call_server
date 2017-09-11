@@ -138,7 +138,7 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 #endif
 
 	//set ssl properties
-	if(result <= 0)
+	if(result == NULL)
 	{
 		std::string error = "ssl initialization problem";
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));

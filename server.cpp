@@ -67,7 +67,6 @@ int main(int argc, char *argv[])
 		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		exit(1); //with no udp thread the server cannot handle any calls
 	}
-	pthread_setname_np(callThread, "VoUDP"); //not fatal if the name is too long
 
 	while(true) //forever
 	{
