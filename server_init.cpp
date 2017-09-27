@@ -9,7 +9,7 @@
  */
 #include "server_init.hpp"
 
-void readServerConfig(int *cmdPort, int *mediaPort, std::string *publicKeyFile, std::string *privateKeyFile, std::string *ciphers, std::string *dhfile, UserUtils *userUtils)
+void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, UserUtils *userUtils)
 {
 	std::ifstream conffile(CONFFILE);
 	std::string line;
@@ -41,37 +41,37 @@ void readServerConfig(int *cmdPort, int *mediaPort, std::string *publicKeyFile, 
 
 		if(var == "command")
 		{
-			*cmdPort = atoi(value.c_str());
+			cmdPort = atoi(value.c_str());
 			gotCmdPort = true;
 			continue;
 		}
 		else if (var == "media")
 		{
-			*mediaPort = atoi(value.c_str());
+			mediaPort = atoi(value.c_str());
 			gotMediaPort = true;
 			continue;
 		}
 		else if (var == "public")
 		{
-			*publicKeyFile = value;
+			publicKeyFile = value;
 			gotPublicKey = true;
 			continue;
 		}
 		else if (var == "private")
 		{
-			*privateKeyFile = value;
+			privateKeyFile = value;
 			gotPrivateKey = true;
 			continue;
 		}
 		else if (var == "ciphers")
 		{
-			*ciphers = value;
+			ciphers = value;
 			gotCiphers = true;
 			continue;
 		}
 		else if (var == "dhfile")
 		{
-			*dhfile = value;
+			dhfile = value;
 			gotDhFile = true;
 			continue;
 		}
@@ -107,17 +107,17 @@ void readServerConfig(int *cmdPort, int *mediaPort, std::string *publicKeyFile, 
 	//warn of default values if they're being used
 	if(!gotCmdPort)
 	{
-		std::string message =  "Using default command port of: " + std::to_string(*cmdPort);
+		std::string message =  "Using default command port of: " + std::to_string(cmdPort);
 		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP));
 	}
 	if(!gotMediaPort)
 	{
-		std::string message= "Using default media port of: " + std::to_string(*mediaPort);
+		std::string message= "Using default media port of: " + std::to_string(mediaPort);
 		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP));
 	}
 	if(!gotCiphers)
 	{
-		std::string message = "Using default ciphers (no ECDHE): " + *ciphers;
+		std::string message = "Using default ciphers (no ECDHE): " + ciphers;
 		userUtils->insertLog(Log(TAG_INIT, message, SELF, SYSTEMLOG, SELFIP));
 	}
 

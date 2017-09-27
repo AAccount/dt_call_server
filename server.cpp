@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	std::string dhfile = "";
 
 	//use a helper function to read the config file
-	readServerConfig(&cmdPort, &mediaPort, &publicKeyFile, &privateKeyFile, &ciphers, &dhfile, userUtils);
+	readServerConfig(cmdPort, mediaPort, publicKeyFile, privateKeyFile, ciphers, dhfile, userUtils);
 
 	//helper to setup the ssl context
 	SSL_CTX *sslcontext = setupOpenSSL(ciphers, privateKeyFile, publicKeyFile, dhfile, userUtils);
