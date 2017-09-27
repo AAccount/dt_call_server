@@ -8,8 +8,14 @@
 #include "const.h"
 #include "UserUtils.hpp"
 
-//static user utils instance
+//static members
 UserUtils* UserUtils::instance;
+time_t UserUtils::logTimeT;
+std::ofstream *UserUtils::logfile;
+pthread_t UserUtils::diskThread;
+pthread_mutex_t UserUtils::qMutex;
+pthread_cond_t UserUtils::wakeup;
+std::queue<Log> UserUtils::backlog;
 
 UserUtils* UserUtils::getInstance()
 {
@@ -89,10 +95,21 @@ UserUtils::UserUtils()
 	usersfile.close();
 
 	//setup the log output
+	//(ok to stall the program here as you need the log initialized before you can do anything)
 	logTimeT = time(NULL);
 	std::string nowString = std::string(ctime(&logTimeT));
 	std::string logName = std::string(LOGPREFIX) + nowString.substr(0, nowString.length()-1);
-	logfile.open(LOGFOLDER+logName);
+	logfile = new std::ofstream(LOGFOLDER+logName);
+
+	//keep disk IO on its own thread. don't know what kind of disk you'll get
+	//don't let a slow disk stall the whole program just for logging.
+	pthread_mutex_init(&qMutex, NULL);
+	pthread_cond_init(&wakeup, NULL);
+	if (pthread_create(&diskThread, NULL, diskRw, NULL) != 0)
+	{
+		std::string error = "cannot create the disk rw thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		exit(1);
+	}
 }
 
 UserUtils::~UserUtils()
@@ -104,6 +121,7 @@ UserUtils::~UserUtils()
 		delete nameMap[entry.first];
 		nameMap[entry.first] = NULL;
 	}
+	delete logfile;
 }
 
 RSA* UserUtils::getPublicKey(std::string username)
@@ -379,27 +397,67 @@ void UserUtils::killInstance()
 	delete instance;
 }
 
+void* UserUtils::diskRw(void *ignored)
+{
+	while(true)
+	{
+		pthread_mutex_lock(&qMutex);
+			bool empty = backlog.empty();
+		pthread_mutex_unlock(&qMutex);
+
+		while(!empty)
+		{
+			//get the next log item
+			pthread_mutex_lock(&qMutex);
+				Log log = backlog.front();
+				backlog.pop();
+				empty = backlog.empty();
+			pthread_mutex_unlock(&qMutex);
+
+			//figure out if the current log is over 1 day old
+			time_t now = time(NULL);
+			if((now - logTimeT) > 60*60*24)
+			{//if the log is too old, close it and start another one
+				logfile->close();
+				logTimeT = now;
+				std::string nowString = std::string(ctime(&logTimeT));
+				std::string logName = std::string(LOGPREFIX) + nowString.substr(0, nowString.length()-1);
+				logfile->open(LOGFOLDER+logName);
+			}
+			*(logfile) << log << "\n";
+			logfile->flush(); // write immediately to the file
+
+			if(log.getType() == ERRORLOG)
+			{//make errors dead obvious when testing
+				std::cerr << log << "\n";
+			}
+			else
+			{
+				std::cout << log << "\n";
+			}
+		}
+
+		//no more logs to write? wait until there is one
+#ifdef VERBOSE
+		std::cout << "DISK RW: nothing to write\n";
+#endif
+		while(backlog.empty())
+		{
+			pthread_cond_wait(&wakeup, &qMutex);
+#ifdef VERBOSE
+			std::cout << "DISK RW: woken up to write\n";
+#endif
+		}
+		pthread_mutex_unlock(&qMutex);
+	}
+}
+
 void UserUtils::insertLog(Log dbl)
 {
-	//figure out if the current log is over 1 day old
-	time_t now = time(NULL);
-	if((now - logTimeT) > 60*60*24)
-	{//if the log is too old, close it and start another one
-		logfile.close();
-		logTimeT = now;
-		std::string nowString = std::string(ctime(&logTimeT));
-		std::string logName = std::string(LOGPREFIX) + nowString.substr(0, nowString.length()-1);
-		logfile.open(LOGFOLDER+logName);
-	}
-	logfile << dbl << "\n";
-	logfile.flush(); // write immediately to the file
+	//put a new log in the backlog
+	pthread_mutex_lock(&qMutex);
+		backlog.push(dbl);
+	pthread_mutex_unlock(&qMutex);
 
-	if(dbl.getType() == ERRORLOG)
-	{//make errors dead obvious when testing
-		std::cerr << dbl << "\n";
-	}
-	else
-	{
-		std::cout << dbl << "\n";
-	}
+	pthread_cond_signal(&wakeup);
 }

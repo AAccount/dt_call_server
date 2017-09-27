@@ -17,11 +17,12 @@
 #include <string>
 #include <cstring>
 #include <random>
+#include <queue>
 
 #include <stdio.h>
-
 #include <openssl/pem.h>
 #include <netinet/in.h>
+#include <pthread.h>
 
 #include "Utils.hpp"
 #include "const.h"
@@ -79,8 +80,15 @@ private:
 	std::unordered_map<std::string, User*> udpMap;
 
 	//output log (changed every 24 hours)
-	std::ofstream logfile;
-	time_t logTimeT;
+	static std::ofstream *logfile;
+	static time_t logTimeT;
+
+	//log disk writing thread stuff
+	static pthread_t diskThread;
+	static pthread_mutex_t qMutex;
+	static pthread_cond_t wakeup;
+	static void* diskRw(void *ignored);
+	static std::queue<Log> backlog;
 };
 
 #endif /* USERUTILS_HPP_ */
