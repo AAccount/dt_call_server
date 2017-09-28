@@ -18,7 +18,7 @@ class Utils
 {
 	public:
 		//used for parsing the configuration file: remove whitespace preceding/trailing and comments
-		static std::string trim(std::string input);
+		static std::string trim(std::string const &input);
 		static std::string randomString(int length);
 	private:
 		static std::uniform_int_distribution<int> dist;

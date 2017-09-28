@@ -14,7 +14,7 @@ std::uniform_int_distribution<int> Utils::dist(0,61);
 std::mt19937 Utils::mt(std::random_device{}());
 
 //https://stackoverflow.com/questions/1798112/removing-leading-and-trailing-spaces-from-a-string
-std::string Utils::trim (std::string str)
+std::string Utils::trim (std::string const &str)
 {//
 	//nothing to trim in a blank string
 	if(str.length() == 0)
