@@ -123,7 +123,7 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, 
 
 }
 
-SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::string publicKeyFile, std::string dhfile, UserUtils *userUtils)
+SSL_CTX* setupOpenSSL(std::string const &ciphers, std::string const &privateKeyFile, std::string const &publicKeyFile, std::string const &dhfile, UserUtils *userUtils)
 {
 	//openssl setup
 	SSL_load_error_strings();
@@ -153,7 +153,7 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	if(SSL_CTX_use_PrivateKey_file(result, privateKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
 	{
 		std::string error = "problems with the private key " + std::string(ERR_error_string(ERR_get_error(), NULL));
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+		std::cout << error << "\n";
 		exit(1);
 	}
 
@@ -161,7 +161,7 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	if(SSL_CTX_use_certificate_file(result, publicKeyFile.c_str(), SSL_FILETYPE_PEM) <= 0)
 	{
 		std::string error = "problems with the public key" + std::string(ERR_error_string(ERR_get_error(), NULL));
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+		std::cout << error << "\n";
 		exit(1);
 	}
 
@@ -173,7 +173,7 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	if(!paramfile)
 	{
 		std::string error = "problems opening dh param file at: " +  dhfile + " (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+		std::cout << error << "\n";
 		exit(1);
 	}
 	dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
@@ -181,13 +181,13 @@ SSL_CTX* setupOpenSSL(std::string ciphers, std::string privateKeyFile, std::stri
 	if(dh == NULL)
 	{
 		std::string error = "dh param file opened but openssl could not use dh param file at: " + dhfile + "; " + std::string(ERR_error_string(ERR_get_error(), NULL));
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+		std::cout << error << "\n";
 		exit(1);
 	}
 	if(SSL_CTX_set_tmp_dh(result, dh) != 1)
 	{
 		std::string error = "dh param file opened and interpreted but reject by context: " + dhfile + "; " + std::string(ERR_error_string(ERR_get_error(), NULL));
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+		std::cout << error << "\n";
 		exit(1);
 	}
 	//for ecdhe see SSL_CTX_set_tmp_ecdh
