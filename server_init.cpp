@@ -201,7 +201,7 @@ void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct soc
 	if(*fd < 0)
 	{
 		std::string error = "cannot establish socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+		std::cout << error << "\n";
 		exit(1);
 	}
 	memset((char *) info, 0, sizeof(struct sockaddr_in));
@@ -211,7 +211,7 @@ void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct soc
 	if(bind(*fd, (struct sockaddr *)info, sizeof(struct sockaddr_in)) < 0)
 	{
 		std::string error = "cannot bind socket to a nic (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+		std::cout << error << "\n";
 		exit(1);
 	}
 
@@ -220,7 +220,7 @@ void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct soc
 		if(setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, (char*)timeout, sizeof(struct timeval)) < 0)
 		{
 			std::string error="cannot set tcp socket options (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+			std::cout << error << "\n";
 			exit(1);
 		}
 		listen(*fd, MAXLISTENWAIT);
