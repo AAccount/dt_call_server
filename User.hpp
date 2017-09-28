@@ -16,7 +16,7 @@
 class User
 {
 public:
-	User(std::string cunmae, RSA *ckey, std::string cdump);
+	User(std::string cuname, RSA *ckey, std::string cdump);
 	std::string getUname();
 	RSA* getPublicKey();
 	std::string getPublicKeyDump();
