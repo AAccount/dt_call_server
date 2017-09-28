@@ -27,7 +27,7 @@ User::~User()
 	RSA_free(publicKey);
 }
 
-std::string User::getChallenge()
+std::string User::getChallenge() const
 {
 	return challenge;
 }
@@ -37,22 +37,22 @@ void User::setChallenge(std::string pchallenge)
 	challenge = pchallenge;
 }
 
-std::string User::getUname()
+std::string User::getUname() const
 {
 	return uname;
 }
 
-RSA* User::getPublicKey()
+RSA* User::getPublicKey() const
 {
 	return publicKey;
 }
 
-std::string User::getPublicKeyDump()
+std::string User::getPublicKeyDump() const
 {
 	return publicKeyDump;
 }
 
-uint32_t User::getCommandfd()
+uint32_t User::getCommandfd() const
 {
 	return commandfd;
 }
@@ -63,7 +63,7 @@ void User::setCommandfd(uint32_t newCommandfd)
 	commandfd = newCommandfd;
 }
 
-std::string User::getUdpSummary()
+std::string User::getUdpSummary() const
 {
 	return udpSummary;
 }
@@ -73,7 +73,7 @@ void User::setUdpSummary(std::string newSummary)
 	udpSummary = newSummary;
 }
 
-struct sockaddr_in User::getUdpInfo()
+struct sockaddr_in User::getUdpInfo() const
 {
 	return udpInfo;
 }
@@ -83,7 +83,7 @@ void User::setUdpInfo(struct sockaddr_in newInfo)
 	udpInfo = newInfo;
 }
 
-ustate User::getUserState()
+ustate User::getUserState() const
 {
 	return userState;
 }
@@ -93,7 +93,7 @@ void User::setUserState(ustate newState)
 	userState = newState;
 }
 
-std::string User::getSessionkey()
+std::string User::getSessionkey() const
 {
 	return sessionkey;
 }
@@ -103,7 +103,7 @@ void User::setSessionkey(std::string newSessionkey)
 	sessionkey = newSessionkey;
 }
 
-std::string User::getCallWith()
+std::string User::getCallWith() const
 {
 	return callWith;
 }

@@ -17,28 +17,28 @@ class User
 {
 public:
 	User(std::string cuname, RSA *ckey, std::string cdump);
-	std::string getUname();
-	RSA* getPublicKey();
-	std::string getPublicKeyDump();
-	std:: string getChallenge();
+	std::string getUname() const;
+	RSA* getPublicKey() const;
+	std::string getPublicKeyDump() const;
+	std:: string getChallenge() const;
 	void setChallenge(std::string ch);
 
-	uint32_t getCommandfd();
+	uint32_t getCommandfd() const;
 	void setCommandfd(uint32_t newCommandfd);
 
-	std::string getSessionkey();
+	std::string getSessionkey() const;
 	void setSessionkey(std::string newSessionkey);
 
-	std::string getUdpSummary();
+	std::string getUdpSummary() const;
 	void setUdpSummary(std::string newSummary);
 
-	struct sockaddr_in getUdpInfo();
+	struct sockaddr_in getUdpInfo() const;
 	void setUdpInfo(struct sockaddr_in newInfo);
 
-	ustate getUserState();
+	ustate getUserState() const;
 	void setUserState(ustate newState);
 
-	std::string getCallWith();
+	std::string getCallWith() const;
 	void setCallWith(std::string newOther);
 
 	virtual ~User();
