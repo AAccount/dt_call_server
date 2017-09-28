@@ -36,33 +36,33 @@ public:
 	static UserUtils* getInstance();
 
 	RSA *getPublicKey(std::string username);
-	std::string getPublicKeyDump(std::string uname);
+	std::string getPublicKeyDump(std::string const &uname);
 
-	std::string getChallenge(std::string username);
-	void setChallenge(std::string username, std::string challenge);
+	std::string getChallenge(std::string const &username);
+	void setChallenge(std::string const &username, std::string challenge);
 
-	std::string userFromSessionKey(std::string sessionkey);
-	std::string getSessionKey(std::string uname);
-	void setSessionKey(std::string username, std::string sessionkey);
-	bool verifySessionKey(std::string sessionkey, int fd);
-	void clearSession(std::string username);
+	std::string userFromSessionKey(std::string const &sessionkey);
+	std::string getSessionKey(std::string const &uname);
+	void setSessionKey(std::string const &username, std::string sessionkey);
+	bool verifySessionKey(std::string const &sessionkey, int fd);
+	void clearSession(std::string const &username);
 
 	std::string userFromCommandFd(int fd);
-	int getCommandFd(std::string user);
-	void setCommandFd(std::string sessionkey, int fd);
+	int getCommandFd(std::string const &user);
+	void setCommandFd(std::string const &sessionkey, int fd);
 
-	std::string userFromUdpSummary(std::string summary);
-	void setUdpSummary(std::string sessionkey, std::string summary);
-	struct sockaddr_in getUdpInfo(std::string uname);
-	void setUdpInfo(std::string sessionkey, struct sockaddr_in info);
-	void clearUdpInfo(std::string uname);
+	std::string userFromUdpSummary(std::string const &summary);
+	void setUdpSummary(std::string const &sessionkey, std::string summary);
+	struct sockaddr_in getUdpInfo(std::string const &uname);
+	void setUdpInfo(std::string const &sessionkey, struct sockaddr_in info);
+	void clearUdpInfo(std::string const &uname);
 
-	ustate getUserState(std::string uname);
-	void setUserState(std::string uname, ustate newstate);
+	ustate getUserState(std::string const &uname);
+	void setUserState(std::string const &uname, ustate newstate);
 
-	std::string getCallWith(std::string uname);
+	std::string getCallWith(std::string const &uname);
 	void setCallPair(std::string uname, std::string newOther);
-	void removeCallPair(std::string uname);
+	void removeCallPair(std::string const &uname);
 
 	void insertLog(Log l);
 	void killInstance();

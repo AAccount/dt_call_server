@@ -133,7 +133,7 @@ RSA* UserUtils::getPublicKey(std::string username)
 	return NULL;
 }
 
-std::string UserUtils::getChallenge(std::string username)
+std::string UserUtils::getChallenge(std::string const &username)
 {
 	if(nameMap.count(username) > 0)
 	{
@@ -142,7 +142,7 @@ std::string UserUtils::getChallenge(std::string username)
 	return "";
 }
 
-void UserUtils::setChallenge(std::string username, std::string challenge)
+void UserUtils::setChallenge(std::string const &username, std::string challenge)
 {
 	if(nameMap.count(username) > 0)
 	{
@@ -155,7 +155,7 @@ void UserUtils::setChallenge(std::string username, std::string challenge)
 	}
 }
 
-void UserUtils::setSessionKey(std::string username, std::string sessionkey)
+void UserUtils::setSessionKey(std::string const &username, std::string sessionkey)
 {
 	if(nameMap.count(username) > 0)
 	{
@@ -170,7 +170,7 @@ void UserUtils::setSessionKey(std::string username, std::string sessionkey)
 	}
 }
 
-void UserUtils::setCommandFd(std::string sessionid, int fd)
+void UserUtils::setCommandFd(std::string const &sessionid, int fd)
 {
 	if(sessionkeyMap.count(sessionid) > 0)
 	{
@@ -186,7 +186,7 @@ void UserUtils::setCommandFd(std::string sessionid, int fd)
 	}
 }
 
-void UserUtils::clearSession(std::string username)
+void UserUtils::clearSession(std::string const &username)
 {
 	if(nameMap.count(username) > 0)
 	{
@@ -215,7 +215,7 @@ void UserUtils::clearSession(std::string username)
 	}
 }
 
-bool UserUtils::verifySessionKey(std::string sessionid, int fd)
+bool UserUtils::verifySessionKey(std::string const &sessionid, int fd)
 {
 	if(sessionkeyMap.count(sessionid) == 0)
 	{
@@ -238,7 +238,7 @@ std::string UserUtils::userFromCommandFd(int fd)
 	return "";
 }
 
-std::string UserUtils::userFromSessionKey(std::string sessionid)
+std::string UserUtils::userFromSessionKey(std::string const &sessionid)
 {
 	if(sessionkeyMap.count(sessionid) > 0)
 	{
@@ -249,7 +249,7 @@ std::string UserUtils::userFromSessionKey(std::string sessionid)
 	return "";
 }
 
-int UserUtils::getCommandFd(std::string user)
+int UserUtils::getCommandFd(std::string const &user)
 {
 	if(nameMap.count(user) > 0)
 	{
@@ -261,7 +261,7 @@ int UserUtils::getCommandFd(std::string user)
 	return 0;
 }
 
-std::string UserUtils::getSessionKey(std::string uname)
+std::string UserUtils::getSessionKey(std::string const &uname)
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -272,7 +272,7 @@ std::string UserUtils::getSessionKey(std::string uname)
 	return "";
 }
 
-std::string UserUtils::userFromUdpSummary(std::string summary)
+std::string UserUtils::userFromUdpSummary(std::string const &summary)
 {
 	if(udpMap.count(summary) > 0)
 	{
@@ -281,7 +281,7 @@ std::string UserUtils::userFromUdpSummary(std::string summary)
 	return "";
 }
 
-void UserUtils::setUdpSummary(std::string sessionkey, std::string summary)
+void UserUtils::setUdpSummary(std::string const &sessionkey, std::string summary)
 {
 	if(sessionkeyMap.count(sessionkey) > 0)
 	{
@@ -296,7 +296,7 @@ void UserUtils::setUdpSummary(std::string sessionkey, std::string summary)
 	}
 }
 
-void UserUtils::setUdpInfo(std::string sessionkey, struct sockaddr_in info)
+void UserUtils::setUdpInfo(std::string const &sessionkey, struct sockaddr_in info)
 {
 	if(sessionkeyMap.count(sessionkey) > 0)
 	{
@@ -310,12 +310,12 @@ void UserUtils::setUdpInfo(std::string sessionkey, struct sockaddr_in info)
 	}
 }
 
-struct sockaddr_in UserUtils::getUdpInfo(std::string uname)
+struct sockaddr_in UserUtils::getUdpInfo(std::string const &uname)
 {
 	return nameMap[uname]->getUdpInfo();
 }
 
-void UserUtils::clearUdpInfo(std::string uname)
+void UserUtils::clearUdpInfo(std::string const &uname)
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -334,7 +334,7 @@ void UserUtils::clearUdpInfo(std::string uname)
 	}
 }
 
-ustate UserUtils::getUserState(std::string uname)
+ustate UserUtils::getUserState(std::string const &uname)
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -343,7 +343,7 @@ ustate UserUtils::getUserState(std::string uname)
 	return INVALID;
 }
 
-void UserUtils::setUserState(std::string uname, ustate newstate)
+void UserUtils::setUserState(std::string const &uname, ustate newstate)
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -356,7 +356,7 @@ void UserUtils::setUserState(std::string uname, ustate newstate)
 	}
 }
 
-std::string UserUtils::getPublicKeyDump(std::string uname)
+std::string UserUtils::getPublicKeyDump(std::string const &uname)
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -365,7 +365,7 @@ std::string UserUtils::getPublicKeyDump(std::string uname)
 	return "";
 }
 
-std::string UserUtils::getCallWith(std::string uname)
+std::string UserUtils::getCallWith(std::string const &uname)
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -382,7 +382,7 @@ void UserUtils::setCallPair(std::string uname, std::string newOther)
 	}
 }
 
-void UserUtils::removeCallPair(std::string uname)
+void UserUtils::removeCallPair(std::string const &uname)
 {
 	if(nameMap.count(uname) > 0 && nameMap.count(nameMap[uname]->getCallWith()) > 0)
 	{
