@@ -842,13 +842,13 @@ bool isRealCall(std::string persona, std::string personb, std::string tag)
 // write a message to a client
 void write2Client(std::string response, SSL *respSsl)
 {
-	int socket = SSL_get_fd(respSsl);
-	std::string user = userUtils->userFromCommandFd(socket);
-	std::string ip = ipFromFd(socket);
-
 	int errValue = SSL_write(respSsl, response.c_str(), response.size());
+
 	if(errValue <= 0)
 	{
+		int socket = SSL_get_fd(respSsl);
+		std::string user = userUtils->userFromCommandFd(socket);
+		std::string ip = ipFromFd(socket);
 		std::string error = "ssl_write returned an error of " + std::string(ERR_error_string(ERR_get_error(), NULL));
 		userUtils->insertLog(Log(TAG_SSL, error, user, ERRORLOG, ip));
 	}
