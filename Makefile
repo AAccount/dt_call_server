@@ -6,7 +6,7 @@ PTHREAD = -pthread
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
  OPTCFLAGS = -flto -O2 -march=native -Werror -fPIE -D_FORTIFY_SOURCE=2
- CFLAGS = -g -Werror -fPIE
+ CFLAGS = -g -Werror -fPIE -pg
  LDFLAGS = -pie
  CXX = g++ -std=c++11
 endif

@@ -8,8 +8,9 @@ Logger *logger = Logger::getInstance();
 
 int main(int argc, char *argv[])
 {
+
 	std::string start = (std::string)"starting call operator V" + VERSION();
-	logger->insertLog(Log(TAG_INIT, start, SELF, SYSTEMLOG, SELFIP));
+	logger->insertLog(Log(Log::TAG::STARTUP, start, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
 
 	int cmdFD, cmdPort = DEFAULTCMD; //command port stuff
 	int mediaPort = DEFAULTMEDIA;
@@ -26,7 +27,7 @@ int main(int argc, char *argv[])
 	SSL_CTX *sslcontext = setupOpenSSL(ciphers, privateKeyFile, publicKeyFile, dhfile);
 	if(sslcontext == NULL)
 	{
-		logger->insertLog(Log(TAG_INIT, "could not establish ssl context", SELF, SYSTEMLOG, SELFIP));
+		logger->insertLog(Log(Log::TAG::STARTUP, "could not establish ssl context", Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
 		exit(1);
 	}
 
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
 	if(privateKey == NULL)
 	{
 		std::string error = "cannot generate private key object " + std::string(ERR_error_string(ERR_get_error(), NULL));
-		logger->insertLog(Log(TAG_INIT, error, SELF, SYSTEMLOG, SELFIP));
+		logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
 		exit(1);
 	}
 	fclose(privateKeyFilefopen);
@@ -65,7 +66,7 @@ int main(int argc, char *argv[])
 	if(pthread_create(&callThread, NULL, udpThread, args) != 0)
 	{
 		std::string error = "cannot create the udp thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		logger->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+		logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()));
 		exit(1); //with no udp thread the server cannot handle any calls
 	}
 
@@ -92,7 +93,7 @@ int main(int argc, char *argv[])
 		if(sockets < 0)
 		{
 			std::string error = "read fds select system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-			logger->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
+			logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()));
 			exit(1); //see call thread fx for why
 		}
 #ifdef VERBOSE
@@ -109,7 +110,7 @@ int main(int argc, char *argv[])
 			if(incomingCmd < 0)
 			{
 				std::string error = "accept system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-				logger->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, DONTKNOW));
+				logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, Log::DONTKNOW()));
 				continue;
 			}
 			std::string ip = inet_ntoa(cli_addr.sin_addr);
@@ -118,7 +119,7 @@ int main(int argc, char *argv[])
 			if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*) &unauthTimeout, sizeof(unauthTimeout)) < 0)
 			{
 				std::string error = "cannot set timeout for incoming command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-				logger->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip));
+				logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip));
 				shutdown(incomingCmd, 2);
 				close(incomingCmd);
 				continue;
@@ -129,7 +130,7 @@ int main(int argc, char *argv[])
 			if(setsockopt(incomingCmd, IPPROTO_TCP, TCP_NODELAY, (char*)&nagle, sizeof(int)))
 			{
 				std::string error = "cannot disable nagle delay (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-				logger->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip));
+				logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip));
 			}
 
 			//setup ssl connection
@@ -162,13 +163,13 @@ int main(int argc, char *argv[])
 			if(proceed)
 			{
 				std::string message = "new command socket from " + ip;
-				logger->insertLog(Log(TAG_INCOMINGCMD, message, SELF, INBOUNDLOG, ip));
+				logger->insertLog(Log(Log::TAG::INCOMINGCMD, message, Log::SELF(), Log::TYPE::INBOUND, ip));
 				clientssl[incomingCmd] = connssl;
 			}
 			else
 			{
 				std::string error = "Problem initializing new command tls connection" + std::string(ERR_error_string(ERR_get_error(), NULL));
-				logger->insertLog(Log(TAG_INCOMINGCMD, error, SELF, ERRORLOG, ip));
+				logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip));
 				SSL_shutdown(connssl);
 				SSL_free(connssl);
 				shutdown(incomingCmd, 2);
@@ -214,7 +215,7 @@ int main(int argc, char *argv[])
 					std::string unexpected = "unexpected byte in string";
 					std::string user = userUtils->userFromCommandFd(sd);
 					std::string ip = ipFromFd(sd);
-					logger->insertLog(Log(TAG_BADCMD, unexpected, user, ERRORLOG, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, unexpected, user, Log::TYPE::ERROR, ip));
 					continue;
 				}
 
@@ -249,7 +250,7 @@ int main(int argc, char *argv[])
 						std::string error="command received was outside the " + std::to_string(MARGIN_OF_ERROR) + " minute margin of error: " + std::to_string(mins) + "mins, " + std::to_string(seconds) + "seconds";
 						error=error + " (" + originalBufferCmd + ")";
 						std::string user=userUtils->userFromCommandFd(sd);
-						logger->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip));
+						logger->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip));
 
 						//send the rejection to the client
 						std::string invalid=std::to_string(now) + "|invalid";
@@ -260,7 +261,7 @@ int main(int argc, char *argv[])
 					if(command == "login1") //you can do string comparison like this in c++
 					{ //timestamp|login1|username
 						std::string username=commandContents.at(2);
-						logger->insertLog(Log(TAG_LOGIN, originalBufferCmd, username, INBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::LOGIN, originalBufferCmd, username, Log::TYPE::INBOUND, ip));
 
 						//don't immediately remove old command fd. this would allow anyone
 						//	to send a login1 command and kick out a legitimately logged in person.
@@ -271,7 +272,7 @@ int main(int argc, char *argv[])
 						{
 							//not a real user. send login rejection
 							std::string invalid=std::to_string(now) + "|invalid";
-							logger->insertLog(Log(TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip));
+							logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip));
 							write2Client(invalid, sdssl);
 							removals.push_back(sd); //nothing useful can come from this socket
 							continue;
@@ -291,7 +292,7 @@ int main(int argc, char *argv[])
 						//send the challenge
 						std::string resp=std::to_string(now) + "|login1resp|" + encString;
 						write2Client(resp, sdssl);
-						logger->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::LOGIN, resp, username, Log::TYPE::OUTBOUND, ip));
 						continue; //login command, no session key to verify, continue to the next fd after proccessing login1
 					}
 					else if(command == "login2")
@@ -299,7 +300,7 @@ int main(int argc, char *argv[])
 
 						//ok to store challenge answer in the log. challenge is single use, disposable
 						std::string username=commandContents.at(2);
-						logger->insertLog(Log(TAG_LOGIN, originalBufferCmd, username, INBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::LOGIN, originalBufferCmd, username, Log::TYPE::INBOUND, ip));
 						std::string triedChallenge=commandContents.at(3);
 
 						//check the challenge
@@ -313,7 +314,7 @@ int main(int argc, char *argv[])
 						{
 							//person doesn't have a challenge to answer or isn't supposed to be
 							std::string invalid=std::to_string(now) + "|invalid";
-							logger->insertLog(Log(TAG_LOGIN, invalid, username, OUTBOUNDLOG, ip));
+							logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip));
 							write2Client(invalid, sdssl);
 							removals.push_back(sd); //nothing useful can come from this socket
 
@@ -329,7 +330,7 @@ int main(int argc, char *argv[])
 						if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, (char*)&authTimeout, sizeof(authTimeout)) < 0)
 						{
 							std::string error = "cannot set timeout for authenticated command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-							logger->insertLog(Log(TAG_LOGIN, error, SELF, ERRORLOG, ip));
+							logger->insertLog(Log(Log::TAG::LOGIN, error, Log::SELF(), Log::TYPE::ERROR, ip));
 						}
 
 						//now that the person has successfully logged in, remove the old information.
@@ -370,7 +371,7 @@ int main(int argc, char *argv[])
 #ifndef VERBOSE
 						resp=std::to_string(now) + "|login2resp|" + SESSION_KEY_PLACEHOLDER();
 #endif
-						logger->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::LOGIN, resp, username, Log::TYPE::OUTBOUND, ip));
 						continue; //login command, no session key to verify, continue to the next fd after proccessing login2
 					}
 
@@ -384,11 +385,11 @@ int main(int argc, char *argv[])
 					if(!userUtils->verifySessionKey(sessionkey, sd))
 					{
 						std::string error="INVALID SESSION ID. refusing command (" + originalBufferCmd + ")";
-						logger->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip));
+						logger->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip));
 
 						std::string invalid=std::to_string(now) + "|invalid";
 						write2Client(invalid, sdssl);
-						logger->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::BADCMD, invalid, user, Log::TYPE::OUTBOUND, ip));
 						continue;
 					}
 
@@ -399,7 +400,7 @@ int main(int argc, char *argv[])
 
 						std::string zapper=commandContents.at(2);
 						std::string touma=user;
-						logger->insertLog(Log(TAG_CALL, originalBufferCmd, touma, INBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::CALL, originalBufferCmd, touma, Log::TYPE::INBOUND, ip));
 						int zapperCmdFd = userUtils->getCommandFd(zapper);
 
 						//find out if zapper has a command fd (signed in)
@@ -413,7 +414,7 @@ int main(int argc, char *argv[])
 						{
 							std::string na = std::to_string(now) + "|end|" + zapper;
 							write2Client(na, sdssl);
-							logger->insertLog(Log(TAG_CALL, na, touma, OUTBOUNDLOG, ip));
+							logger->insertLog(Log(Log::TAG::CALL, na, touma, Log::TYPE::OUTBOUND, ip));
 							continue; //nothing more to do
 						}
 
@@ -425,14 +426,14 @@ int main(int argc, char *argv[])
 						//tell touma that zapper is being rung
 						std::string notifyTouma = std::to_string(now) + "|available|" + zapper;
 						write2Client(notifyTouma, sdssl);
-						logger->insertLog(Log(TAG_CALL, notifyTouma, touma, OUTBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::CALL, notifyTouma, touma, Log::TYPE::OUTBOUND, ip));
 
 						//tell zapper touma wants to call her
 						std::string notifyZapper = std::to_string(now) + "|incoming|" + touma;
 						SSL *zapperssl=clientssl[zapperCmdFd];
 						write2Client(notifyZapper, zapperssl);
 						std::string zapperip = ipFromFd(zapperCmdFd);
-						logger->insertLog(Log(TAG_CALL, notifyZapper, zapper, OUTBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::CALL, notifyZapper, zapper, Log::TYPE::OUTBOUND, ip));
 					}
 					//variables written when zapper accepets touma's call
 					//command will come from zapper's cmd fd
@@ -440,9 +441,9 @@ int main(int argc, char *argv[])
 					{//timestamp|accept|touma|zapperkey
 						std::string zapper=user;
 						std::string touma=commandContents.at(2);
-						logger->insertLog(Log(TAG_ACCEPT, originalBufferCmd, zapper, INBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::ACCEPT, originalBufferCmd, zapper, Log::TYPE::INBOUND, ip));
 
-						if(!isRealCall(zapper, touma, TAG_ACCEPT))
+						if(!isRealCall(zapper, touma, Log::TAG::ACCEPT))
 						{
 							continue;
 						}
@@ -452,11 +453,11 @@ int main(int argc, char *argv[])
 						SSL *toumaCmdSsl=clientssl[toumaCmdFd];
 						std::string toumaResp=std::to_string(now) + "|prepare|" + userUtils->getPublicKeyDump(zapper) + "|"  + zapper;
 						write2Client(toumaResp, toumaCmdSsl);
-						logger->insertLog(Log(TAG_ACCEPT, toumaResp, touma, OUTBOUNDLOG, ipFromFd(toumaCmdFd)));
+						logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)));
 
 						std::string zapperResp=std::to_string(now) + "|prepare|" + touma;
 						write2Client(zapperResp, sdssl);
-						logger->insertLog(Log(TAG_ACCEPT, zapperResp, zapper, OUTBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip));
 					}
 					else if(command == "passthrough")
 					{//timestamp|passthrough|zapper|encrypted aes key|toumakey
@@ -464,9 +465,9 @@ int main(int argc, char *argv[])
 						std::string touma = user;
 						std::string aes = commandContents.at(3);
 						originalBufferCmd.replace(originalBufferCmd.find(aes), aes.length(), AES_PLACEHOLDER());
-						logger->insertLog(Log(TAG_PASSTHROUGH, originalBufferCmd, user, INBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::PASSTHROUGH, originalBufferCmd, user, Log::TYPE::INBOUND, ip));
 
-						if(!isRealCall(touma, zapper, TAG_PASSTHROUGH))
+						if(!isRealCall(touma, zapper, Log::TAG::PASSTHROUGH))
 						{
 							continue;
 						}
@@ -476,15 +477,15 @@ int main(int argc, char *argv[])
 						std::string direct = std::to_string(now) + "|direct|" + aes + "|" + touma;//as in "directly" from touma, not from the server
 						write2Client(direct, zapperssl);
 						direct.replace(direct.find(aes), aes.length(), AES_PLACEHOLDER());
-						logger->insertLog(Log(TAG_PASSTHROUGH, direct, zapper, OUTBOUNDLOG, ipFromFd(zapperfd)));
+						logger->insertLog(Log(Log::TAG::PASSTHROUGH, direct, zapper, Log::TYPE::OUTBOUND, ipFromFd(zapperfd)));
 
 					}
 					else if(command == "ready")
 					{//timestamp|ready|touma|zapperkey
 						std::string zapper = user;
 						std::string touma = commandContents.at(2);
-						logger->insertLog(Log(TAG_READY, originalBufferCmd, user, INBOUNDLOG, ip));
-						if(!isRealCall(zapper, touma, TAG_READY))
+						logger->insertLog(Log(Log::TAG::READY, originalBufferCmd, user, Log::TYPE::INBOUND, ip));
+						if(!isRealCall(zapper, touma, Log::TAG::READY))
 						{
 							continue;
 						}
@@ -499,12 +500,12 @@ int main(int argc, char *argv[])
 							SSL *toumaCmdSsl = clientssl[toumaCmdFd];
 							std::string toumaResp = std::to_string(now) + "|start|" + zapper;
 							write2Client(toumaResp, toumaCmdSsl);
-							logger->insertLog(Log(TAG_ACCEPT, toumaResp, touma, OUTBOUNDLOG, ipFromFd(toumaCmdFd)));
+							logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)));
 
 							//confirm to zapper she's being connected to touma
 							std::string zapperResp = std::to_string(now) + "|start|" + touma;
 							write2Client(zapperResp, sdssl);
-							logger->insertLog(Log(TAG_ACCEPT, zapperResp, zapper, OUTBOUNDLOG, ip));
+							logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip));
 						}
 					}
 					//whether it's a call end or call timeout or call reject, the result is the same
@@ -512,9 +513,9 @@ int main(int argc, char *argv[])
 					{ //timestamp|end|zapper|toumakey
 						std::string zapper=commandContents.at(2);
 						std::string touma=user;
-						logger->insertLog(Log(TAG_END, originalBufferCmd, touma, INBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::END, originalBufferCmd, touma, Log::TYPE::INBOUND, ip));
 
-						if(!isRealCall(touma, zapper, TAG_END))
+						if(!isRealCall(touma, zapper, Log::TAG::END))
 						{
 							continue;
 						}
@@ -523,32 +524,32 @@ int main(int argc, char *argv[])
 					}
 					else //commandContents[1] is not a known command... something fishy???
 					{
-						logger->insertLog(Log(TAG_BADCMD, originalBufferCmd, userUtils->userFromCommandFd(sd), INBOUNDLOG, ip));
+						logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, userUtils->userFromCommandFd(sd), Log::TYPE::INBOUND, ip));
 					}
 				}
 				catch(std::invalid_argument &badarg)
 				{ //timestamp couldn't be parsed. assume someone is trying something fishy
 					std::string user=userUtils->userFromCommandFd(sd);
-					logger->insertLog(Log(TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, user, Log::TYPE::INBOUND, ip));
 
 					std::string error="INVALID ARGUMENT EXCEPTION: (uint64_t)stoull (std::string too long) could not parse timestamp";
-					logger->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip));
 
 					std::string invalid=std::to_string(now) + "|invalid";
 					write2Client(invalid, sdssl);
-					logger->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, invalid, user, Log::TYPE::OUTBOUND, ip));
 				}
 				catch(std::out_of_range &exrange)
 				{
 					std::string user=userUtils->userFromCommandFd(sd);
-					logger->insertLog(Log(TAG_BADCMD, originalBufferCmd, user, INBOUNDLOG, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, user, Log::TYPE::INBOUND, ip));
 
 					std::string error="OUT OF RANGE (vector<string> parsed from command) EXCEPTION: client sent a misformed command";
-					logger->insertLog(Log(TAG_BADCMD, error, user, ERRORLOG, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip));
 
 					std::string invalid=std::to_string(now) + "|invalid";
 					write2Client(invalid, sdssl);
-					logger->insertLog(Log(TAG_BADCMD, invalid, user, OUTBOUNDLOG, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, invalid, user, Log::TYPE::OUTBOUND, ip));
 				}
 			} // if FD_ISSET : figure out command or voice and handle appropriately
 		}// for loop going through the fd set
@@ -608,7 +609,7 @@ void* udpThread(void *ptr)
 	if(setsockopt(mediaFd, IPPROTO_IP, IP_TOS, (char*)&express, sizeof(int)) < 0)
 	{
 		std::string error="cannot set udp socket dscp expedited (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		logger->insertLog(Log(TAG_UDPTHREAD, error, SELF, ERRORLOG, SELFIP));
+		logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()));
 	}
 
 	while(true)
@@ -624,7 +625,7 @@ void* udpThread(void *ptr)
 		if(receivedLength < 0)
 		{
 			std::string error = "udp read error with errno " + std::to_string(errno) + ": " + std::string(strerror(errno));
-			logger->insertLog(Log(TAG_UDPTHREAD, error, SELF, ERRORLOG, SELFIP));
+			logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()));
 			continue; //received nothing, this round is a write off
 		}
 
@@ -655,7 +656,7 @@ void* udpThread(void *ptr)
 			if(decLength < 0)
 			{
 				std::string error = "media port registration error: " + std::string(ERR_error_string(ERR_get_error(), NULL));
-				logger->insertLog(Log(TAG_UDPTHREAD, error, user, ERRORLOG, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user, Log::TYPE::ERROR, ip));
 				free(dec);
 				continue;
 			}
@@ -669,7 +670,7 @@ void* udpThread(void *ptr)
 			if(!legitimateAscii(decryptedArray, decLength-1))
 			{
 				std::string unexpected = "unexpected byte in string";
-				logger->insertLog(Log(TAG_UDPTHREAD, unexpected, user, ERRORLOG, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, unexpected, user, Log::TYPE::ERROR, ip));
 				continue;
 			}
 
@@ -685,7 +686,7 @@ void* udpThread(void *ptr)
 				if(timeDifference > maxError)
 				{
 					std::string error = "register media port timestamp too far off by " + std::to_string(timeDifference) + " seconds";
-					logger->insertLog(Log(TAG_UDPTHREAD, error, user, ERRORLOG, ip));
+					logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user, Log::TYPE::ERROR, ip));
 					continue;
 				}
 
@@ -719,18 +720,18 @@ void* udpThread(void *ptr)
 				if(sent < 0)
 				{
 					std::string error = "udp sendto failed during media port registration with errno (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-					logger->insertLog(Log(TAG_UDPTHREAD, error, user , ERRORLOG, ip));
+					logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
 				}
 			}
 			catch(std::invalid_argument &badarg)
 			{ //timestamp couldn't be parsed. assume someone is trying something fishy
 				std::string error = "invalid argument exception, udp thread: " + decryptedCommand;
-				logger->insertLog(Log(TAG_UDPTHREAD, error, user, ERRORLOG, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user, Log::TYPE::ERROR, ip));
 			}
 			catch(std::out_of_range &exrange)
 			{ //command was not in the expected format
 				std::string error = "out of range excpetion, udp thread: " + decryptedCommand;
-				logger->insertLog(Log(TAG_UDPTHREAD, error, user, ERRORLOG, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user, Log::TYPE::ERROR, ip));
 			}
 
 		}
@@ -751,7 +752,7 @@ void* udpThread(void *ptr)
 			{
 				std::string error = "udp sendto failed during live call with errno (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 				std::string ip = std::string(inet_ntoa(otherSocket.sin_addr));
-				logger->insertLog(Log(TAG_UDPTHREAD, error, user , ERRORLOG, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
 			}
 		}
 	}
@@ -804,7 +805,7 @@ void removeClient(int sd)
 
 //before doing an accept, reject, end command check to see if it's for a real call
 //	or someone trying to get smart with the server
-bool isRealCall(std::string persona, std::string personb, std::string tag)
+bool isRealCall(std::string persona, std::string personb, Log::TAG tag)
 {
 	bool real = true;
 
@@ -825,7 +826,7 @@ bool isRealCall(std::string persona, std::string personb, std::string tag)
 		int fd = userUtils->getCommandFd(persona);
 		std::string ip = ipFromFd(fd);
 		std::string error = persona + " sent a command for a nonexistant call";
-		logger->insertLog(Log(tag, error, persona, ERRORLOG, ip));
+		logger->insertLog(Log(tag, error, persona, Log::TYPE::ERROR, ip));
 
 		time_t now = time(NULL);
 		std::string invalid = std::to_string(now) + "|invalid";
@@ -833,7 +834,7 @@ bool isRealCall(std::string persona, std::string personb, std::string tag)
 		{
 			SSL *ssl = clientssl[fd];
 			write2Client(invalid, ssl);
-			logger->insertLog(Log(tag, invalid, persona, OUTBOUNDLOG, ip));
+			logger->insertLog(Log(tag, invalid, persona, Log::TYPE::OUTBOUND, ip));
 		}
 	}
 	return real;
@@ -851,7 +852,7 @@ void write2Client(std::string response, SSL *respSsl)
 		std::string user = userUtils->userFromCommandFd(socket);
 		std::string ip = ipFromFd(socket);
 		std::string error = "ssl_write returned an error of " + std::string(ERR_error_string(ERR_get_error(), NULL));
-		logger->insertLog(Log(TAG_SSL, error, user, ERRORLOG, ip));
+		logger->insertLog(Log(Log::TAG::SSL, error, user, Log::TYPE::ERROR, ip));
 	}
 }
 
@@ -919,7 +920,7 @@ int readSSL(SSL *sdssl, char inputBuffer[])
 		std::string user = userUtils->userFromCommandFd(sd);
 		std::string ip = ipFromFd(sd);
 		std::string error = "socket has died";
-		logger->insertLog(Log(TAG_DEADSOCK, error, user, ERRORLOG, ip));
+		logger->insertLog(Log(Log::TAG::DEADSOCK, error, user, Log::TYPE::ERROR, ip));
 	}
 	return totalRead;
 }
@@ -958,5 +959,5 @@ void sendCallEnd(std::string user)
 	int cmdFd = userUtils->getCommandFd(user);
 	SSL *ssl = clientssl[cmdFd];
 	write2Client(resp, ssl);
-	logger->insertLog(Log(TAG_END, resp, user, OUTBOUNDLOG, ipFromFd(cmdFd)));
+	logger->insertLog(Log(Log::TAG::END, resp, user, Log::TYPE::OUTBOUND, ipFromFd(cmdFd)));
 }

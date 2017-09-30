@@ -53,7 +53,7 @@ void removeClient(int sd);
 
 //verify the call is real and not a malicious hand crafted command
 //persona is the one who will be sent an invalid command if it is not real.
-bool isRealCall(std::string persona, std::string personb, std::string tag);
+bool isRealCall(std::string persona, std::string personb, Log::TAG tag);
 
 //convert the string to c char[] and send it by ssl* (when sending, send only as many bytes as there are characters
 // and not the whole command string buffer [] size

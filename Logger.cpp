@@ -80,7 +80,7 @@ void* Logger::diskRw(void *ignored)
 			*(logfile) << log << "\n";
 			logfile->flush(); // write immediately to the file
 
-			if(log.getType() == ERRORLOG)
+			if(log.getType() == Log::TYPE::ERROR)
 			{//make errors dead obvious when testing
 				std::cerr << log << "\n";
 			}
