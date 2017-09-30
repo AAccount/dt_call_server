@@ -99,20 +99,20 @@ UserUtils::~UserUtils()
 	}
 }
 
-RSA* UserUtils::getPublicKey(std::string username)
+RSA* UserUtils::getPublicKey(std::string username) const
 {
 	if(nameMap.count(username) > 0)
 	{
-		return nameMap[username]->getPublicKey();
+		return nameMap.at(username)->getPublicKey();
 	}
 	return NULL;
 }
 
-std::string UserUtils::getChallenge(std::string const &username)
+std::string UserUtils::getChallenge(std::string const &username) const
 {
 	if(nameMap.count(username) > 0)
 	{
-		return nameMap[username]->getChallenge();
+		return nameMap.at(username)->getChallenge();
 	}
 	return "";
 }
@@ -190,22 +190,22 @@ void UserUtils::clearSession(std::string const &username)
 	}
 }
 
-bool UserUtils::verifySessionKey(std::string const &sessionid, int fd)
+bool UserUtils::verifySessionKey(std::string const &sessionid, int fd) const
 {
 	if(sessionkeyMap.count(sessionid) == 0)
 	{
 		return false;
 	}
 
-	User *user = sessionkeyMap[sessionid];
+	User *user = sessionkeyMap.at(sessionid);
 	return user->getCommandfd() == fd;
 }
 
-std::string UserUtils::userFromCommandFd(int fd)
+std::string UserUtils::userFromCommandFd(int fd) const
 {
 	if (commandfdMap.count(fd) > 0)
 	{
-		return commandfdMap[fd]->getUname();
+		return commandfdMap.at(fd)->getUname();
 	}
 
 	std::string error="no user matches the command fd supplied";
@@ -213,22 +213,22 @@ std::string UserUtils::userFromCommandFd(int fd)
 	return "";
 }
 
-std::string UserUtils::userFromSessionKey(std::string const &sessionid)
+std::string UserUtils::userFromSessionKey(std::string const &sessionid) const
 {
 	if(sessionkeyMap.count(sessionid) > 0)
 	{
-		return sessionkeyMap[sessionid]->getUname();
+		return sessionkeyMap.at(sessionid)->getUname();
 	}
 	std::string error = "no user matches the session id supplied";
 	Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return "";
 }
 
-int UserUtils::getCommandFd(std::string const &user)
+int UserUtils::getCommandFd(std::string const &user) const
 {
 	if(nameMap.count(user) > 0)
 	{
-		User *userObj = nameMap[user];
+		User *userObj = nameMap.at(user);
 		return userObj->getCommandfd();
 	}
 	std::string error = "tried to get a comamnd fd for somebody that doesn't exist: " + user;
@@ -236,22 +236,22 @@ int UserUtils::getCommandFd(std::string const &user)
 	return 0;
 }
 
-std::string UserUtils::getSessionKey(std::string const &uname)
+std::string UserUtils::getSessionKey(std::string const &uname) const
 {
 	if(nameMap.count(uname) > 0)
 	{
-		return nameMap[uname]->getSessionkey();
+		return nameMap.at(uname)->getSessionkey();
 	}
 	std::string error = "tried to get a session key for somebody that doesn't exist: " + uname;
 	Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return "";
 }
 
-std::string UserUtils::userFromUdpSummary(std::string const &summary)
+std::string UserUtils::userFromUdpSummary(std::string const &summary) const
 {
 	if(udpMap.count(summary) > 0)
 	{
-		return udpMap[summary]->getUname();
+		return udpMap.at(summary)->getUname();
 	}
 	return "";
 }
@@ -285,9 +285,9 @@ void UserUtils::setUdpInfo(std::string const &sessionkey, struct sockaddr_in inf
 	}
 }
 
-struct sockaddr_in UserUtils::getUdpInfo(std::string const &uname)
+struct sockaddr_in UserUtils::getUdpInfo(std::string const &uname) const
 {
-	return nameMap[uname]->getUdpInfo();
+	return nameMap.at(uname)->getUdpInfo();
 }
 
 void UserUtils::clearUdpInfo(std::string const &uname)
@@ -309,11 +309,11 @@ void UserUtils::clearUdpInfo(std::string const &uname)
 	}
 }
 
-ustate UserUtils::getUserState(std::string const &uname)
+ustate UserUtils::getUserState(std::string const &uname) const
 {
 	if(nameMap.count(uname) > 0)
 	{
-		return nameMap[uname]->getUserState();
+		return nameMap.at(uname)->getUserState();
 	}
 	return INVALID;
 }
@@ -331,20 +331,20 @@ void UserUtils::setUserState(std::string const &uname, ustate newstate)
 	}
 }
 
-std::string UserUtils::getPublicKeyDump(std::string const &uname)
+std::string UserUtils::getPublicKeyDump(std::string const &uname) const
 {
 	if(nameMap.count(uname) > 0)
 	{
-		return nameMap[uname]->getPublicKeyDump();
+		return nameMap.at(uname)->getPublicKeyDump();
 	}
 	return "";
 }
 
-std::string UserUtils::getCallWith(std::string const &uname)
+std::string UserUtils::getCallWith(std::string const &uname) const
 {
 	if(nameMap.count(uname) > 0)
 	{
-		return nameMap[uname]->getCallWith();
+		return nameMap.at(uname)->getCallWith();
 	}
 	return "";
 }

@@ -35,32 +35,32 @@ class UserUtils
 public:
 	static UserUtils* getInstance();
 
-	RSA *getPublicKey(std::string username);
-	std::string getPublicKeyDump(std::string const &uname);
+	RSA *getPublicKey(std::string username) const;
+	std::string getPublicKeyDump(std::string const &uname) const;
 
-	std::string getChallenge(std::string const &username);
+	std::string getChallenge(std::string const &username) const;
 	void setChallenge(std::string const &username, std::string challenge);
 
-	std::string userFromSessionKey(std::string const &sessionkey);
-	std::string getSessionKey(std::string const &uname);
+	std::string userFromSessionKey(std::string const &sessionkey) const;
+	std::string getSessionKey(std::string const &uname) const;
 	void setSessionKey(std::string const &username, std::string sessionkey);
-	bool verifySessionKey(std::string const &sessionkey, int fd);
+	bool verifySessionKey(std::string const &sessionkey, int fd) const;
 	void clearSession(std::string const &username);
 
-	std::string userFromCommandFd(int fd);
-	int getCommandFd(std::string const &user);
+	std::string userFromCommandFd(int fd) const;
+	int getCommandFd(std::string const &user) const;
 	void setCommandFd(std::string const &sessionkey, int fd);
 
-	std::string userFromUdpSummary(std::string const &summary);
+	std::string userFromUdpSummary(std::string const &summary) const;
 	void setUdpSummary(std::string const &sessionkey, std::string summary);
-	struct sockaddr_in getUdpInfo(std::string const &uname);
+	struct sockaddr_in getUdpInfo(std::string const &uname) const;
 	void setUdpInfo(std::string const &sessionkey, struct sockaddr_in info);
 	void clearUdpInfo(std::string const &uname);
 
-	ustate getUserState(std::string const &uname);
+	ustate getUserState(std::string const &uname) const;
 	void setUserState(std::string const &uname, ustate newstate);
 
-	std::string getCallWith(std::string const &uname);
+	std::string getCallWith(std::string const &uname) const;
 	void setCallPair(std::string uname, std::string newOther);
 	void removeCallPair(std::string const &uname);
 
