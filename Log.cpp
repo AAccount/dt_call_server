@@ -21,7 +21,7 @@ std::ostream& operator<<(std::ostream &strm, const Log &l)
 			<< l.ip + ";";
 }
 
-std::string Log::getType()
+std::string Log::getType() const
 {
 	return type;
 }

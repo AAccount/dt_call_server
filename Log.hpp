@@ -45,7 +45,7 @@ private:
 
 public:
 	Log(std::string ctag, std::string cmessage, std::string user, std::string type, std::string ip);
-	std::string getType();
+	std::string getType() const;
 };
 
 #endif //DBLOG_H
