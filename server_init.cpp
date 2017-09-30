@@ -11,7 +11,7 @@
 
 void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, UserUtils *userUtils)
 {
-	std::ifstream conffile(CONFFILE);
+	std::ifstream conffile(CONFFILE());
 	std::string line;
 	bool gotPublicKey = false, gotPrivateKey = false, gotCiphers = false, gotCmdPort = false, gotMediaPort = false, gotDhFile = false;
 
@@ -85,20 +85,19 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, 
 	//at the minimum a public and private key must be specified. everything else has a default value
 	if (!gotPublicKey || !gotPrivateKey || !gotDhFile)
 	{
-		std::string conffile = CONFFILE;
 		if(!gotPublicKey)
 		{
-			std::string error = "Your did not specify a PUBLIC key pem in: " + conffile + "\n";
+			std::string error = "Your did not specify a PUBLIC key pem in: " + CONFFILE() + "\n";
 			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		}
 		if(!gotPublicKey)
 		{
-			std::string error = "Your did not specify a PRIVATE key pem in: " + conffile + "\n";
+			std::string error = "Your did not specify a PRIVATE key pem in: " + CONFFILE() + "\n";
 			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		}
 		if(!gotDhFile)
 		{
-			std::string error = "Your did not specify a DH file for DHE ciphers in: " + conffile + "\n";
+			std::string error = "Your did not specify a DH file for DHE ciphers in: " + CONFFILE() + "\n";
 			userUtils->insertLog(Log(TAG_INIT, error, SELF, ERRORLOG, SELFIP));
 		}
 		exit(1);

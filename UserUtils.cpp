@@ -29,7 +29,7 @@ UserUtils* UserUtils::getInstance()
 UserUtils::UserUtils()
 {
 	//generate all user objects and have them accessible by name
-	std::ifstream usersfile(USERSFILE);
+	std::ifstream usersfile(USERSFILE());
 	std::string line;
 
 	while(std::getline(usersfile, line))
@@ -98,8 +98,8 @@ UserUtils::UserUtils()
 	//(ok to stall the program here as you need the log initialized before you can do anything)
 	logTimeT = time(NULL);
 	std::string nowString = std::string(ctime(&logTimeT));
-	std::string logName = std::string(LOGPREFIX) + nowString.substr(0, nowString.length()-1);
-	logfile = new std::ofstream(LOGFOLDER+logName);
+	std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
+	logfile = new std::ofstream(LOGFOLDER()+logName);
 
 	//keep disk IO on its own thread. don't know what kind of disk you'll get
 	//don't let a slow disk stall the whole program just for logging.
@@ -421,8 +421,8 @@ void* UserUtils::diskRw(void *ignored)
 				logfile->close();
 				logTimeT = now;
 				std::string nowString = std::string(ctime(&logTimeT));
-				std::string logName = std::string(LOGPREFIX) + nowString.substr(0, nowString.length()-1);
-				logfile->open(LOGFOLDER+logName);
+				std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
+				logfile->open(LOGFOLDER()+logName);
 			}
 			*(logfile) << log << "\n";
 			logfile->flush(); // write immediately to the file

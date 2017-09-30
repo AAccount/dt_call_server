@@ -7,7 +7,7 @@ UserUtils *userUtils = UserUtils::getInstance();
 
 int main(int argc, char *argv[])
 {
-	std::string start = (std::string)"starting call operator V" +(std::string)VERSION;
+	std::string start = (std::string)"starting call operator V" + VERSION();
 	userUtils->insertLog(Log(TAG_INIT, start, SELF, SYSTEMLOG, SELFIP));
 
 	int cmdFD, cmdPort = DEFAULTCMD; //command port stuff
@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 
 	std::string publicKeyFile;
 	std::string privateKeyFile;
-	std::string ciphers = DEFAULTCIPHERS;
+	std::string ciphers = DEFAULTCIPHERS();
 	std::string dhfile = "";
 
 	//use a helper function to read the config file
@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 				//what was previously a workaround now has an official purpose: heartbeat/ping ignore byte
 				//this byte is just sent to keep the socket and its various nat tables it takes to get here alive
 				std::string  bufferString(inputBuffer);
-				if(bufferString == JBYTE)
+				if(bufferString == JBYTE())
 				{
 #ifdef VERBOSE
 					std::cout << "Got a heartbeat byte on " << sd << "\n";
@@ -367,7 +367,7 @@ int main(int argc, char *argv[])
 						std::string resp=std::to_string(now) + "|login2resp|" + sessionkey;
 						write2Client(resp, sdssl);
 #ifndef VERBOSE
-						resp=std::to_string(now) + "|login2resp|" + SESSION_KEY_PLACEHOLDER;
+						resp=std::to_string(now) + "|login2resp|" + SESSION_KEY_PLACEHOLDER();
 #endif
 						userUtils->insertLog(Log(TAG_LOGIN, resp, username, OUTBOUNDLOG, ip));
 						continue; //login command, no session key to verify, continue to the next fd after proccessing login2
@@ -378,7 +378,7 @@ int main(int argc, char *argv[])
 					std::string sessionkey = commandContents.at(commandContents.size()-1);
 					std::string user=userUtils->userFromCommandFd(sd);
 #ifndef VERBOSE //unless needed, don't log session keys as they're still in use
-					originalBufferCmd.replace(originalBufferCmd.find(sessionkey), SESSION_KEY_LENGTH, SESSION_KEY_PLACEHOLDER);
+					originalBufferCmd.replace(originalBufferCmd.find(sessionkey), SESSION_KEY_LENGTH, SESSION_KEY_PLACEHOLDER());
 #endif
 					if(!userUtils->verifySessionKey(sessionkey, sd))
 					{
@@ -462,7 +462,7 @@ int main(int argc, char *argv[])
 						std::string zapper = commandContents.at(2);
 						std::string touma = user;
 						std::string aes = commandContents.at(3);
-						originalBufferCmd.replace(originalBufferCmd.find(aes), aes.length(), AES_PLACEHOLDER);
+						originalBufferCmd.replace(originalBufferCmd.find(aes), aes.length(), AES_PLACEHOLDER());
 						userUtils->insertLog(Log(TAG_PASSTHROUGH, originalBufferCmd, user, INBOUNDLOG, ip));
 
 						if(!isRealCall(touma, zapper, TAG_PASSTHROUGH))
@@ -474,7 +474,7 @@ int main(int argc, char *argv[])
 						SSL *zapperssl = clientssl[zapperfd];
 						std::string direct = std::to_string(now) + "|direct|" + aes + "|" + touma;//as in "directly" from touma, not from the server
 						write2Client(direct, zapperssl);
-						direct.replace(direct.find(aes), aes.length(), AES_PLACEHOLDER);
+						direct.replace(direct.find(aes), aes.length(), AES_PLACEHOLDER());
 						userUtils->insertLog(Log(TAG_PASSTHROUGH, direct, zapper, OUTBOUNDLOG, ipFromFd(zapperfd)));
 
 					}
