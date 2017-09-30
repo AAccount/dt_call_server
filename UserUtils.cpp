@@ -5,17 +5,10 @@
  *      Author: Daniel
  */
 
-#include "const.h"
 #include "UserUtils.hpp"
 
 //static members
 UserUtils* UserUtils::instance;
-time_t UserUtils::logTimeT;
-std::ofstream *UserUtils::logfile;
-pthread_t UserUtils::diskThread;
-pthread_mutex_t UserUtils::qMutex;
-pthread_cond_t UserUtils::wakeup;
-std::queue<Log> UserUtils::backlog;
 
 UserUtils* UserUtils::getInstance()
 {
@@ -93,23 +86,6 @@ UserUtils::UserUtils()
 		nameMap[name] = user;
 	}
 	usersfile.close();
-
-	//setup the log output
-	//(ok to stall the program here as you need the log initialized before you can do anything)
-	logTimeT = time(NULL);
-	std::string nowString = std::string(ctime(&logTimeT));
-	std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
-	logfile = new std::ofstream(LOGFOLDER()+logName);
-
-	//keep disk IO on its own thread. don't know what kind of disk you'll get
-	//don't let a slow disk stall the whole program just for logging.
-	pthread_mutex_init(&qMutex, NULL);
-	pthread_cond_init(&wakeup, NULL);
-	if (pthread_create(&diskThread, NULL, diskRw, NULL) != 0)
-	{
-		std::string error = "cannot create the disk rw thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		exit(1);
-	}
 }
 
 UserUtils::~UserUtils()
@@ -121,7 +97,6 @@ UserUtils::~UserUtils()
 		delete nameMap[entry.first];
 		nameMap[entry.first] = NULL;
 	}
-	delete logfile;
 }
 
 RSA* UserUtils::getPublicKey(std::string username)
@@ -151,7 +126,7 @@ void UserUtils::setChallenge(std::string const &username, std::string challenge)
 	else
 	{
 		std::string error = "trying to set challenge for somebody that doesn't exist: " + username;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+		Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -166,7 +141,7 @@ void UserUtils::setSessionKey(std::string const &username, std::string sessionke
 	else
 	{
 		std::string error = "trying to set a session key for somebody that doesn't exist: " + username;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+		Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -182,7 +157,7 @@ void UserUtils::setCommandFd(std::string const &sessionid, int fd)
 	else
 	{
 		std::string error = "trying to set a command file descriptor for a session that isn't registered";
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+		Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -211,7 +186,7 @@ void UserUtils::clearSession(std::string const &username)
 	else
 	{
 		std::string error = "trying to clear a session for somebody that doesn't exist: " + username;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+		Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -234,7 +209,7 @@ std::string UserUtils::userFromCommandFd(int fd)
 	}
 
 	std::string error="no user matches the command fd supplied";
-	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+	Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return "";
 }
 
@@ -245,7 +220,7 @@ std::string UserUtils::userFromSessionKey(std::string const &sessionid)
 		return sessionkeyMap[sessionid]->getUname();
 	}
 	std::string error = "no user matches the session id supplied";
-	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+	Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return "";
 }
 
@@ -257,7 +232,7 @@ int UserUtils::getCommandFd(std::string const &user)
 		return userObj->getCommandfd();
 	}
 	std::string error = "tried to get a comamnd fd for somebody that doesn't exist: " + user;
-	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+	Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return 0;
 }
 
@@ -268,7 +243,7 @@ std::string UserUtils::getSessionKey(std::string const &uname)
 		return nameMap[uname]->getSessionkey();
 	}
 	std::string error = "tried to get a session key for somebody that doesn't exist: " + uname;
-	insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+	Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	return "";
 }
 
@@ -292,7 +267,7 @@ void UserUtils::setUdpSummary(std::string const &sessionkey, std::string summary
 	else
 	{
 		std::string error = "tried to set a udp summary for an unregistered session key";
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+		Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -306,7 +281,7 @@ void UserUtils::setUdpInfo(std::string const &sessionkey, struct sockaddr_in inf
 	else
 	{
 		std::string error = "tried to set a udp sockaddr_in for an unregistered session key";
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+		Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -330,7 +305,7 @@ void UserUtils::clearUdpInfo(std::string const &uname)
 	else
 	{
 		std::string error = "tried to clear udp info for somebody that doesn't exist: " + uname;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+		Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -352,7 +327,7 @@ void UserUtils::setUserState(std::string const &uname, ustate newstate)
 	else
 	{
 		std::string error = "tried to set user state for somebody that doesn't exist: " + uname;
-		insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
+		Logger::getInstance()->insertLog(Log(TAG_USERUTILS, error, SELF, ERRORLOG, SELFIP));
 	}
 }
 
@@ -395,69 +370,4 @@ void UserUtils::removeCallPair(std::string const &uname)
 void UserUtils::killInstance()
 {
 	delete instance;
-}
-
-void* UserUtils::diskRw(void *ignored)
-{
-	while(true)
-	{
-		pthread_mutex_lock(&qMutex);
-			bool empty = backlog.empty();
-		pthread_mutex_unlock(&qMutex);
-
-		while(!empty)
-		{
-			//get the next log item
-			pthread_mutex_lock(&qMutex);
-				Log log = backlog.front();
-				backlog.pop();
-				empty = backlog.empty();
-			pthread_mutex_unlock(&qMutex);
-
-			//figure out if the current log is over 1 day old
-			time_t now = time(NULL);
-			if((now - logTimeT) > 60*60*24)
-			{//if the log is too old, close it and start another one
-				logfile->close();
-				logTimeT = now;
-				std::string nowString = std::string(ctime(&logTimeT));
-				std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
-				logfile->open(LOGFOLDER()+logName);
-			}
-			*(logfile) << log << "\n";
-			logfile->flush(); // write immediately to the file
-
-			if(log.getType() == ERRORLOG)
-			{//make errors dead obvious when testing
-				std::cerr << log << "\n";
-			}
-			else
-			{
-				std::cout << log << "\n";
-			}
-		}
-
-		//no more logs to write? wait until there is one
-#ifdef VERBOSE
-		std::cout << "DISK RW: nothing to write\n";
-#endif
-		while(backlog.empty())
-		{
-			pthread_cond_wait(&wakeup, &qMutex);
-#ifdef VERBOSE
-			std::cout << "DISK RW: woken up to write\n";
-#endif
-		}
-		pthread_mutex_unlock(&qMutex);
-	}
-}
-
-void UserUtils::insertLog(Log dbl)
-{
-	//put a new log in the backlog
-	pthread_mutex_lock(&qMutex);
-		backlog.push(dbl);
-	pthread_mutex_unlock(&qMutex);
-
-	pthread_cond_signal(&wakeup);
 }

@@ -23,8 +23,8 @@
 #include "Log.hpp"
 #include "UserUtils.hpp"
 
-void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, UserUtils *userUtils);
-SSL_CTX* setupOpenSSL(std::string const &ciphers, std::string const &privateKeyFile, std::string const &publicKeyFile, std::string const &dhfile, UserUtils *userUtils);
-void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct sockaddr_in *info, int port, UserUtils *userUtils);
+void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, Logger *logger);
+SSL_CTX* setupOpenSSL(std::string const &ciphers, std::string const &privateKeyFile, std::string const &publicKeyFile, std::string const &dhfile);
+void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct sockaddr_in *info, int port);
 
 #endif /* SERVER_INIT_HPP_ */

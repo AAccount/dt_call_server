@@ -28,7 +28,7 @@
 #include "const.h"
 #include "Log.hpp"
 #include "User.hpp"
-
+#include "Logger.hpp"
 
 class UserUtils
 {
@@ -64,7 +64,6 @@ public:
 	void setCallPair(std::string uname, std::string newOther);
 	void removeCallPair(std::string const &uname);
 
-	void insertLog(Log l);
 	void killInstance();
 
 private:
@@ -78,17 +77,6 @@ private:
 	std::unordered_map<uint32_t, User*> commandfdMap;
 	std::unordered_map<std::string, User*> sessionkeyMap;
 	std::unordered_map<std::string, User*> udpMap;
-
-	//output log (changed every 24 hours)
-	static std::ofstream *logfile;
-	static time_t logTimeT;
-
-	//log disk writing thread stuff
-	static pthread_t diskThread;
-	static pthread_mutex_t qMutex;
-	static pthread_cond_t wakeup;
-	static void* diskRw(void *ignored);
-	static std::queue<Log> backlog;
 };
 
 #endif /* USERUTILS_HPP_ */

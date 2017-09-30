@@ -34,6 +34,7 @@
 #include "const.h"
 #include "Utils.hpp"
 #include "server_init.hpp"
+#include "Logger.hpp"
 
 struct UdpArgs
 {

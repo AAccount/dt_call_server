@@ -20,8 +20,8 @@ ifeq ($(UNAME),FreeBSD)
  CXX = clang++ -std=c++11
 endif
 
-server: server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o
-	${CXX} ${CFLAGS} ${LDFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o ${OPENSSL} ${MATH} ${PTHREAD} ${INC} ${LIB}
+server: server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Logger.o
+	${CXX} ${CFLAGS} ${LDFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Logger.o ${OPENSSL} ${MATH} ${PTHREAD} ${INC} ${LIB}
 
 server.o : server.cpp server.hpp
 	${CXX} ${CFLAGS} -c server.cpp ${INC}
@@ -43,6 +43,9 @@ User.o : User.cpp User.hpp
 
 const.o : const.cpp const.h
 	${CXX} ${CFLAGS} -c const.cpp ${INC}
+
+Logger.o : Logger.cpp Logger.hpp
+	${CXX} ${CFLAGS} -c Logger.cpp ${INC}
 
 clean:
 	rm dtoperator *.o
