@@ -9,7 +9,7 @@ Logger *logger = Logger::getInstance();
 int main(int argc, char *argv[])
 {
 
-	std::string start = (std::string)"starting call operator V" + VERSION();
+	std::string start = "starting call operator V" + VERSION();
 	logger->insertLog(Log(Log::TAG::STARTUP, start, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
 
 	int cmdFD, cmdPort = DEFAULTCMD; //command port stuff
