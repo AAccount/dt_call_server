@@ -188,7 +188,9 @@ SSL_CTX* setupOpenSSL(std::string const &ciphers, std::string const &privateKeyF
 		std::cerr << error << "\n";
 		exit(1);
 	}
-	//for ecdhe see SSL_CTX_set_tmp_ecdh
+
+	//ecdhe for android 8.0+
+	SSL_CTX_set_ecdh_auto (result, 1);
 	return result;
 }
 
