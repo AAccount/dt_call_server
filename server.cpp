@@ -455,7 +455,8 @@ int main(int argc, char *argv[])
 						write2Client(toumaResp, toumaCmdSsl);
 						logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)));
 
-						std::string zapperResp=std::to_string(now) + "|prepare|" + touma;
+						//send zapper touma's public key to be able to verify that the aes256 passthrough is actually from him
+						std::string zapperResp=std::to_string(now) + "|prepare|" + userUtils->getPublicKeyDump(touma) + "|" + touma;
 						write2Client(zapperResp, sdssl);
 						logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip));
 					}
