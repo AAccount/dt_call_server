@@ -19,8 +19,9 @@
 #include <random>
 #include <queue>
 
+#include <sodium.h>
 #include <stdio.h>
-#include <openssl/pem.h>
+#include <string.h>
 #include <netinet/in.h>
 #include <pthread.h>
 
@@ -35,8 +36,8 @@ class UserUtils
 public:
 	static UserUtils* getInstance();
 
-	RSA *getPublicKey(std::string username) const;
-	std::string getPublicKeyDump(std::string const &uname) const;
+	bool getSodiumPublicKey(const std::string& username, unsigned char (&output)[crypto_box_PUBLICKEYBYTES]) const;
+	std::string getSodiumKeyDump(const std::string &uname) const;
 
 	std::string getChallenge(std::string const &username) const;
 	void setChallenge(std::string const &username, std::string challenge);

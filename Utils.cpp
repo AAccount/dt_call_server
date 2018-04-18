@@ -6,12 +6,6 @@
  */
 
 #include "Utils.hpp"
-#include <time.h>
-#include <stdint.h>
-
-//make the random generator components once and reuse
-std::uniform_int_distribution<int> Utils::dist(0,61);
-std::mt19937 Utils::mt(std::random_device{}());
 
 //https://stackoverflow.com/questions/1798112/removing-leading-and-trailing-spaces-from-a-string
 std::string Utils::trim (std::string const &input)
@@ -43,6 +37,12 @@ std::string Utils::trim (std::string const &input)
 //https://stackoverflow.com/questions/19665818/generate-random-numbers-using-c11-random-library
 std::string Utils::randomString(int length)
 {
+	if(sodium_init() == -1)
+	{
+		exit(1); //any signs of sodium failure makes this program useless
+	}
+
+	int alphanumLength = 62;
 	const std::string alphanum[] =
     {"0","1","2","3","4",
     "5","6","7","8","9",
@@ -61,9 +61,62 @@ std::string Utils::randomString(int length)
 	std::string randomized = "";
 	for(int i=0; i<length; i++)
 	{
-		int index = dist(mt);
+		int index = randombytes_uniform(alphanumLength);
 		std::string character = alphanum[index];
 		randomized = randomized + character;
 	}
 	return randomized;
+}
+
+std::string Utils::stringify(unsigned char *bytes, int length)
+{
+	std::string result = "";
+	for(int i=0; i<length; i++)
+	{
+		std::string number = std::to_string(bytes[i]);
+		if(bytes[i] < 10)
+		{//for 1,2,3 to keep everything as 3 digit #s make it 001, 002 etc
+			number = "00" + number;
+		}
+		else if (bytes[i] < 100)
+		{//for 10,11,12 make it 010,011,012
+			number = "0" + number;
+		}
+		result = result + number;
+	}
+	return result;
+}
+
+void Utils::destringify(const std::string &input, unsigned char* output)
+{
+	for(int i=0; i<input.length(); i = i+3)
+	{
+		std::string digit = input.substr(i, 3);
+		output[i/3] = (unsigned char)std::stoi(digit);
+	}
+}
+
+bool Utils::checkSodiumPrivate(const std::string& input)
+{
+	std::string privateHeader = SODIUM_PRIVATE_HEADER();
+	bool hasHeader = (input.length() > 0 && input.substr(0, privateHeader.length()) == privateHeader);
+	bool expectedLength = (input.length() == (privateHeader.length() + crypto_box_SECRETKEYBYTES*3));
+	return hasHeader && expectedLength;
+}
+
+bool Utils::checkSodiumPublic(const std::string& input)
+{
+	std::string publicHeader = SODIUM_PUBLIC_HEADER();
+	bool hasHeader = (input.length() > 0 && input.substr(0, publicHeader.length()) == publicHeader);
+	bool expectedLength = (input.length() == (publicHeader.length() + crypto_box_PUBLICKEYBYTES*3));
+	return hasHeader && expectedLength;
+}
+
+std::string Utils::dumpSmallFile(const std::string& path)
+{
+	std::ifstream fileStream(path);
+	std::stringstream stringStream;
+	stringStream << fileStream.rdbuf();
+	fileStream.close();
+	return stringStream.str();
 }

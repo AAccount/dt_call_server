@@ -1,14 +1,10 @@
 #Sample Users File
-#Format USERNAME > PATH_TO_PUBLIC_KEY
+#format user > absolute path to sodium public key
 
-righthand > /home/Daniel/dtoperator/righthand_public.pem
-libprohibited > /home/Daniel/dtoperator/libprohibited_public.pem
-zapper > /home/Daniel/dtoperator/zapper_public.pem
+righthand > /home/Daniel/dtoperator/righthand_public.na
+libprohibited > /home/Daniel/dtoperator/libprohibited_public.na
+zapper > /home/Daniel/dtoperator/zapper_public.na
 
 #Since the config file and user file are parsed with the same code, the users file can be commented.
 #All sample accounts based on tv characters seen: https://myanimelist.net/anime/4654/Toaru_Majutsu_no_Index
-
-#openssl key steps
-#1: openssl genrsa -out libprohibited.pem 2048
-#2: openssl rsa -in libprohibited.pem -outform PEM -pubout -out libprohibited_public.pem
-#3: openssl pkcs8 -topk8 -nocrypt -in libprohibited.pem -out libprohibited_private.pem
+#Use the keygen Makefile target exe to create keys.

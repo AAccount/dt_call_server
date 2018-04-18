@@ -1,3 +1,4 @@
 openssl-devel
 glibc-devel
 libstdc++.devel
+libsodium-devel

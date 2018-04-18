@@ -6,3 +6,5 @@ server
 /dtoperator
 /readlogs.sql
 /genscrypt
+/keygen
+/gmon.out

@@ -13,7 +13,7 @@ public:
 		UDPTHREAD, USERUTILS} TAG;
 
 	TYPE getType() const;
-	Log(TAG ctag, std::string cmessage, std::string user, TYPE type, std::string ip);
+	Log(TAG ctag, const std::string& cmessage, const std::string& user, TYPE type, const std::string& ip);
 
 	static const std::string& SELF();
 	static const std::string& SELFIP();

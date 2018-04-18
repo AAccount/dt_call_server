@@ -39,7 +39,7 @@ Logger::Logger()
 	pthread_cond_init(&wakeup, NULL);
 	if (pthread_create(&diskThread, NULL, diskRw, NULL) != 0)
 	{
-		std::string error = "cannot create the disk rw thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		std::cerr << "cannot create the disk rw thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 		exit(1);
 	}
 

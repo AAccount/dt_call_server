@@ -35,6 +35,13 @@ const int DEFAULTCMD = 1991;
 const int DEFAULTMEDIA = 1961;
 const std::string& DEFAULTCIPHERS();
 
+//sodium headers
+const std::string& SODIUM_PUBLIC_HEADER();
+const std::string& SODIUM_PRIVATE_HEADER();
+
+const int JAVA_MAX_PRECISION_INT = 5;
+const int SIZEOF_JBYTE = 7; //sign bit doesn't count
+
 typedef enum {NONE, INIT, INCALL, INVALID} ustate; //user state
 
 #endif

@@ -7,24 +7,22 @@
 
 #include "User.hpp"
 
-User::User(std::string cuname, RSA *ckey, std::string cdump)
+User::User(const std::string& cuname, unsigned char cnakey[crypto_box_PUBLICKEYBYTES], const std::string& cdump) :
+	uname(cuname),
+	sodiumPublicKeyDump(cdump),
+	commandfd(0),
+	sessionkey(""),
+	challenge(""),
+	udpSummary(""),
+	userState(NONE),
+	callWith("")
 {
-	uname = cuname;
-	publicKey = ckey;
-	publicKeyDump = cdump;
-	commandfd = 0;
-	sessionkey = "";
-	challenge = "";
-
-	udpSummary = "";
-	userState = NONE;
-	callWith = "";
-	//ok not to initialize the struct since the summary is 0. with a 0 summary nobody will look at the struct
+	memcpy(sodiumPublicKey, cnakey, crypto_box_PUBLICKEYBYTES);
+	memset(&udpInfo, 0, sizeof(struct sockaddr_in));
 }
 
 User::~User()
 {
-	RSA_free(publicKey);
 }
 
 std::string User::getChallenge() const
@@ -32,7 +30,7 @@ std::string User::getChallenge() const
 	return challenge;
 }
 
-void User::setChallenge(std::string pchallenge)
+void User::setChallenge(const std::string& pchallenge)
 {
 	challenge = pchallenge;
 }
@@ -42,14 +40,14 @@ std::string User::getUname() const
 	return uname;
 }
 
-RSA* User::getPublicKey() const
+void User::getSodiumPublicKey(unsigned char (&output)[crypto_box_PUBLICKEYBYTES]) const
 {
-	return publicKey;
+	memcpy(output, sodiumPublicKey, crypto_box_PUBLICKEYBYTES);
 }
 
-std::string User::getPublicKeyDump() const
+std::string User::getSodiumPublicKeyDump() const
 {
-	return publicKeyDump;
+	return sodiumPublicKeyDump;
 }
 
 uint32_t User::getCommandfd() const
@@ -68,7 +66,7 @@ std::string User::getUdpSummary() const
 	return udpSummary;
 }
 
-void User::setUdpSummary(std::string newSummary)
+void User::setUdpSummary(const std::string& newSummary)
 {
 	udpSummary = newSummary;
 }
@@ -98,7 +96,7 @@ std::string User::getSessionkey() const
 	return sessionkey;
 }
 
-void User::setSessionkey(std::string newSessionkey)
+void User::setSessionkey(const std::string& newSessionkey)
 {
 	sessionkey = newSessionkey;
 }
@@ -107,7 +105,7 @@ std::string User::getCallWith() const
 {
 	return callWith;
 }
-void User::setCallWith(std::string newOther)
+void User::setCallWith(const std::string& newOther)
 {
 	callWith = newOther;
 }

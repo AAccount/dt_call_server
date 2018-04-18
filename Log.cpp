@@ -20,13 +20,13 @@ const std::string& Log::DONTKNOW()
 	return value;
 }
 
-Log::Log(TAG ctag, std::string cmessage, std::string cuser, TYPE ctype, std::string cip)
+Log::Log(TAG ctag, const std::string& cmessage, const std::string& cuser, TYPE ctype, const std::string& cip) :
+	tag(ctag),
+	message(cmessage),
+	user(cuser),
+	type(ctype),
+	ip(cip)
 {
-	tag = ctag;
-	message=cmessage;
-	user = cuser;
-	type = ctype;
-	ip = cip;
 }
 
 std::ostream& operator<<(std::ostream &strm, const Log &l)

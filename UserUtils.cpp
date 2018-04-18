@@ -34,54 +34,46 @@ UserUtils::UserUtils()
 		}
 
 		//read the name and password
-		std::string name, publicKey, publicKeyDump;
+		std::string name, publicKeyPath;
 		std::stringstream ss(line);
 		getline(ss, name, '>');
-		getline(ss, publicKey, '>');
+		getline(ss, publicKeyPath, '>');
 
 		//cleanup the surrounding whitespace and strip the end of line comment
 		name = Utils::trim(name);
-		publicKey = Utils::trim(publicKey);
+		publicKeyPath = Utils::trim(publicKeyPath);
 
 		//need both a name and a public key to continue
-		if(name == "" || publicKey == "")
+		if(name == "" || publicKeyPath == "")
 		{
-			std::cout << "Account '" << name << "' is misconfigured\n";
+			std::cerr << "Account '" << name << "' is misconfigured\n";
 			continue;
 		}
 
-		//open the public key file
-		FILE *publicKeyFile = fopen(publicKey.c_str(), "r");
-		if(publicKeyFile == NULL)
+		//read the user's sodium public key into a file
+		std::string sodiumKeyDump = Utils::dumpSmallFile(publicKeyPath);
+		std::string sodiumKeyDumpOriginal = sodiumKeyDump;
+
+		//destringify the user's sodium public key
+		unsigned char publicKeyBytes[crypto_box_PUBLICKEYBYTES];
+		if(!Utils::checkSodiumPublic(sodiumKeyDump))
 		{
-			std::cout << "Having problems opening " << name << "'s public key file\n";
+			std::cerr << "User sodium public key error for: " << name << "\n";
 			continue;
 		}
+		std::string header = SODIUM_PUBLIC_HEADER();
+		sodiumKeyDump = sodiumKeyDump.substr(header.length(), crypto_box_PUBLICKEYBYTES*3);
+		Utils::destringify(sodiumKeyDump, publicKeyBytes);
 
-		//turn the file into a useable public key
-		RSA *rsaPublic = PEM_read_RSA_PUBKEY(publicKeyFile, NULL, NULL, NULL);
-		if(rsaPublic == NULL)
-		{
-			std::cout << "Could not generate a public key from file for: " << name << "\n";
-			continue;
-		}
-		else //get the dump for end to end encryption
-		{
-			std::ifstream publicKeyStream(publicKey);
-			std::stringstream buffer;
-			buffer << publicKeyStream.rdbuf();
-			publicKeyDump = buffer.str();
-		}
-		fclose(publicKeyFile);
-
-		User *user = new User(name, rsaPublic, publicKeyDump);
+		//finally create the user object
+		User *user = new User(name, publicKeyBytes, sodiumKeyDumpOriginal);
 
 		//in case the same person has ???2 entries??? get rid of the old one
 		if(nameMap.count(name) > 0)
 		{
 			delete nameMap[name];
 			nameMap.erase(name);
-			std::cout << "Duplicate account entry for: " << name << "\n";
+			std::cerr << "Duplicate account entry for: " << name << "\n";
 		}
 		nameMap[name] = user;
 	}
@@ -99,13 +91,24 @@ UserUtils::~UserUtils()
 	}
 }
 
-RSA* UserUtils::getPublicKey(std::string username) const
+bool UserUtils::getSodiumPublicKey(const std::string& username, unsigned char (&output)[crypto_box_PUBLICKEYBYTES]) const
 {
 	if(nameMap.count(username) > 0)
 	{
-		return nameMap.at(username)->getPublicKey();
+		nameMap.at(username)->getSodiumPublicKey(output);
+		return true;
 	}
-	return NULL;
+	return false;
+}
+
+std::string UserUtils::getSodiumKeyDump(const std::string& uname) const
+{
+	if(nameMap.count(uname) > 0)
+	{
+		User* user = nameMap.at(uname);
+		return user->getSodiumPublicKeyDump();
+	}
+	return "";
 }
 
 std::string UserUtils::getChallenge(std::string const &username) const
@@ -331,14 +334,6 @@ void UserUtils::setUserState(std::string const &uname, ustate newstate)
 	}
 }
 
-std::string UserUtils::getPublicKeyDump(std::string const &uname) const
-{
-	if(nameMap.count(uname) > 0)
-	{
-		return nameMap.at(uname)->getPublicKeyDump();
-	}
-	return "";
-}
 
 std::string UserUtils::getCallWith(std::string const &uname) const
 {

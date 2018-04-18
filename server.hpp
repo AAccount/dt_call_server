@@ -28,6 +28,7 @@
 #include <fstream>
 #include <random>
 #include <algorithm>
+#include <memory>
 
 #include "Log.hpp"
 #include "UserUtils.hpp"
@@ -35,18 +36,20 @@
 #include "Utils.hpp"
 #include "server_init.hpp"
 #include "Logger.hpp"
+#include "sodium_utils.hpp"
 
 struct UdpArgs
 {
 	int port;
-	RSA *privateKey;
+	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES];
+	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES];
 };
 
 //dedicated function for handling a call. each call is processed on its own thread.
 void* udpThread(void *ptr);
 
 //parse incoming server commands (split the incoming command string by the | character)
-std::vector<std::string> parse(char command[]);
+std::vector<std::string> parse(unsigned char command[]);
 
 //remove a client's command and media or only media depending what kind of sd is given
 void removeClient(int sd);
@@ -62,16 +65,16 @@ void write2Client(std::string response, SSL *respSsl);
 //get the ip address of a socket descriptor in human readable 192.168.1.1 format
 std::string ipFromFd(int sd);
 
-//turn unsigned char array into string of #s
-std::string stringify(unsigned char *bytes, int length);
+//accept ssl commands from the command socket
+void sslAccept(int cmdFD, SSL_CTX* sslcontext, struct timeval* unauthTimeout);
 
 //read an SSL socket into param inputBuffer. maximum read size in const.h
-int readSSL(SSL *sdssl, char inputBuffer[]);
+int readSSL(SSL *sdssl, unsigned char inputBuffer[]);
+
+//check the timestamp string to see if it's within the limits
+bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string& errorMessage, const std::string& user, const std::string& ip);
 
 //check to see if the bytes in the buffer are legitimate ascii characters of interest and doesn't contain any junk
-bool legitimateAscii(char buffer[], int length);
-
-//send a call end command. its own function (unlike the other commands) to detect dropped calls
-void sendCallEnd(std::string user);
+bool legitimateAscii(unsigned char* buffer, int length);
 
 #endif

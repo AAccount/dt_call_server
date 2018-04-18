@@ -9,11 +9,11 @@
  */
 #include "server_init.hpp"
 
-void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, Logger *logger)
+void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, std::string &sodiumPublic, std::string &sodiumPrivate, Logger *logger)
 {
 	std::ifstream conffile(CONFFILE());
 	std::string line;
-	bool gotPublicKey = false, gotPrivateKey = false, gotCiphers = false, gotCmdPort = false, gotMediaPort = false, gotDhFile = false;
+	bool gotPublicKey = false, gotPrivateKey = false, gotCiphers = false, gotCmdPort = false, gotMediaPort = false, gotDhFile = false, gotSodiumPublic =false, gotSodiumPrivate = false;
 
 	while(getline(conffile, line))
 	{
@@ -75,6 +75,34 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, 
 			gotDhFile = true;
 			continue;
 		}
+		else if(var == "public_sodium")
+		{
+			std::string keyDump = Utils::dumpSmallFile(value);
+			if(Utils::checkSodiumPublic(keyDump))
+			{
+				std::string header = SODIUM_PUBLIC_HEADER();
+				sodiumPublic = keyDump.substr(header.length(), crypto_box_PUBLICKEYBYTES*3);
+				gotSodiumPublic = true;
+			}
+			else
+			{
+				std::cerr << "server sodium public key error\n";
+			}
+		}
+		else if(var == "private_sodium")
+		{
+			std::string keyDump = Utils::dumpSmallFile(value);
+			if(Utils::checkSodiumPrivate(keyDump))
+			{
+				std::string header = SODIUM_PRIVATE_HEADER();
+				sodiumPrivate = keyDump.substr(header.length(), crypto_box_SECRETKEYBYTES*3);
+				gotSodiumPrivate = true;
+			}
+			else
+			{
+				std::cerr << "server sodium private key error\n";
+			}
+		}
 		else
 		{
 			std::string unknown = "unknown variable parsed: " + line;
@@ -83,14 +111,14 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, 
 	}
 
 	//at the minimum a public and private key must be specified. everything else has a default value
-	if (!gotPublicKey || !gotPrivateKey || !gotDhFile)
+	if (!gotPublicKey || !gotPrivateKey || !gotDhFile || !gotSodiumPublic || !gotSodiumPrivate)
 	{
 		if(!gotPublicKey)
 		{
 			std::string error = "Your did not specify a PUBLIC key pem in: " + CONFFILE() + "\n";
 			std::cerr << error << "\n";
 		}
-		if(!gotPublicKey)
+		if(!gotPrivateKey)
 		{
 			std::string error = "Your did not specify a PRIVATE key pem in: " + CONFFILE() + "\n";
 			std::cerr << error << "\n";
@@ -98,6 +126,16 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, 
 		if(!gotDhFile)
 		{
 			std::string error = "Your did not specify a DH file for DHE ciphers in: " + CONFFILE() + "\n";
+			std::cerr << error << "\n";
+		}
+		if(!gotSodiumPublic)
+		{
+			std::string error = "Your did not specify a SODIUM PUBLIC key in: " + CONFFILE() + "\n";
+			std::cerr << error << "\n";
+		}
+		if(!gotSodiumPrivate)
+		{
+			std::string error = "Your did not specify a SODIUM PRIVATE key in: " + CONFFILE() + "\n";
 			std::cerr << error << "\n";
 		}
 		exit(1);

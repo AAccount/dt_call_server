@@ -8,29 +8,31 @@
 #ifndef USER_HPP_
 #define USER_HPP_
 
+#include <sodium.h>
+#include <string.h>
 #include <string>
-#include <openssl/pem.h>
 #include <netinet/in.h>
 #include "const.h"
 
 class User
 {
 public:
-	User(std::string cuname, RSA *ckey, std::string cdump);
+	User(const std::string& cuname, unsigned char cSodiumKey[crypto_box_PUBLICKEYBYTES], const std::string& cdump);
+
 	std::string getUname() const;
-	RSA* getPublicKey() const;
-	std::string getPublicKeyDump() const;
+	void getSodiumPublicKey(unsigned char (&output)[crypto_box_PUBLICKEYBYTES]) const;
+	std::string getSodiumPublicKeyDump() const;
 	std:: string getChallenge() const;
-	void setChallenge(std::string ch);
+	void setChallenge(const std::string& ch);
 
 	uint32_t getCommandfd() const;
 	void setCommandfd(uint32_t newCommandfd);
 
 	std::string getSessionkey() const;
-	void setSessionkey(std::string newSessionkey);
+	void setSessionkey(const std::string& newSessionkey);
 
 	std::string getUdpSummary() const;
-	void setUdpSummary(std::string newSummary);
+	void setUdpSummary(const std::string& newSummary);
 
 	struct sockaddr_in getUdpInfo() const;
 	void setUdpInfo(struct sockaddr_in newInfo);
@@ -39,15 +41,15 @@ public:
 	void setUserState(ustate newState);
 
 	std::string getCallWith() const;
-	void setCallWith(std::string newOther);
+	void setCallWith(const std::string& newOther);
 
 	virtual ~User();
 
 private:
 	uint32_t commandfd;
 	std::string uname;
-	RSA *publicKey;
-	std::string publicKeyDump;
+	unsigned char* sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {0};
+	std::string sodiumPublicKeyDump;
 	std::string challenge;
 	std::string sessionkey;
 

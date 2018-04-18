@@ -4,7 +4,7 @@
 
 const std::string& VERSION()
 {
-	const static std::string value = "4.4:{git revision here}";
+	const static std::string value = "6.0:{git revision here}";
 	return value;
 }
 
@@ -65,5 +65,18 @@ const std::string& LOGPREFIX()
 const std::string& DEFAULTCIPHERS()
 {
 	const static std::string value = "ECHDE-RSA-AES256-GCM-SHA384:ECHDE-RSA-AES256-SHA256:ECHDE-RSA-AES256-SHA:ECHDE-RSA-AES128-GCM-SHA256:ECHDE-RSA-AES128-SHA256:ECHDE-RSA-AES128-SHA:AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:AES256-GCM-SHA384:AES256-SHA256:AES256-SHA:AES128-GCM-SHA256:AES128-SHA256:AES128-SHA";
+	return value;
+}
+
+
+const std::string& SODIUM_PUBLIC_HEADER()
+{
+	const static std::string value = "SODIUM PUBLIC KEY\n";
+	return value;
+}
+
+const std::string& SODIUM_PRIVATE_HEADER()
+{
+	const static std::string value = "SODIUM PRIVATE KEY\n";
 	return value;
 }
