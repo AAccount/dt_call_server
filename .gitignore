@@ -2,7 +2,7 @@
 *.o
 server
 *.pem
-
+.settings/language.settings.xml
 /dtoperator
 /readlogs.sql
 /genscrypt
