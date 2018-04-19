@@ -565,7 +565,7 @@ void* udpThread(void *ptr)
 				continue;
 			}
 
-			unsigned char userBytes[userLength] = {0};
+			unsigned char userBytes[userLength] = {0}; //+1: null terminate
 			memcpy(userBytes, mediaBuffer+JAVA_MAX_PRECISION_INT, userLength);
 			if(!legitimateAscii(userBytes, userLength))
 			{
