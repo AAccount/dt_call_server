@@ -545,6 +545,7 @@ void* udpThread(void *ptr)
 		std::string summary = std::string(inet_ntoa(sender.sin_addr)) + ":" + std::to_string(ntohs(sender.sin_port));
 		std::string user = userUtils->userFromUdpSummary(summary);
 		ustate state = userUtils->getUserState(user);
+		std::cout << "summary: " << summary << " indicates: " << user << "\n";
 
 		//need to send an ack whether it's for the first time or because the first one went missing.
 		if((user == "") || (state == INIT))
@@ -573,9 +574,9 @@ void* udpThread(void *ptr)
 			}
 
 			//get the claimed user's sodium public key
-			user = std::string((char*)userBytes, userLength);
+			std::string claimedUser = std::string((char*)userBytes, userLength);
 			unsigned char userPublicSodiumKey[crypto_box_PUBLICKEYBYTES] = {0};
-			bool exists = userUtils->getSodiumPublicKey(user, userPublicSodiumKey);
+			bool exists = userUtils->getSodiumPublicKey(claimedUser, userPublicSodiumKey);
 			if(!exists)
 			{
 				continue; //user doesn't exist
@@ -600,19 +601,26 @@ void* udpThread(void *ptr)
 			if(!legitimateAscii(decryptedArrayHeap.get(), decLength-1))
 			{
 				std::string unexpected = "unexpected byte in string";
-				logger->insertLog(Log(Log::TAG::UDPTHREAD, unexpected, user, Log::TYPE::ERROR, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, unexpected, claimedUser, Log::TYPE::ERROR, ip));
 				continue;
 			}
 
 			//check the udp registration timestamp
 			std::string timestampString((char*)decryptedArrayHeap.get(), decLength);
-			bool timestampOK = checkTimestamp(timestampString, Log::TAG::UDPTHREAD, timestampString, user, ip);
+			bool timestampOK = checkTimestamp(timestampString, Log::TAG::UDPTHREAD, timestampString, claimedUser, ip);
 			if(!timestampOK)
 			{
 				continue;
 			}
 
 			//if the decryption(with authentication) passed and timestamp is ok. it's the real deal
+			if(user == "")
+			{
+				std::string sessionkey = userUtils->getSessionKey(claimedUser);
+				userUtils->setUdpSummary(sessionkey, summary);
+				userUtils->setUdpInfo(sessionkey, sender);
+				user = claimedUser;
+			}
 
 			//if the person is not in a call, there is no need to register a media port
 			if(userUtils->getCallWith(user) == "")
@@ -655,7 +663,10 @@ void* udpThread(void *ptr)
 				continue;
 			}
 
+
 			struct sockaddr_in otherSocket = userUtils->getUdpInfo(otherPerson);
+			std::cout << "call with " << otherPerson << " sending to " << std::to_string(otherSocket.sin_addr.s_addr) << ":" << std::to_string(otherSocket.sin_port) << "\n";
+
 			int sent = sendto(mediaFd, mediaBuffer, receivedLength, 0, (struct sockaddr*)&otherSocket, sizeof(otherSocket));
 			if(sent < 0)
 			{
