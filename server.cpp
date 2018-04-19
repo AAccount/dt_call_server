@@ -545,7 +545,6 @@ void* udpThread(void *ptr)
 		std::string summary = std::string(inet_ntoa(sender.sin_addr)) + ":" + std::to_string(ntohs(sender.sin_port));
 		std::string user = userUtils->userFromUdpSummary(summary);
 		ustate state = userUtils->getUserState(user);
-		std::cout << "summary: " << summary << " indicates: " << user << "\n";
 
 		//need to send an ack whether it's for the first time or because the first one went missing.
 		if((user == "") || (state == INIT))
@@ -665,8 +664,6 @@ void* udpThread(void *ptr)
 
 
 			struct sockaddr_in otherSocket = userUtils->getUdpInfo(otherPerson);
-			std::cout << "call with " << otherPerson << " sending to " << std::to_string(otherSocket.sin_addr.s_addr) << ":" << std::to_string(otherSocket.sin_port) << "\n";
-
 			int sent = sendto(mediaFd, mediaBuffer, receivedLength, 0, (struct sockaddr*)&otherSocket, sizeof(otherSocket));
 			if(sent < 0)
 			{
