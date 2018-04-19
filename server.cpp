@@ -547,7 +547,7 @@ void* udpThread(void *ptr)
 		ustate state = userUtils->getUserState(user);
 
 		//need to send an ack whether it's for the first time or because the first one went missing.
-		if((user == "") || (state  == INIT))
+		if((user == "") || (state == INIT))
 		{
 #ifdef VERBOSE
 			std::cout << "sending ack for summary: " << summary << " belonging to " << user << "/\n";
@@ -559,7 +559,7 @@ void* udpThread(void *ptr)
 			unsigned char userLengthDisassembled[JAVA_MAX_PRECISION_INT] = {0};
 			memcpy(userLengthDisassembled, mediaBuffer, JAVA_MAX_PRECISION_INT);
 			int userLength = reassembleInt(userLengthDisassembled, JAVA_MAX_PRECISION_INT);
-			int maxUserLength = receivedLength - JAVA_MAX_PRECISION_INT;
+			int maxUserLength = receivedLength - JAVA_MAX_PRECISION_INT - 1; //-1 for at least 1 byte of sodium asym encrytion
 			if(userLength > maxUserLength)
 			{//actually check the user name length makes sense
 				continue;
@@ -573,7 +573,7 @@ void* udpThread(void *ptr)
 			}
 
 			//get the claimed user's sodium public key
-			user = std::string((char*)userBytes);
+			user = std::string((char*)userBytes, userLength);
 			unsigned char userPublicSodiumKey[crypto_box_PUBLICKEYBYTES] = {0};
 			bool exists = userUtils->getSodiumPublicKey(user, userPublicSodiumKey);
 			if(!exists)

@@ -7,7 +7,7 @@
 
 #include "sodium_utils.hpp"
 
-void sodiumAsymEncrypt(unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output /*REMEMBER TO FREE*/, int& outputLength)
+void sodiumAsymEncrypt(unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength)
 {
 	//setup nonce (like password salt)
 	unsigned char nonce[crypto_box_NONCEBYTES] = {0};
@@ -43,7 +43,7 @@ void sodiumAsymEncrypt(unsigned char* input, int inputLength, unsigned char* myP
 
 void sodiumAsymDecrypt(unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength)
 {
-	//output[nonce|message length|encrypted]
+	//input[nonce|message length|encrypted]
 
 	//extracts nonce (sorta like a salt)
 	unsigned char nonce[crypto_box_NONCEBYTES];
