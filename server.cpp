@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 #endif
 
 				//read the socket and make sure it wasn't just a socket death notice
-				unsigned char inputBuffer[COMMANDSIZE + 1];
+				unsigned char inputBuffer[COMMANDSIZE + 1] = {0};
 				int amountRead = readSSL(sdssl, inputBuffer);
 				if(amountRead == 0)
 				{
@@ -172,24 +172,26 @@ int main(int argc, char *argv[])
 #endif
 					continue;
 				}
-				std::string originalBufferCmd = std::string((char*)inputBuffer); //save original command string before it gets mutilated by strtok
+				std::string originalCmd = std::string((char*)inputBuffer); //save original command string before it gets mutilated by strtok
+				originalCmd = " (" + originalCmd + ")";
+
 				std::vector<std::string> commandContents = parse(inputBuffer);
 				std::string ip = ipFromFd(sd);
 				std::string user=userUtils->userFromCommandFd(sd);
-				std::string error = " (" + originalBufferCmd + ")";
 				time_t now = time(NULL);
 
 				int segments = commandContents.size();
 				if(segments < COMMAND_MIN_SEGMENTS || segments > COMMAND_MAX_SEGMENTS)
 				{
-					logger->insertLog(Log(Log::TAG::BADCMD, error+"\nbad amount of command segments: " + std::to_string(segments), user, Log::TYPE::ERROR, ip));
+					std::string error = originalCmd + "\nbad amount of command segments: " + std::to_string(segments);
+					logger->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip));
 					continue;
 				}
 
-				bool timestampOK = checkTimestamp(commandContents.at(0), Log::TAG::BADCMD, error, user, ip);
+				bool timestampOK = checkTimestamp(commandContents.at(0), Log::TAG::BADCMD, originalCmd, user, ip);
 				if (!timestampOK)
 				{
-					//checkTimestamp will logg an error
+					//checkTimestamp will log an error
 					continue;
 				}
 				std::string command = commandContents.at(1);
@@ -197,7 +199,7 @@ int main(int argc, char *argv[])
 				if (command == "login1") //you can do string comparison like this in c++
 				{ //timestamp|login1|username
 					std::string username = commandContents.at(2);
-					logger->insertLog(Log(Log::TAG::LOGIN, originalBufferCmd, username, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::LOGIN, originalCmd, username, Log::TYPE::INBOUND, ip));
 
 					//don't immediately remove old command fd. this would allow anyone
 					//	to send a login1 command and kick out a legitimately logged in person.
@@ -242,7 +244,7 @@ int main(int argc, char *argv[])
 
 					//ok to store challenge answer in the log. challenge is single use, disposable
 					std::string username = commandContents.at(2);
-					logger->insertLog(Log(Log::TAG::LOGIN, originalBufferCmd, username, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::LOGIN, originalCmd, username, Log::TYPE::INBOUND, ip));
 					std::string triedChallenge = commandContents.at(3);
 
 					//check the challenge
@@ -322,11 +324,11 @@ int main(int argc, char *argv[])
 				std::string sessionkey = commandContents.at(commandContents.size() - 1);
 
 #ifndef VERBOSE //unless needed, don't log session keys as they're still in use
-				originalBufferCmd.replace(originalBufferCmd.find(sessionkey), SESSION_KEY_LENGTH, SESSION_KEY_PLACEHOLDER());
+				originalCmd.replace(originalCmd.find(sessionkey), SESSION_KEY_LENGTH, SESSION_KEY_PLACEHOLDER());
 #endif
 				if (!userUtils->verifySessionKey(sessionkey, sd))
 				{
-					std::string error = "INVALID SESSION ID. refusing command (" + originalBufferCmd + ")";
+					std::string error = "INVALID SESSION ID. refusing command " + originalCmd;
 					logger->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip));
 
 					std::string invalid = std::to_string(now) + "|invalid";
@@ -342,7 +344,7 @@ int main(int argc, char *argv[])
 
 					std::string zapper = commandContents.at(2);
 					std::string touma = user;
-					logger->insertLog(Log(Log::TAG::CALL, originalBufferCmd, touma, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::CALL, originalCmd, touma, Log::TYPE::INBOUND, ip));
 					int zapperCmdFd = userUtils->getCommandFd(zapper);
 
 					//find out if zapper has a command fd (signed in)
@@ -383,7 +385,7 @@ int main(int argc, char *argv[])
 				{					//timestamp|accept|touma|zapperkey
 					std::string zapper = user;
 					std::string touma = commandContents.at(2);
-					logger->insertLog(Log(Log::TAG::ACCEPT, originalBufferCmd, zapper, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::ACCEPT, originalCmd, zapper, Log::TYPE::INBOUND, ip));
 
 					if (!isRealCall(zapper, touma, Log::TAG::ACCEPT))
 					{
@@ -407,8 +409,8 @@ int main(int argc, char *argv[])
 					std::string zapper = commandContents.at(2);
 					std::string touma = user;
 					std::string aes = commandContents.at(3);
-					originalBufferCmd.replace(originalBufferCmd.find(aes), aes.length(), AES_PLACEHOLDER());
-					logger->insertLog(Log(Log::TAG::PASSTHROUGH, originalBufferCmd, user, Log::TYPE::INBOUND, ip));
+					originalCmd.replace(originalCmd.find(aes), aes.length(), AES_PLACEHOLDER());
+					logger->insertLog(Log(Log::TAG::PASSTHROUGH, originalCmd, user, Log::TYPE::INBOUND, ip));
 
 					if (!isRealCall(touma, zapper, Log::TAG::PASSTHROUGH))
 					{
@@ -424,10 +426,10 @@ int main(int argc, char *argv[])
 
 				}
 				else if (command == "ready")
-				{					//timestamp|ready|touma|zapperkey
+				{//timestamp|ready|touma|zapperkey
 					std::string zapper = user;
 					std::string touma = commandContents.at(2);
-					logger->insertLog(Log(Log::TAG::READY, originalBufferCmd, user, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::READY, originalCmd, user, Log::TYPE::INBOUND, ip));
 					if (!isRealCall(zapper, touma, Log::TAG::READY))
 					{
 						continue;
@@ -456,7 +458,7 @@ int main(int argc, char *argv[])
 				{ //timestamp|end|zapper|toumakey
 					std::string zapper = commandContents.at(2);
 					std::string touma = user;
-					logger->insertLog(Log(Log::TAG::END, originalBufferCmd, touma, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::END, originalCmd, touma, Log::TYPE::INBOUND, ip));
 
 					if (!isRealCall(touma, zapper, Log::TAG::END))
 					{
@@ -467,7 +469,7 @@ int main(int argc, char *argv[])
 				}
 				else //commandContents[1] is not a known command... something fishy???
 				{
-					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, userUtils->userFromCommandFd(sd), Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, originalCmd, userUtils->userFromCommandFd(sd), Log::TYPE::INBOUND, ip));
 				}
 			} // if FD_ISSET : figure out command or voice and handle appropriately
 		}// for loop going through the fd set
