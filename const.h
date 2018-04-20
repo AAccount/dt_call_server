@@ -14,7 +14,9 @@ const int SESSION_KEY_LENGTH = 59;
 const std::string& SESSION_KEY_PLACEHOLDER();
 const std::string& AES_PLACEHOLDER();
 const int DT_SSL_ACCEPT_RETRIES = 10; //prefix my initials to make it NOT look like an official openssl SSL_... constant
-const int COMMAND_MAX_SEGMENTS = 5; //to prevent the command parser from going on and on from a malicious command
+const int COMMAND_MAX_SEGMENTS = 5; //passthrough
+const int COMMAND_MIN_SEGMENTS = 3; //login1
+
 
 //java 1 byte ignored character
 const std::string& JBYTE();

@@ -179,9 +179,17 @@ int main(int argc, char *argv[])
 				std::string error = " (" + originalBufferCmd + ")";
 				time_t now = time(NULL);
 
+				int segments = commandContents.size();
+				if(segments < COMMAND_MIN_SEGMENTS || segments > COMMAND_MAX_SEGMENTS)
+				{
+					logger->insertLog(Log(Log::TAG::BADCMD, error+"\nbad amount of command segments: " + std::to_string(segments), user, Log::TYPE::ERROR, ip));
+					continue;
+				}
+
 				bool timestampOK = checkTimestamp(commandContents.at(0), Log::TAG::BADCMD, error, user, ip);
 				if (!timestampOK)
 				{
+					//checkTimestamp will logg an error
 					continue;
 				}
 				std::string command = commandContents.at(1);
