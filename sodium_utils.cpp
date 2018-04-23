@@ -10,14 +10,14 @@
 void sodiumAsymEncrypt(unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength)
 {
 	//setup nonce (like password salt)
-	unsigned char nonce[crypto_box_NONCEBYTES] = {0};
+	unsigned char nonce[crypto_box_NONCEBYTES] = {};
 	randombytes_buf(nonce, crypto_box_NONCEBYTES);
 
 	//setup cipher text
 	int cipherTextLength = crypto_box_MACBYTES + inputLength;
-	unsigned char cipherText[cipherTextLength] = {0};
+	unsigned char cipherText[cipherTextLength] = {};
 	int ret = crypto_box_easy(cipherText, input, inputLength, nonce, yourPublic, myPrivate);
-	unsigned char inputLengthDisassembled[JAVA_MAX_PRECISION_INT] = {0};
+	unsigned char inputLengthDisassembled[JAVA_MAX_PRECISION_INT] = {};
 	disassembleInt(inputLength, JAVA_MAX_PRECISION_INT, inputLengthDisassembled);
 
 	//encryption failed

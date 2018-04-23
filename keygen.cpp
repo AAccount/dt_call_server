@@ -15,8 +15,8 @@ int main(int argc, char** argv)
 	std::cin >> name;
 
 	//generate keys
-	unsigned char publicKey[crypto_box_PUBLICKEYBYTES] = {0};
-	unsigned char privateKey[crypto_box_SECRETKEYBYTES] = {0};
+	unsigned char publicKey[crypto_box_PUBLICKEYBYTES] = {};
+	unsigned char privateKey[crypto_box_SECRETKEYBYTES] = {};
 	crypto_box_keypair(publicKey, privateKey);
 
 	//stringify

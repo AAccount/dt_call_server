@@ -65,9 +65,9 @@ int main(int argc, char *argv[])
 	pthread_sigmask(SIG_BLOCK, &set, NULL);
 
 	//setup sodium keys
-	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {0};
+	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
 	Utils::destringify(sodiumPublic, sodiumPublicKey);
-	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {0};
+	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
 	Utils::destringify(sodiumPrivate, sodiumPrivateKey);
 
 	//package the stuff to start the udp thread and start it
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 #endif
 
 				//read the socket and make sure it wasn't just a socket death notice
-				unsigned char inputBuffer[COMMANDSIZE + 1];
+				unsigned char inputBuffer[COMMANDSIZE + 1] = {};
 				int amountRead = readSSL(sdssl, inputBuffer);
 				if(amountRead == 0)
 				{
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 					//	to send a login1 command and kick out a legitimately logged in person.
 
 					//get the user's public key
-					unsigned char userSodiumPublic[crypto_box_PUBLICKEYBYTES] = {0};
+					unsigned char userSodiumPublic[crypto_box_PUBLICKEYBYTES] = {};
 					bool exists = userUtils->getSodiumPublicKey(username, userSodiumPublic);
 					if (!exists)
 					{
@@ -536,7 +536,7 @@ void* udpThread(void *ptr)
 	while(true)
 	{
 		//setup buffer to receive on udp socket
-		unsigned char mediaBuffer[MEDIASIZE+1] = {0};
+		unsigned char mediaBuffer[MEDIASIZE+1] = {};
 		struct sockaddr_in sender;
 		socklen_t senderLength = sizeof(struct sockaddr_in);
 
@@ -564,7 +564,7 @@ void* udpThread(void *ptr)
 			std::string ip = std::string(inet_ntoa(sender.sin_addr));
 
 			//figure out who sent this registration
-			unsigned char userLengthDisassembled[JAVA_MAX_PRECISION_INT] = {0};
+			unsigned char userLengthDisassembled[JAVA_MAX_PRECISION_INT] = {};
 			memcpy(userLengthDisassembled, mediaBuffer, JAVA_MAX_PRECISION_INT);
 			int userLength = reassembleInt(userLengthDisassembled, JAVA_MAX_PRECISION_INT);
 			int maxUserLength = receivedLength - JAVA_MAX_PRECISION_INT - 1; //-1 for at least 1 byte of sodium asym encrytion
@@ -573,7 +573,7 @@ void* udpThread(void *ptr)
 				continue;
 			}
 
-			unsigned char userBytes[userLength] = {0}; //+1: null terminate
+			unsigned char userBytes[userLength] = {}; //+1: null terminate
 			memcpy(userBytes, mediaBuffer+JAVA_MAX_PRECISION_INT, userLength);
 			if(!legitimateAscii(userBytes, userLength))
 			{
@@ -582,7 +582,7 @@ void* udpThread(void *ptr)
 
 			//get the claimed user's sodium public key
 			std::string claimedUser = std::string((char*)userBytes, userLength);
-			unsigned char userPublicSodiumKey[crypto_box_PUBLICKEYBYTES] = {0};
+			unsigned char userPublicSodiumKey[crypto_box_PUBLICKEYBYTES] = {};
 			bool exists = userUtils->getSodiumPublicKey(claimedUser, userPublicSodiumKey);
 			if(!exists)
 			{
@@ -592,7 +592,7 @@ void* udpThread(void *ptr)
 			//decrypt media port register command
 			int decLength = 0;
 			int inputLength = receivedLength - JAVA_MAX_PRECISION_INT - userLength;
-			unsigned char input[inputLength] = {0};
+			unsigned char input[inputLength] = {};
 			memcpy(input, mediaBuffer+JAVA_MAX_PRECISION_INT+userLength, inputLength);
 			std::unique_ptr<unsigned char> decryptedArrayHeap;
 			sodiumAsymDecrypt(input, inputLength, sodiumPrivateKey, userPublicSodiumKey, decryptedArrayHeap, decLength);
