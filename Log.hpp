@@ -20,11 +20,11 @@ public:
 	static const std::string& DONTKNOW();
 
 private:
-	TAG tag;
-	std::string message;
-	std::string user;
-	TYPE type;
-	std::string ip;
+	const TAG tag;
+	const std::string message;
+	const std::string user;
+	const TYPE type;
+	const std::string ip;
 	friend std::ostream& operator<<(std::ostream &strm, const Log&);
 
 	std::string typeString() const;

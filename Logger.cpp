@@ -105,7 +105,7 @@ void* Logger::diskRw(void *ignored)
 	}
 }
 
-void Logger::insertLog(Log dbl)
+void Logger::insertLog(const Log& dbl)
 {
 	//put a new log in the backlog
 	pthread_mutex_lock(&qMutex);

@@ -20,7 +20,7 @@ class Logger
 {
 public:
 	static Logger* getInstance();
-	void insertLog(Log l);
+	void insertLog(const Log& l);
 
 private:
 	static Logger *instance;
@@ -37,6 +37,9 @@ private:
 	static pthread_cond_t wakeup;
 	static void* diskRw(void *ignored);
 	static std::queue<Log> backlog;
+
+	//don't allow copying the logger. there is only the 1
+	Logger(const Logger&) = delete;
 };
 
 #endif /* LOGGER_HPP_ */

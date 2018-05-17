@@ -40,9 +40,9 @@
 
 struct UdpArgs
 {
-	int port;
-	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES];
-	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES];
+	int port = 0;
+	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
+	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
 };
 
 //dedicated function for handling a call. each call is processed on its own thread.
@@ -56,11 +56,11 @@ void removeClient(int sd);
 
 //verify the call is real and not a malicious hand crafted command
 //persona is the one who will be sent an invalid command if it is not real.
-bool isRealCall(std::string persona, std::string personb, Log::TAG tag);
+bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG tag);
 
 //convert the string to c char[] and send it by ssl* (when sending, send only as many bytes as there are characters
 // and not the whole command string buffer [] size
-void write2Client(std::string response, SSL *respSsl);
+void write2Client(const std::string& response, SSL *respSsl);
 
 //get the ip address of a socket descriptor in human readable 192.168.1.1 format
 std::string ipFromFd(int sd);

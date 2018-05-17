@@ -78,6 +78,9 @@ private:
 	std::unordered_map<uint32_t, User*> commandfdMap;
 	std::unordered_map<std::string, User*> sessionkeyMap;
 	std::unordered_map<std::string, User*> udpMap;
+
+	//never need to copy
+	UserUtils(const UserUtils&) = delete;
 };
 
 #endif /* USERUTILS_HPP_ */

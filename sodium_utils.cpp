@@ -14,22 +14,22 @@ void sodiumAsymEncrypt(unsigned char* input, int inputLength, unsigned char* myP
 	randombytes_buf(nonce, crypto_box_NONCEBYTES);
 
 	//setup cipher text
-	int cipherTextLength = crypto_box_MACBYTES + inputLength;
+	const int cipherTextLength = crypto_box_MACBYTES + inputLength;
 	unsigned char cipherText[cipherTextLength] = {};
-	int ret = crypto_box_easy(cipherText, input, inputLength, nonce, yourPublic, myPrivate);
+	const int ret = crypto_box_easy(cipherText, input, inputLength, nonce, yourPublic, myPrivate);
 	unsigned char inputLengthDisassembled[JAVA_MAX_PRECISION_INT] = {};
 	disassembleInt(inputLength, JAVA_MAX_PRECISION_INT, inputLengthDisassembled);
 
 	//encryption failed
 	if(ret != 0)
 	{
-		output = NULL;
+		output = std::unique_ptr<unsigned char>(); //pointer to nothing
 		outputLength = 0;
 		return;
 	}
 
 	//assemble the output
-	int finalSetupLength = crypto_box_NONCEBYTES+JAVA_MAX_PRECISION_INT+cipherTextLength;
+	const int finalSetupLength = crypto_box_NONCEBYTES+JAVA_MAX_PRECISION_INT+cipherTextLength;
 	unsigned char* finalSetup = new unsigned char[finalSetupLength];
 	memset(finalSetup, 0, finalSetupLength);
 	memcpy(finalSetup, nonce, crypto_box_NONCEBYTES);
@@ -46,34 +46,56 @@ void sodiumAsymDecrypt(unsigned char* input, int inputLength, unsigned char* myP
 	//input[nonce|message length|encrypted]
 
 	//extracts nonce (sorta like a salt)
+	if(crypto_box_NONCEBYTES > inputLength)
+	{
+		//invalid encrypted bytes, doesn't have a nonce
+		output = std::unique_ptr<unsigned char>(); //pointer to nothing
+		outputLength = 0;
+		return;
+	}
 	unsigned char nonce[crypto_box_NONCEBYTES];
 	memcpy(nonce, input, crypto_box_NONCEBYTES);
 
-	//get the cipher text
+	//get the message length (and figure out the cipher text length)
+	if((crypto_box_NONCEBYTES + JAVA_MAX_PRECISION_INT) > inputLength)
+	{
+		//invalid encrypted bytes, doesn't have a message length
+		output = std::unique_ptr<unsigned char>(); //pointer to nothing
+		outputLength = 0;
+		return;
+	}
 	unsigned char messageLengthDisassembled[JAVA_MAX_PRECISION_INT];
 	memcpy(messageLengthDisassembled, input+crypto_box_NONCEBYTES, JAVA_MAX_PRECISION_INT);
-	int messageLength = reassembleInt(messageLengthDisassembled, JAVA_MAX_PRECISION_INT);
-	int cipherLength = inputLength - crypto_box_NONCEBYTES - JAVA_MAX_PRECISION_INT;
+	const int messageLength = reassembleInt(messageLengthDisassembled, JAVA_MAX_PRECISION_INT);
+	const int cipherLength = inputLength - crypto_box_NONCEBYTES - JAVA_MAX_PRECISION_INT;
 
 	//check to make sure the message length makes sense
-	if(messageLength > cipherLength) //this isn't a compression function. not possible
+	const bool messageCompressed = messageLength > cipherLength; //this isn't a compression function. not possible
+	const bool messageMIA = messageLength < 1;
+	if(messageCompressed || messageMIA)
 	{
-		output = NULL;
+		output = std::unique_ptr<unsigned char>(); //pointer to nothing
 		outputLength = 0;
+		return;
 	}
 
-	unsigned char cipherText[cipherLength];
+	unsigned char cipherText[cipherLength] = {};
 	memcpy(cipherText, input+crypto_box_NONCEBYTES+JAVA_MAX_PRECISION_INT, cipherLength);
-	unsigned char* message = new unsigned char[messageLength];
+	//store the message in somewhere it is guaranteed to fit in case messageLength is bogus/malicious
+	unsigned char messageStorage[cipherLength] = {};
 
-	int ret = crypto_box_open_easy(message, cipherText, cipherLength, nonce, yourPublic, myPrivate);
+	int ret = crypto_box_open_easy(messageStorage, cipherText, cipherLength, nonce, yourPublic, myPrivate);
 	if(ret != 0)
 	{
 		output = std::unique_ptr<unsigned char>(); //pointer to nothing
 		outputLength = 0;
-		delete message;
 		return;
 	}
+
+	//now that the message has been successfully decrypted, take in on blind faith messageLength makes was ok
+	//	up to the next function to make sure the decryption contents aren't truncated by a malicious messageLength
+	unsigned char* message = new unsigned char[messageLength];
+	memcpy(message, messageStorage, messageLength);
 	output = std::unique_ptr<unsigned char>(message);
 	outputLength = messageLength;
 }

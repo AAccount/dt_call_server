@@ -47,9 +47,9 @@ public:
 
 private:
 	uint32_t commandfd;
-	std::string uname;
+	const std::string uname;
 	unsigned char* sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
-	std::string sodiumPublicKeyDump;
+	const std::string sodiumPublicKeyDump;
 	std::string challenge;
 	std::string sessionkey;
 
