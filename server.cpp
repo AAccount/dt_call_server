@@ -572,7 +572,7 @@ void* udpThread(void* ptr)
 			unsigned char userLengthDisassembled[JAVA_MAX_PRECISION_INT] = {};
 			memcpy(userLengthDisassembled, mediaBuffer, JAVA_MAX_PRECISION_INT);
 			const int userLength = reassembleInt(userLengthDisassembled, JAVA_MAX_PRECISION_INT);
-			if(userLength > (receivedLength - JAVA_MAX_PRECISION_INT))
+			if(userLength > (receivedLength - JAVA_MAX_PRECISION_INT) || userLength < 1)
 			{//actually check the user name length makes sense
 				continue;
 			}
