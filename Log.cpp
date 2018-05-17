@@ -29,7 +29,7 @@ Log::Log(TAG ctag, const std::string& cmessage, const std::string& cuser, TYPE c
 {
 }
 
-std::ostream& operator<<(std::ostream &strm, const Log &l)
+std::ostream& operator<<(std::ostream &strm, const Log& l)
 {
 	time_t now = time(0);
 	std::string nowStamp = std::string(ctime(&now));

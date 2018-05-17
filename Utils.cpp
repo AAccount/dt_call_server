@@ -68,7 +68,7 @@ std::string Utils::randomString(int length)
 	return randomized;
 }
 
-std::string Utils::stringify(unsigned char *bytes, int length)
+std::string Utils::stringify(unsigned char* bytes, int length)
 {
 	std::string result = "";
 	for(int i=0; i<length; i++)

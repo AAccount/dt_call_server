@@ -28,7 +28,7 @@ class Utils
 		static std::string randomString(int length);
 
 		//turn unsigned char array into/out of string of #s
-		static std::string stringify(unsigned char *bytes, int length);
+		static std::string stringify(unsigned char* bytes, int length);
 		static void destringify(const std::string &input, unsigned char* output);
 
 		//verify basic key file formatting based on header and string length

@@ -10,10 +10,10 @@
 //associates socket descriptors to their ssl structs
 std::unordered_map<int, SSL*>clientssl;
 
-UserUtils *userUtils = UserUtils::getInstance();
-Logger *logger = Logger::getInstance();
+UserUtils* userUtils = UserUtils::getInstance();
+Logger* logger = Logger::getInstance();
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 
 	const std::string start = "starting call operator V" + VERSION();
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	readServerConfig(cmdPort, mediaPort, publicKeyFile, privateKeyFile, ciphers, dhfile, sodiumPublic, sodiumPrivate, logger);
 
 	//helper to setup the ssl context
-	SSL_CTX *sslcontext = setupOpenSSL(ciphers, privateKeyFile, publicKeyFile, dhfile);
+	SSL_CTX* sslcontext = setupOpenSSL(ciphers, privateKeyFile, publicKeyFile, dhfile);
 	if(sslcontext == NULL)
 	{
 		logger->insertLog(Log(Log::TAG::STARTUP, "could not establish ssl context", Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	Utils::destringify(sodiumPrivate, sodiumPrivateKey);
 
 	//package the stuff to start the udp thread and start it
-	struct UdpArgs *args = (struct UdpArgs*)malloc(sizeof(struct UdpArgs));
+	struct UdpArgs* args = (struct UdpArgs*)malloc(sizeof(struct UdpArgs));
 	memset(args, 0, sizeof(struct UdpArgs));
 	args->port = mediaPort;
 	memcpy(args->sodiumPrivateKey, sodiumPrivateKey, crypto_box_SECRETKEYBYTES);
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 
 			//get the socket descriptor and associated ssl struct from the iterator round
 			const int sd = sslMapping.first;
-			SSL *sdssl = sslMapping.second;
+			SSL* sdssl = sslMapping.second;
 			if(FD_ISSET(sd, &readfds))
 			{
 #ifdef VERBOSE
@@ -372,7 +372,7 @@ int main(int argc, char *argv[])
 
 					//tell zapper touma wants to call her
 					const std::string notifyZapper = std::to_string(now) + "|incoming|" + touma;
-					SSL *zapperssl = clientssl[zapperCmdFd];
+					SSL* zapperssl = clientssl[zapperCmdFd];
 					write2Client(notifyZapper, zapperssl);
 					const std::string zapperip = ipFromFd(zapperCmdFd);
 					logger->insertLog(Log(Log::TAG::CALL, notifyZapper, zapper, Log::TYPE::OUTBOUND, zapperip));
@@ -392,7 +392,7 @@ int main(int argc, char *argv[])
 
 					//arbitrarily chosen that the one who makes the call (touma) gets to generate the aes key
 					const int toumaCmdFd = userUtils->getCommandFd(touma);
-					SSL *toumaCmdSsl = clientssl[toumaCmdFd];
+					SSL* toumaCmdSsl = clientssl[toumaCmdFd];
 					const std::string toumaResp = std::to_string(now) + "|prepare|" + userUtils->getSodiumKeyDump(zapper) + "|" + zapper;
 					write2Client(toumaResp, toumaCmdSsl);
 					logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)));
@@ -417,7 +417,7 @@ int main(int argc, char *argv[])
 					}
 
 					const int zapperfd = userUtils->getCommandFd(zapper);
-					SSL *zapperssl = clientssl[zapperfd];
+					SSL* zapperssl = clientssl[zapperfd];
 					std::string direct = std::to_string(now) + "|direct|" + end2EndKeySetup + "|" + touma;					//as in "directly" from touma, not from the server
 					write2Client(direct, zapperssl);
 					direct.replace(direct.find(end2EndKeySetup), end2EndKeySetup.length(), AES_PLACEHOLDER());
@@ -441,7 +441,7 @@ int main(int argc, char *argv[])
 						//tell touma zapper accepted his call request
 						//	AND confirm to touma, it's zapper he's being connected with
 						const int toumaCmdFd = userUtils->getCommandFd(touma);
-						SSL *toumaCmdSsl = clientssl[toumaCmdFd];
+						SSL* toumaCmdSsl = clientssl[toumaCmdFd];
 						const std::string toumaResp = std::to_string(now) + "|start|" + zapper;
 						write2Client(toumaResp, toumaCmdSsl);
 						logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)));
@@ -497,7 +497,7 @@ int main(int argc, char *argv[])
 	}
 
 	//stop user utilities
-	UserUtils *instance = UserUtils::getInstance();
+	UserUtils* instance = UserUtils::getInstance();
 	instance->killInstance();
 
 	//openssl stuff
@@ -510,10 +510,10 @@ int main(int argc, char *argv[])
 	return 0; 
 }
 
-void* udpThread(void *ptr)
+void* udpThread(void* ptr)
 {
 	//unpackage media thread args
-	struct UdpArgs *receivedArgs = (struct UdpArgs*)ptr;
+	struct UdpArgs* receivedArgs = (struct UdpArgs*)ptr;
 	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES];
 	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES];
 	memcpy(sodiumPublicKey, receivedArgs->sodiumPublicKey, crypto_box_PUBLICKEYBYTES);
@@ -714,7 +714,7 @@ std::vector<std::string> parse(unsigned char command[])
 //timestamp|passthrough|otheruser|(aes key encrypted)|sessionkey
 //timestamp|ready|otheruser|sessionkey
 
-	char *token;
+	char* token;
 	char* save;
 	int i = 0;
 	std::vector<std::string> result;
@@ -772,7 +772,7 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 		const std::string invalid = std::to_string(now) + "|invalid";
 		if(fd > 0)
 		{
-			SSL *ssl = clientssl[fd];
+			SSL* ssl = clientssl[fd];
 			write2Client(invalid, ssl);
 			logger->insertLog(Log(tag, invalid, persona, Log::TYPE::OUTBOUND, ip));
 		}
@@ -781,7 +781,7 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 }
 
 // write a message to a client
-void write2Client(const std::string& response, SSL *respSsl)
+void write2Client(const std::string& response, SSL* respSsl)
 {
 	const int errValue = SSL_write(respSsl, response.c_str(), response.size());
 
@@ -810,7 +810,7 @@ std::string ipFromFd(int sd)
 	}
 }
 
-int readSSL(SSL *sdssl, unsigned char inputBuffer[])
+int readSSL(SSL* sdssl, unsigned char inputBuffer[])
 {
 	//read from the socket into the buffer
 	int bufferRead=0, totalRead=0;
@@ -876,7 +876,7 @@ void sendCallEnd(std::string user)
 	//send the call end
 	const std::string resp = std::to_string(time(NULL)) + "|end|" + other;
 	const int cmdFd = userUtils->getCommandFd(user);
-	SSL *ssl = clientssl[cmdFd];
+	SSL* ssl = clientssl[cmdFd];
 	write2Client(resp, ssl);
 	logger->insertLog(Log(Log::TAG::END, resp, user, Log::TYPE::OUTBOUND, ipFromFd(cmdFd)));
 }
@@ -886,7 +886,7 @@ void sslAccept(int cmdFD, SSL_CTX* sslcontext, struct timeval* unauthTimeout)
 	struct sockaddr_in cli_addr;
 	socklen_t clilen = sizeof(cli_addr);
 
-	const int incomingCmd = accept(cmdFD, (struct sockaddr *) &cli_addr, &clilen);
+	const int incomingCmd = accept(cmdFD, (struct sockaddr*) &cli_addr, &clilen);
 	if(incomingCmd < 0)
 	{
 		const std::string error = "accept system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
@@ -914,7 +914,7 @@ void sslAccept(int cmdFD, SSL_CTX* sslcontext, struct timeval* unauthTimeout)
 	}
 
 	//setup ssl connection
-	SSL *connssl = SSL_new(sslcontext);
+	SSL* connssl = SSL_new(sslcontext);
 	SSL_set_fd(connssl, incomingCmd);
 
 	//give 10 tries to get an ssl connection because first try isn't always successful

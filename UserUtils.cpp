@@ -66,7 +66,7 @@ UserUtils::UserUtils()
 		Utils::destringify(sodiumKeyDump, publicKeyBytes);
 
 		//finally create the user object
-		User *user = new User(name, publicKeyBytes, sodiumKeyDumpOriginal);
+		User* user = new User(name, publicKeyBytes, sodiumKeyDumpOriginal);
 
 		//in case the same person has ???2 entries??? get rid of the old one
 		if(nameMap.count(name) > 0)
@@ -111,7 +111,7 @@ std::string UserUtils::getSodiumKeyDump(const std::string& uname) const
 	return "";
 }
 
-std::string UserUtils::getChallenge(std::string const &username) const
+std::string UserUtils::getChallenge(const std::string& username) const
 {
 	if(nameMap.count(username) > 0)
 	{
@@ -120,7 +120,7 @@ std::string UserUtils::getChallenge(std::string const &username) const
 	return "";
 }
 
-void UserUtils::setChallenge(std::string const &username, std::string challenge)
+void UserUtils::setChallenge(const std::string& username, const std::string& challenge)
 {
 	if(nameMap.count(username) > 0)
 	{
@@ -133,11 +133,11 @@ void UserUtils::setChallenge(std::string const &username, std::string challenge)
 	}
 }
 
-void UserUtils::setSessionKey(std::string const &username, std::string sessionkey)
+void UserUtils::setSessionKey(const std::string& username, const std::string& sessionkey)
 {
 	if(nameMap.count(username) > 0)
 	{
-		User *user = nameMap[username];
+		User* user = nameMap[username];
 		user->setSessionkey(sessionkey);
 		sessionkeyMap[sessionkey] = user;
 	}
@@ -148,11 +148,11 @@ void UserUtils::setSessionKey(std::string const &username, std::string sessionke
 	}
 }
 
-void UserUtils::setCommandFd(std::string const &sessionid, int fd)
+void UserUtils::setCommandFd(const std::string& sessionid, int fd)
 {
 	if(sessionkeyMap.count(sessionid) > 0)
 	{
-		User *user = sessionkeyMap[sessionid];
+		User* user = sessionkeyMap[sessionid];
 		user->setCommandfd(fd);
 		commandfdMap.erase(fd);
 		commandfdMap[fd] = user;
@@ -164,11 +164,11 @@ void UserUtils::setCommandFd(std::string const &sessionid, int fd)
 	}
 }
 
-void UserUtils::clearSession(std::string const &username)
+void UserUtils::clearSession(const std::string& username)
 {
 	if(nameMap.count(username) > 0)
 	{
-		User *user = nameMap[username];
+		User* user = nameMap[username];
 
 		//remove session key
 		sessionkeyMap.erase(user->getSessionkey());
@@ -193,14 +193,14 @@ void UserUtils::clearSession(std::string const &username)
 	}
 }
 
-bool UserUtils::verifySessionKey(std::string const &sessionid, int fd) const
+bool UserUtils::verifySessionKey(const std::string& sessionid, int fd) const
 {
 	if(sessionkeyMap.count(sessionid) == 0)
 	{
 		return false;
 	}
 
-	User *user = sessionkeyMap.at(sessionid);
+	User* user = sessionkeyMap.at(sessionid);
 	return user->getCommandfd() == fd;
 }
 
@@ -216,7 +216,7 @@ std::string UserUtils::userFromCommandFd(int fd) const
 	return "";
 }
 
-std::string UserUtils::userFromSessionKey(std::string const &sessionid) const
+std::string UserUtils::userFromSessionKey(const std::string& sessionid) const
 {
 	if(sessionkeyMap.count(sessionid) > 0)
 	{
@@ -227,11 +227,11 @@ std::string UserUtils::userFromSessionKey(std::string const &sessionid) const
 	return "";
 }
 
-int UserUtils::getCommandFd(std::string const &user) const
+int UserUtils::getCommandFd(const std::string& user) const
 {
 	if(nameMap.count(user) > 0)
 	{
-		User *userObj = nameMap.at(user);
+		User* userObj = nameMap.at(user);
 		return userObj->getCommandfd();
 	}
 	std::string error = "tried to get a comamnd fd for somebody that doesn't exist: " + user;
@@ -239,7 +239,7 @@ int UserUtils::getCommandFd(std::string const &user) const
 	return 0;
 }
 
-std::string UserUtils::getSessionKey(std::string const &uname) const
+std::string UserUtils::getSessionKey(const std::string& uname) const
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -250,7 +250,7 @@ std::string UserUtils::getSessionKey(std::string const &uname) const
 	return "";
 }
 
-std::string UserUtils::userFromUdpSummary(std::string const &summary) const
+std::string UserUtils::userFromUdpSummary(const std::string& summary) const
 {
 	if(udpMap.count(summary) > 0)
 	{
@@ -259,11 +259,11 @@ std::string UserUtils::userFromUdpSummary(std::string const &summary) const
 	return "";
 }
 
-void UserUtils::setUdpSummary(std::string const &sessionkey, std::string summary)
+void UserUtils::setUdpSummary(const std::string& sessionkey, const std::string& summary)
 {
 	if(sessionkeyMap.count(sessionkey) > 0)
 	{
-		User *user = sessionkeyMap[sessionkey];
+		User* user = sessionkeyMap[sessionkey];
 		user->setUdpSummary(summary);
 		udpMap[summary] = user;
 	}
@@ -274,11 +274,11 @@ void UserUtils::setUdpSummary(std::string const &sessionkey, std::string summary
 	}
 }
 
-void UserUtils::setUdpInfo(std::string const &sessionkey, struct sockaddr_in info)
+void UserUtils::setUdpInfo(const std::string& sessionkey, struct sockaddr_in info)
 {
 	if(sessionkeyMap.count(sessionkey) > 0)
 	{
-		User *user = sessionkeyMap[sessionkey];
+		User* user = sessionkeyMap[sessionkey];
 		user->setUdpInfo(info);
 	}
 	else
@@ -288,16 +288,16 @@ void UserUtils::setUdpInfo(std::string const &sessionkey, struct sockaddr_in inf
 	}
 }
 
-struct sockaddr_in UserUtils::getUdpInfo(std::string const &uname) const
+struct sockaddr_in UserUtils::getUdpInfo(const std::string& uname) const
 {
 	return nameMap.at(uname)->getUdpInfo();
 }
 
-void UserUtils::clearUdpInfo(std::string const &uname)
+void UserUtils::clearUdpInfo(const std::string& uname)
 {
 	if(nameMap.count(uname) > 0)
 	{
-		User *user = nameMap[uname];
+		User* user = nameMap[uname];
 		udpMap.erase(user->getUdpSummary());
 		user->setUdpSummary("");
 		struct sockaddr_in clear;
@@ -312,7 +312,7 @@ void UserUtils::clearUdpInfo(std::string const &uname)
 	}
 }
 
-ustate UserUtils::getUserState(std::string const &uname) const
+ustate UserUtils::getUserState(const std::string& uname) const
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -321,7 +321,7 @@ ustate UserUtils::getUserState(std::string const &uname) const
 	return INVALID;
 }
 
-void UserUtils::setUserState(std::string const &uname, ustate newstate)
+void UserUtils::setUserState(const std::string& uname, ustate newstate)
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -335,7 +335,7 @@ void UserUtils::setUserState(std::string const &uname, ustate newstate)
 }
 
 
-std::string UserUtils::getCallWith(std::string const &uname) const
+std::string UserUtils::getCallWith(const std::string& uname) const
 {
 	if(nameMap.count(uname) > 0)
 	{
@@ -343,7 +343,7 @@ std::string UserUtils::getCallWith(std::string const &uname) const
 	}
 	return "";
 }
-void UserUtils::setCallPair(std::string uname, std::string newOther)
+void UserUtils::setCallPair(const std::string& uname, const std::string& newOther)
 {
 	if(nameMap.count(uname) > 0 && nameMap.count(newOther) > 0)
 	{
@@ -352,7 +352,7 @@ void UserUtils::setCallPair(std::string uname, std::string newOther)
 	}
 }
 
-void UserUtils::removeCallPair(std::string const &uname)
+void UserUtils::removeCallPair(const std::string& uname)
 {
 	if(nameMap.count(uname) > 0 && nameMap.count(nameMap[uname]->getCallWith()) > 0)
 	{

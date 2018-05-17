@@ -46,7 +46,7 @@ struct UdpArgs
 };
 
 //dedicated function for handling a call. each call is processed on its own thread.
-void* udpThread(void *ptr);
+void* udpThread(void* ptr);
 
 //parse incoming server commands (split the incoming command string by the | character)
 std::vector<std::string> parse(unsigned char command[]);
@@ -60,7 +60,7 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 
 //convert the string to c char[] and send it by ssl* (when sending, send only as many bytes as there are characters
 // and not the whole command string buffer [] size
-void write2Client(const std::string& response, SSL *respSsl);
+void write2Client(const std::string& response, SSL* respSsl);
 
 //get the ip address of a socket descriptor in human readable 192.168.1.1 format
 std::string ipFromFd(int sd);
@@ -69,7 +69,7 @@ std::string ipFromFd(int sd);
 void sslAccept(int cmdFD, SSL_CTX* sslcontext, struct timeval* unauthTimeout);
 
 //read an SSL socket into param inputBuffer. maximum read size in const.h
-int readSSL(SSL *sdssl, unsigned char inputBuffer[]);
+int readSSL(SSL* sdssl, unsigned char inputBuffer[]);
 
 //check the timestamp string to see if it's within the limits
 bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string& errorMessage, const std::string& user, const std::string& ip);

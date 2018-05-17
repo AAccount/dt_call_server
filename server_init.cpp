@@ -9,7 +9,7 @@
  */
 #include "server_init.hpp"
 
-void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, std::string &sodiumPublic, std::string &sodiumPrivate, Logger *logger)
+void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, std::string &sodiumPublic, std::string &sodiumPrivate, Logger* logger)
 {
 	std::ifstream conffile(CONFFILE());
 	std::string line;
@@ -168,10 +168,10 @@ SSL_CTX* setupOpenSSL(std::string const &ciphers, std::string const &privateKeyF
 	OpenSSL_add_all_algorithms();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000 //openssl 1.1 requires the "flexible" tls_method
-	SSL_CTX *result = SSL_CTX_new(TLS_method());
+	SSL_CTX* result = SSL_CTX_new(TLS_method());
 	SSL_CTX_set_min_proto_version(result, TLS1_2_VERSION); //force the "flexible" method's hand for only 1.2
 #else
-	SSL_CTX *result = SSL_CTX_new(TLSv1_2_server_method());
+	SSL_CTX* result = SSL_CTX_new(TLSv1_2_server_method());
 #endif
 
 	//set ssl properties
@@ -203,8 +203,8 @@ SSL_CTX* setupOpenSSL(std::string const &ciphers, std::string const &privateKeyF
 
 	//dh params to make dhe ciphers work
 	//https://www.openssl.org/docs/man1.0.1/ssl/SSL_CTX_set_tmp_dh.html
-	DH *dh = NULL;
-	FILE *paramfile;
+	DH* dh = NULL;
+	FILE* paramfile;
 	paramfile = fopen(dhfile.c_str(), "r");
 	if(!paramfile)
 	{
@@ -237,7 +237,7 @@ SSL_CTX* setupOpenSSL(std::string const &ciphers, std::string const &privateKeyF
 	return result;
 }
 
-void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct sockaddr_in *info, int port)
+void setupListeningSocket(int type, struct timeval* timeout, int* fd, struct sockaddr_in* info, int port)
 {
 	//setup command port to accept new connections
 	*fd = socket(AF_INET, type, 0); //tcp socket
@@ -247,11 +247,11 @@ void setupListeningSocket(int type, struct timeval *timeout, int *fd, struct soc
 		std::cerr << error << "\n";
 		exit(1);
 	}
-	memset((char *) info, 0, sizeof(struct sockaddr_in));
+	memset((char*) info, 0, sizeof(struct sockaddr_in));
 	info->sin_family = AF_INET; //ipv4
 	info->sin_addr.s_addr = INADDR_ANY; //listen on any nic
 	info->sin_port = htons(port);
-	if(bind(*fd, (struct sockaddr *)info, sizeof(struct sockaddr_in)) < 0)
+	if(bind(*fd, (struct sockaddr*)info, sizeof(struct sockaddr_in)) < 0)
 	{
 		std::string error = "cannot bind socket to a nic (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 		std::cerr << error << "\n";

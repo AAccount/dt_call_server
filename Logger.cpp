@@ -29,8 +29,8 @@ Logger::Logger()
 	//setup the log output
 	//(ok to stall the program here as you need the log initialized before you can do anything)
 	logTimeT = time(NULL);
-	std::string nowString = std::string(ctime(&logTimeT));
-	std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
+	const std::string nowString = std::string(ctime(&logTimeT));
+	const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
 	logfile = new std::ofstream(LOGFOLDER()+logName);
 
 	//keep disk IO on its own thread. don't know what kind of disk you'll get
@@ -50,7 +50,7 @@ Logger::~Logger()
 	delete logfile;
 }
 
-void* Logger::diskRw(void *ignored)
+void* Logger::diskRw(void* ignored)
 {
 	while(true)
 	{
@@ -62,19 +62,19 @@ void* Logger::diskRw(void *ignored)
 		{
 			//get the next log item
 			pthread_mutex_lock(&qMutex);
-				Log log = backlog.front();
+				const Log log = backlog.front();
 				backlog.pop();
 				empty = backlog.empty();
 			pthread_mutex_unlock(&qMutex);
 
 			//figure out if the current log is over 1 day old
-			time_t now = time(NULL);
+			const time_t now = time(NULL);
 			if((now - logTimeT) > 60*60*24)
 			{//if the log is too old, close it and start another one
 				logfile->close();
 				logTimeT = now;
-				std::string nowString = std::string(ctime(&logTimeT));
-				std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
+				const std::string nowString = std::string(ctime(&logTimeT));
+				const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
 				logfile->open(LOGFOLDER()+logName);
 			}
 			*(logfile) << log << "\n";
