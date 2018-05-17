@@ -20,17 +20,17 @@ int main(int argc, char** argv)
 	crypto_box_keypair(publicKey, privateKey);
 
 	//stringify
-	std::string publicKeyString = "SODIUM PUBLIC KEY\n" + Utils::stringify(publicKey, crypto_box_PUBLICKEYBYTES);
-	std::string privateKeyString = "SODIUM PRIVATE KEY\n" + Utils::stringify(privateKey, crypto_box_SECRETKEYBYTES);
+	const std::string publicKeyString = "SODIUM PUBLIC KEY\n" + Utils::stringify(publicKey, crypto_box_PUBLICKEYBYTES);
+	const std::string privateKeyString = "SODIUM PRIVATE KEY\n" + Utils::stringify(privateKey, crypto_box_SECRETKEYBYTES);
 
 	//export to /tmp
-	std::string publicLocation = "/tmp/"+name+"_public.na";
+	const std::string publicLocation = "/tmp/"+name+"_public.na";
 	std::cout << "Writing sodium public key file to: " << publicLocation << "\n";
 	std::ofstream publicFile(publicLocation);
 	publicFile << publicKeyString;
 	publicFile.close();
 
-	std::string privateLocation = "/tmp/"+name+"_private.na";
+	const std::string privateLocation = "/tmp/"+name+"_private.na";
 	std::cout << "Writing sodium private key file to: " << privateLocation << "\n";
 	std::ofstream privateFile(privateLocation);
 	privateFile << privateKeyString;
