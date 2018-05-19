@@ -962,7 +962,7 @@ bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string
 	try
 	{
 		const uint64_t timestamp = (uint64_t) std::stoull(tsString); //catch is for this
-		const uint64_t maxError = 60 * MARGIN_OF_ERROR;
+		const uint64_t maxError = 60L * MARGIN_OF_ERROR;
 		const time_t now=time(NULL);
 		const uint64_t timeDifference = std::max((uint64_t) now, timestamp) - std::min((uint64_t) now, timestamp);
 		if (timeDifference > maxError)
