@@ -179,14 +179,14 @@ int main(int argc, char* argv[])
 				const std::string error = " (" + originalBufferCmd + ")";
 				const time_t now = time(NULL);
 
-				int segments = commandContents.size();
+				const int segments = commandContents.size();
 				if(segments < COMMAND_MIN_SEGMENTS || segments > COMMAND_MAX_SEGMENTS)
 				{
 					logger->insertLog(Log(Log::TAG::BADCMD, error+"\nbad amount of command segments: " + std::to_string(segments), user, Log::TYPE::ERROR, ip));
 					continue;
 				}
 
-				bool timestampOK = checkTimestamp((const std::string&)commandContents.at(0), Log::TAG::BADCMD, error, user, ip);
+				const bool timestampOK = checkTimestamp((const std::string&)commandContents.at(0), Log::TAG::BADCMD, error, user, ip);
 				if (!timestampOK)
 				{
 					//checkTimestamp will logg an error
@@ -562,6 +562,8 @@ void* udpThread(void* ptr)
 			std::cout << "sending ack for summary: " << summary << " belonging to " << user << "/\n";
 #endif
 
+			//input: [name length|name[nonce|message length|encrypted]]
+
 			const std::string ip = std::string(inet_ntoa(sender.sin_addr));
 			if(receivedLength < JAVA_MAX_PRECISION_INT)
 			{//not even enough place to say how long the user name is
@@ -572,7 +574,7 @@ void* udpThread(void* ptr)
 			unsigned char userLengthDisassembled[JAVA_MAX_PRECISION_INT] = {};
 			memcpy(userLengthDisassembled, mediaBuffer, JAVA_MAX_PRECISION_INT);
 			const int userLength = reassembleInt(userLengthDisassembled, JAVA_MAX_PRECISION_INT);
-			if(userLength > (receivedLength - JAVA_MAX_PRECISION_INT) || userLength < 1)
+			if((userLength > (receivedLength - JAVA_MAX_PRECISION_INT)) || userLength < 1)
 			{//actually check the user name length makes sense
 				continue;
 			}
@@ -620,7 +622,7 @@ void* udpThread(void* ptr)
 				if(!isNumber)
 				{
 					//timestamps only have numbers
-					const std::string unexpected = "unexpected byte in string";
+					const std::string unexpected = "unexpected byte in timestamp" + std::to_string(byte);
 					logger->insertLog(Log(Log::TAG::UDPTHREAD, unexpected, claimedUser, Log::TYPE::ERROR, ip));
 					continue;
 				}
