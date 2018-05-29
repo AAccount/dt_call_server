@@ -1,7 +1,5 @@
 #include "Log.hpp"
 
-#include <iostream>
-
 const std::string& Log::SELF()
 {
 	const static std::string value = "dtoperator";
