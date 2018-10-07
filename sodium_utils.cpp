@@ -7,33 +7,51 @@
 
 #include "sodium_utils.hpp"
 
-void sodiumAsymEncrypt(unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength)
+void sodiumEncrypt(bool asym, unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength)
 {
 	//setup nonce (like password salt)
-	unsigned char nonce[crypto_box_NONCEBYTES] = {};
-	randombytes_buf(nonce, crypto_box_NONCEBYTES);
+	int nonceLength = 0;
+	if(asym)
+	{
+		nonceLength = crypto_box_NONCEBYTES;
+	}
+	else
+	{
+		nonceLength = crypto_secretbox_NONCEBYTES;
+	}
+	unsigned char nonce[nonceLength] = {};
+	randombytes_buf(nonce, nonceLength);
 
 	//setup cipher text
-	const int cipherTextLength = crypto_box_MACBYTES + inputLength;
-	unsigned char cipherText[cipherTextLength] = {};
-	const int ret = crypto_box_easy(cipherText, input, inputLength, nonce, yourPublic, myPrivate);
-	unsigned char inputLengthDisassembled[JAVA_MAX_PRECISION_INT] = {};
-	disassembleInt(inputLength, JAVA_MAX_PRECISION_INT, inputLengthDisassembled);
+	int cipherTextLength = 0, libsodiumOK = 0;
+	unsigned char cipherText[2000] = {}; //guaranteed bigger than MTU of 1500
+	if(asym)
+	{
+		cipherTextLength = crypto_box_MACBYTES + inputLength;
+		libsodiumOK = crypto_box_easy(cipherText, input, inputLength, nonce, yourPublic, myPrivate);
+	}
+	else
+	{
+		cipherTextLength = crypto_secretbox_MACBYTES + inputLength;
+		libsodiumOK = crypto_secretbox_easy(cipherText, input, inputLength, nonce, myPrivate); //myPrivate more like "ourPrivate" for symmetric
+	}
 
 	//encryption failed
-	if(ret != 0)
+	if(libsodiumOK != 0)
 	{
 		output = std::unique_ptr<unsigned char>(); //pointer to nothing
 		outputLength = 0;
 		return;
 	}
+	unsigned char messageLengthDisassembled[JAVA_MAX_PRECISION_INT] = {};
+	disassembleInt(inputLength, JAVA_MAX_PRECISION_INT, messageLengthDisassembled);
 
 	//assemble the output
 	const int finalSetupLength = crypto_box_NONCEBYTES+JAVA_MAX_PRECISION_INT+cipherTextLength;
 	unsigned char* finalSetup = new unsigned char[finalSetupLength];
 	memset(finalSetup, 0, finalSetupLength);
 	memcpy(finalSetup, nonce, crypto_box_NONCEBYTES);
-	memcpy(finalSetup+crypto_box_NONCEBYTES, inputLengthDisassembled, JAVA_MAX_PRECISION_INT);
+	memcpy(finalSetup+crypto_box_NONCEBYTES, messageLengthDisassembled, JAVA_MAX_PRECISION_INT);
 	memcpy(finalSetup+crypto_box_NONCEBYTES+JAVA_MAX_PRECISION_INT, cipherText, cipherTextLength);
 	output = std::unique_ptr<unsigned char>(finalSetup);
 	outputLength = finalSetupLength;
@@ -41,23 +59,32 @@ void sodiumAsymEncrypt(unsigned char* input, int inputLength, unsigned char* myP
 	//output[nonce|message length|encrypted]
 }
 
-void sodiumAsymDecrypt(unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength)
+void sodiumDecrypt(bool asym, unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength)
 {
 	//input[nonce|message length|encrypted]
 
 	//extracts nonce (sorta like a salt)
-	if(crypto_box_NONCEBYTES > inputLength)
+	int nonceLength = 0;
+	if(asym)
+	{
+		nonceLength = crypto_box_NONCEBYTES;
+	}
+	else
+	{
+		nonceLength = crypto_secretbox_NONCEBYTES;
+	}
+	if(nonceLength > inputLength)
 	{
 		//invalid encrypted bytes, doesn't have a nonce
 		output = std::unique_ptr<unsigned char>(); //pointer to nothing
 		outputLength = 0;
 		return;
 	}
-	unsigned char nonce[crypto_box_NONCEBYTES];
-	memcpy(nonce, input, crypto_box_NONCEBYTES);
+	unsigned char nonce[nonceLength] = {};
+	memcpy(nonce, input, nonceLength);
 
 	//get the message length (and figure out the cipher text length)
-	if((crypto_box_NONCEBYTES + JAVA_MAX_PRECISION_INT) > inputLength)
+	if((nonceLength + JAVA_MAX_PRECISION_INT) > inputLength)
 	{
 		//invalid encrypted bytes, doesn't have a message length
 		output = std::unique_ptr<unsigned char>(); //pointer to nothing
@@ -84,8 +111,17 @@ void sodiumAsymDecrypt(unsigned char* input, int inputLength, unsigned char* myP
 	//store the message in somewhere it is guaranteed to fit in case messageLength is bogus/malicious
 	unsigned char messageStorage[cipherLength] = {};
 
-	int ret = crypto_box_open_easy(messageStorage, cipherText, cipherLength, nonce, yourPublic, myPrivate);
-	if(ret != 0)
+	int libsodiumOK = 0;
+	if(asym)
+	{
+		libsodiumOK = crypto_box_open_easy(messageStorage, cipherText, cipherLength, nonce, yourPublic, myPrivate);
+	}
+	else
+	{
+		libsodiumOK = crypto_secretbox_open_easy(messageStorage, cipherText, cipherLength, nonce, myPrivate);
+	}
+
+	if(libsodiumOK != 0)
 	{
 		output = std::unique_ptr<unsigned char>(); //pointer to nothing
 		outputLength = 0;

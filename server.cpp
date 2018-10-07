@@ -223,7 +223,7 @@ int main(int argc, char* argv[])
 #endif
 					int encLength = 0;
 					std::unique_ptr<unsigned char> enc;
-					sodiumAsymEncrypt((unsigned char*) (challenge.c_str()), challenge.length(), sodiumPrivateKey, userSodiumPublic, enc, encLength);
+					sodiumEncrypt(true, (unsigned char*) (challenge.c_str()), challenge.length(), sodiumPrivateKey, userSodiumPublic, enc, encLength);
 					if (encLength < 1)
 					{
 						logger->insertLog(Log(Log::TAG::LOGIN, "sodium encryption of the challenge failed", username, Log::TYPE::ERROR, ip));
@@ -605,7 +605,7 @@ void* udpThread(void* ptr)
 			unsigned char input[inputLength] = {};
 			memcpy(input, mediaBuffer+JAVA_MAX_PRECISION_INT+userLength, inputLength);
 			std::unique_ptr<unsigned char> decryptedArrayHeap;
-			sodiumAsymDecrypt(input, inputLength, sodiumPrivateKey, userPublicSodiumKey, decryptedArrayHeap, decLength);
+			sodiumDecrypt(true, input, inputLength, sodiumPrivateKey, userPublicSodiumKey, decryptedArrayHeap, decLength);
 
 			//check if the decryption was successful
 			if(decLength == 0)
@@ -657,7 +657,7 @@ void* udpThread(void* ptr)
 			const std::string ack = std::to_string(now);
 			std::unique_ptr<unsigned char> ackEnc;
 			int encLength = 0;
-			sodiumAsymEncrypt((unsigned char*)ack.c_str(), ack.length(), sodiumPrivateKey, userPublicSodiumKey, ackEnc, encLength);
+			sodiumEncrypt(true, (unsigned char*)ack.c_str(), ack.length(), sodiumPrivateKey, userPublicSodiumKey, ackEnc, encLength);
 
 			//encryption failed??
 			if(encLength == 0)
