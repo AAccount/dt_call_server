@@ -572,87 +572,43 @@ void* udpThread(void* ptr)
 			std::cout << "sending ack for summary: " << summary << " belonging to " << user << "/\n";
 #endif
 
-			//input: [name length|name[nonce|message length|encrypted]]
+			//input: [sodium seal bytes[nonce|message length|encrypted]]
 
 			const std::string ip = std::string(inet_ntoa(sender.sin_addr));
-			if(receivedLength < JAVA_MAX_PRECISION_INT)
-			{//not even enough place to say how long the user name is
-				continue;
-			}
 
-			//figure out who sent this registration
-			unsigned char userLengthDisassembled[JAVA_MAX_PRECISION_INT] = {};
-			memcpy(userLengthDisassembled, mediaBuffer, JAVA_MAX_PRECISION_INT);
-			const int userLength = reassembleInt(userLengthDisassembled, JAVA_MAX_PRECISION_INT);
-			if((userLength > (receivedLength - JAVA_MAX_PRECISION_INT)) || userLength < 1)
-			{//actually check the user name length makes sense
-				continue;
-			}
-
-			unsigned char userBytes[userLength] = {};
-			memcpy(userBytes, mediaBuffer+JAVA_MAX_PRECISION_INT, userLength);
-			if(!legitimateAscii(userBytes, userLength))
+			unsigned char trimmedReceive [receivedLength] = {};
+			unsigned char decrypted [receivedLength] = {}; //extra space will be zeroed creating an automatically zero terminated string
+			memcpy(trimmedReceive, mediaBuffer, receivedLength);
+			int unsealok = crypto_box_seal_open(decrypted, trimmedReceive, receivedLength, sodiumPublicKey, sodiumPrivateKey);
+			if(unsealok != 0)
 			{
-				continue;
+				continue; //bad registration
 			}
 
-			//get the claimed user's sodium public key
-			const std::string claimedUser = std::string((char*)userBytes, userLength);
-			unsigned char userPublicSodiumKey[crypto_box_PUBLICKEYBYTES] = {};
-			const bool exists = userUtils->getSodiumPublicKey(claimedUser, userPublicSodiumKey);
-			if(!exists)
+			std::string registration((char*)decrypted);
+			if(!legitimateAscii((unsigned char*)registration.c_str(), registration.length()))
 			{
-				continue; //user doesn't exist
+				continue; //bad characters in registration
 			}
 
-			//decrypt media port register command
-			int decLength = 0;
-			const int inputLength = receivedLength - JAVA_MAX_PRECISION_INT - userLength;
-			if(inputLength < 1)
+			std::string ogregistration = registration;
+			std::vector<std::string> registrationParsed = parse((unsigned char*)registration.c_str());
+			if(registrationParsed.size() != REGISTRATION_SEGMENTS)
 			{
-				continue; //0 or negative bytes of cipher text makes no sense. sodiumAsymDecrypt will further inspect inputLength
-			}
-			unsigned char input[inputLength] = {};
-			memcpy(input, mediaBuffer+JAVA_MAX_PRECISION_INT+userLength, inputLength);
-			std::unique_ptr<unsigned char> decryptedArrayHeap;
-			sodiumDecrypt(true, input, inputLength, sodiumPrivateKey, userPublicSodiumKey, decryptedArrayHeap, decLength);
-
-			//check if the decryption was successful
-			if(decLength == 0)
-			{
-				continue; //decryption failed
+				continue; //improperly formatted registration
 			}
 
-
-			//check the decrypted contents only have #s
-			for(int i=0; i<decLength; i++)
-			{
-				const unsigned char byte = decryptedArrayHeap.get()[i];
-				const bool isNumber=((byte >= 48) && (byte <= 57));
-				if(!isNumber)
-				{
-					//timestamps only have numbers
-					const std::string unexpected = "unexpected byte in timestamp" + std::to_string(byte);
-					logger->insertLog(Log(Log::TAG::UDPTHREAD, unexpected, claimedUser, Log::TYPE::ERROR, ip));
-					continue;
-				}
-			}
-
-			//check the udp registration timestamp
-			const std::string timestampString((char*)decryptedArrayHeap.get(), decLength);
-			const bool timestampOK = checkTimestamp(timestampString, Log::TAG::UDPTHREAD, timestampString, claimedUser, ip);
+			user = userUtils->userFromSessionKey(registrationParsed.at(1));
+			const bool timestampOK = checkTimestamp(registrationParsed.at(0), Log::TAG::UDPTHREAD, ogregistration, user, ip);
 			if(!timestampOK)
 			{
 				continue;
 			}
 
-			//if the decryption(with authentication) passed and timestamp is ok. it's the real deal
+			//bogus session key
 			if(user == "")
 			{
-				const std::string sessionkey = userUtils->getSessionKey(claimedUser);
-				userUtils->setUdpSummary(sessionkey, summary);
-				userUtils->setUdpInfo(sessionkey, sender);
-				user = claimedUser;
+				continue;
 			}
 
 			//if the person is not in a call, there is no need to register a media port
@@ -667,7 +623,9 @@ void* udpThread(void* ptr)
 			const std::string ack = std::to_string(now);
 			std::unique_ptr<unsigned char> ackEnc;
 			int encLength = 0;
-			sodiumEncrypt(true, (unsigned char*)ack.c_str(), ack.length(), sodiumPrivateKey, userPublicSodiumKey, ackEnc, encLength);
+			const int userCmdPort = userUtils->getCommandFd(user);
+			unsigned char* userTCPKey = clients[userCmdPort].get()->symmetricKey;
+			sodiumEncrypt(false, (unsigned char*)ack.c_str(), ack.length(), userTCPKey, NULL, ackEnc, encLength);
 
 			//encryption failed??
 			if(encLength == 0)
