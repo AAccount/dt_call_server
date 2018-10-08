@@ -150,14 +150,14 @@ int main(int argc, char* argv[])
 						//send the equivalent of the SSL key
 						unsigned char initialTempPublic[crypto_box_PUBLICKEYBYTES] = {};
 						memcpy(initialTempPublic, inputBuffer, crypto_box_PUBLICKEYBYTES);
-//						unsigned char signedTCPKey[crypto_sign_BYTES + crypto_secretbox_KEYBYTES] = {};
-//						unsigned long long signedTCPKeyLength;
-//						crypto_sign(signedTCPKey, &signedTCPKeyLength, clientTableEntry.second.get()->symmetricKey,crypto_secretbox_KEYBYTES, initialTempPublic);
-
-						unsigned char ciphertext[crypto_box_SEALBYTES /*+ crypto_sign_BYTES*/ + crypto_secretbox_KEYBYTES] = {};
-						crypto_box_seal(ciphertext, clientTableEntry.second.get()->symmetricKey, /*crypto_sign_BYTES +*/ crypto_secretbox_KEYBYTES, initialTempPublic);
-						write(clientTableEntry.first, ciphertext, crypto_box_SEALBYTES + /*crypto_sign_BYTES +*/ crypto_secretbox_KEYBYTES);
-						clientTableEntry.second.get()->isNew = false;
+						std::unique_ptr<unsigned char> encTCPKey;
+						int encTCPKeyLength = 0;
+						sodiumEncrypt(true, clientTableEntry.second->symmetricKey, crypto_secretbox_KEYBYTES, sodiumPrivateKey, initialTempPublic, encTCPKey, encTCPKeyLength);
+						if(encTCPKeyLength > 0)
+						{
+							write(clientTableEntry.first, encTCPKey.get(), encTCPKeyLength);
+							clientTableEntry.second.get()->isNew = false;
+						}
 					}
 					continue; //sent the initial key. nothing left to do for this client
 				}
@@ -183,15 +183,16 @@ int main(int argc, char* argv[])
 
 				//what was previously a workaround now has an official purpose: heartbeat/ping ignore byte
 				//this byte is just sent to keep the socket and its various nat tables it takes to get here alive
-				std::string originalBufferCmd((char*)decBuffer.get(), decLength);
-				if(originalBufferCmd == JBYTE())
+				std::string bufferCmd((char*)decBuffer.get(), decLength);
+				if(bufferCmd == JBYTE())
 				{
 #ifdef VERBOSE
 					std::cout << "Got a heartbeat byte on " << sd << "\n";
 #endif
 					continue;
 				}
-				const std::vector<std::string> commandContents = parse((unsigned char*)originalBufferCmd.c_str());
+				std::string originalBufferCmd = bufferCmd; //copy bufferCmd to another string before strtok messes up the original
+				const std::vector<std::string> commandContents = parse((unsigned char*)bufferCmd.c_str());
 				const std::string ip = ipFromFd(clientTableEntry.first);
 				const std::string user=userUtils->userFromCommandFd(clientTableEntry.first);
 				const std::string error = " (" + originalBufferCmd + ")";
