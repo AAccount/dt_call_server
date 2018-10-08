@@ -143,6 +143,13 @@ int main(int argc, char* argv[])
 				}
 
 				//if it is a new/first time client, send the "SSL key"
+				/**
+				 * This setup should me MitM safe.
+				 * Assume: client public key --> middle man catch, send middle man public key --> server
+				 * On the server: server sign with server's key encrypt with middle man --> middle man
+				 * 	middle man decrypts tcp session key --> can't send to client because he can't sign as the server
+				 * Clients are required to have the server's public sodium key ahead of time.
+				 */
 				if(clientTableEntry.second.get()->isNew)
 				{
 					if(amountRead == crypto_box_PUBLICKEYBYTES)
