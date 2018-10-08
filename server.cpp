@@ -8,7 +8,7 @@
 #include "server.hpp"
 
 //associates socket descriptors to their ssl structs
-std::unordered_map<int, SSL*>clientssl;
+std::unordered_map<int, std::unique_ptr<struct ClientSodiumKeys>> clients;
 
 UserUtils* userUtils = UserUtils::getInstance();
 Logger* logger = Logger::getInstance();
@@ -38,14 +38,6 @@ int main(int argc, char* argv[])
 
 	//use a helper function to read the config file
 	readServerConfig(cmdPort, mediaPort, publicKeyFile, privateKeyFile, ciphers, dhfile, sodiumPublic, sodiumPrivate, logger);
-
-	//helper to setup the ssl context
-	SSL_CTX* sslcontext = setupOpenSSL(ciphers, privateKeyFile, publicKeyFile, dhfile);
-	if(sslcontext == NULL)
-	{
-		logger->insertLog(Log(Log::TAG::STARTUP, "could not establish ssl context", Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
-		exit(1);
-	}
 
 	//socket read timeout option
 	struct timeval unauthTimeout; //for new sockets
@@ -95,9 +87,9 @@ int main(int argc, char* argv[])
 		int maxsd = cmdFD;
 
 		//build the fd watch list of command fds
-		for(auto sslMapping : clientssl)
+		for(const auto& clientMapping : clients)
 		{
-			int sd = sslMapping.first;
+			int sd = clientMapping.first;
 			FD_SET(sd, &readfds);
 			maxsd = (sd > maxsd) ? sd : maxsd;
 		}
@@ -117,19 +109,17 @@ int main(int argc, char* argv[])
 		//check for a new incoming connection on command port
 		if(FD_ISSET(cmdFD, &readfds))
 		{
-			sslAccept(cmdFD, sslcontext, &unauthTimeout);
+			socketAccept(cmdFD, &unauthTimeout);
 		}
 
 		std::vector<int> removals;
 
 		//check for new commands
-		for(auto sslMapping : clientssl)
+		for(const auto& clientTableEntry : clients)
 		{
 
 			//get the socket descriptor and associated ssl struct from the iterator round
-			const int sd = sslMapping.first;
-			SSL* sdssl = sslMapping.second;
-			if(FD_ISSET(sd, &readfds))
+			if(FD_ISSET(clientTableEntry.first, &readfds))
 			{
 #ifdef VERBOSE
 				std::cout << "socket descriptor: " << sd << " was marked as set\n";
@@ -137,13 +127,13 @@ int main(int argc, char* argv[])
 
 				//read the socket and make sure it wasn't just a socket death notice
 				unsigned char inputBuffer[COMMANDSIZE + 1] = {};
-				const int amountRead = readSSL(sdssl, inputBuffer);
-				if(amountRead == 0)
+				const int amountRead = read(clientTableEntry.first, inputBuffer, COMMANDSIZE);
+				if(amountRead < 1)
 				{
-					removals.push_back(sd);
+					removals.push_back(clientTableEntry.first);
 
 					//check if this person was in a call. send call drop to the other person
-					const std::string user = userUtils->userFromCommandFd(sd);
+					const std::string user = userUtils->userFromCommandFd(clientTableEntry.first);
 					const std::string other = userUtils->getCallWith(user);
 					if(other != "")
 					{
@@ -152,30 +142,58 @@ int main(int argc, char* argv[])
 					continue;
 				}
 
+				//if it is a new/first time client, send the "SSL key"
+				if(clientTableEntry.second.get()->isNew)
+				{
+					if(amountRead == crypto_box_PUBLICKEYBYTES)
+					{
+						//send the equivalent of the SSL key
+						unsigned char initialTempPublic[crypto_box_PUBLICKEYBYTES] = {};
+						memcpy(initialTempPublic, inputBuffer, crypto_box_PUBLICKEYBYTES);
+//						unsigned char signedTCPKey[crypto_sign_BYTES + crypto_secretbox_KEYBYTES] = {};
+//						unsigned long long signedTCPKeyLength;
+//						crypto_sign(signedTCPKey, &signedTCPKeyLength, clientTableEntry.second.get()->symmetricKey,crypto_secretbox_KEYBYTES, initialTempPublic);
+
+						unsigned char ciphertext[crypto_box_SEALBYTES /*+ crypto_sign_BYTES*/ + crypto_secretbox_KEYBYTES] = {};
+						crypto_box_seal(ciphertext, clientTableEntry.second.get()->symmetricKey, /*crypto_sign_BYTES +*/ crypto_secretbox_KEYBYTES, initialTempPublic);
+						write(clientTableEntry.first, ciphertext, crypto_box_SEALBYTES + /*crypto_sign_BYTES +*/ crypto_secretbox_KEYBYTES);
+						clientTableEntry.second.get()->isNew = false;
+					}
+					continue; //sent the initial key. nothing left to do for this client
+				}
+
+				//for existing clients, sodium decrypt the command
+				int decLength = 0;
+				std::unique_ptr<unsigned char> decBuffer;
+				sodiumDecrypt(false, inputBuffer, amountRead, clientTableEntry.second.get()->symmetricKey, NULL, decBuffer, decLength);
+				if(decLength == 0)
+				{
+					continue; //decryption failed, move on
+				}
+
 				//check if the bytes sent are valid ascii like c#
-				if (!legitimateAscii(inputBuffer, amountRead))
+				if (!legitimateAscii(decBuffer.get(), decLength))
 				{
 					const std::string unexpected = "unexpected byte in string";
-					const std::string user = userUtils->userFromCommandFd(sd);
-					const std::string ip = ipFromFd(sd);
+					const std::string user = userUtils->userFromCommandFd(clientTableEntry.first);
+					const std::string ip = ipFromFd(clientTableEntry.first);
 					logger->insertLog(Log(Log::TAG::BADCMD, unexpected, user, Log::TYPE::ERROR, ip));
 					continue;
 				}
 
 				//what was previously a workaround now has an official purpose: heartbeat/ping ignore byte
 				//this byte is just sent to keep the socket and its various nat tables it takes to get here alive
-				std::string bufferString((char*)inputBuffer);
-				if(bufferString == JBYTE())
+				std::string originalBufferCmd((char*)decBuffer.get(), decLength);
+				if(originalBufferCmd == JBYTE())
 				{
 #ifdef VERBOSE
 					std::cout << "Got a heartbeat byte on " << sd << "\n";
 #endif
 					continue;
 				}
-				std::string originalBufferCmd = std::string((char*)inputBuffer); //save original command string before it gets mutilated by strtok
-				const std::vector<std::string> commandContents = parse(inputBuffer);
-				const std::string ip = ipFromFd(sd);
-				const std::string user=userUtils->userFromCommandFd(sd);
+				const std::vector<std::string> commandContents = parse((unsigned char*)originalBufferCmd.c_str());
+				const std::string ip = ipFromFd(clientTableEntry.first);
+				const std::string user=userUtils->userFromCommandFd(clientTableEntry.first);
 				const std::string error = " (" + originalBufferCmd + ")";
 				const time_t now = time(NULL);
 
@@ -210,8 +228,8 @@ int main(int argc, char* argv[])
 						//not a real user. send login rejection
 						const std::string invalid = std::to_string(now) + "|invalid";
 						logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip));
-						write2Client(invalid, sdssl);
-						removals.push_back(sd); //nothing useful can come from this socket
+						write2Client(invalid, clientTableEntry.first);
+						removals.push_back(clientTableEntry.first); //nothing useful can come from this socket
 						continue;
 					}
 
@@ -233,7 +251,7 @@ int main(int argc, char* argv[])
 
 					//send the challenge
 					const std::string resp = std::to_string(now) + "|login1resp|" + encString;
-					write2Client(resp, sdssl);
+					write2Client(resp, clientTableEntry.first);
 					logger->insertLog(Log(Log::TAG::LOGIN, resp, username, Log::TYPE::OUTBOUND, ip));
 					continue; //login command, no session key to verify, continue to the next fd after proccessing login1
 				}
@@ -257,8 +275,8 @@ int main(int argc, char* argv[])
 						//person doesn't have a challenge to answer or isn't supposed to be
 						const std::string invalid = std::to_string(now) + "|invalid";
 						logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip));
-						write2Client(invalid, sdssl);
-						removals.push_back(sd); //nothing useful can come from this socket
+						write2Client(invalid, clientTableEntry.first);
+						removals.push_back(clientTableEntry.first); //nothing useful can come from this socket
 
 						//reset challenge in case it was wrong
 						userUtils->setChallenge(username, "");
@@ -269,7 +287,7 @@ int main(int argc, char* argv[])
 					struct timeval authTimeout;
 					authTimeout.tv_sec = AUTHTIMEOUT;
 					authTimeout.tv_usec = 0;
-					if (setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, (char*) &authTimeout, sizeof(authTimeout)) < 0)
+					if (setsockopt(clientTableEntry.first, SOL_SOCKET, SO_RCVTIMEO, (char*) &authTimeout, sizeof(authTimeout)) < 0)
 					{
 						const std::string error = "cannot set timeout for authenticated command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 						logger->insertLog(Log(Log::TAG::LOGIN, error, Log::SELF(), Log::TYPE::ERROR, ip));
@@ -304,12 +322,12 @@ int main(int argc, char* argv[])
 					//challenge was correct and wasn't "", set the info
 					const std::string sessionkey = Utils::randomString(SESSION_KEY_LENGTH);
 					userUtils->setSessionKey(username, sessionkey);
-					userUtils->setCommandFd(sessionkey, sd);
+					userUtils->setCommandFd(sessionkey, clientTableEntry.first);
 					userUtils->setChallenge(username, ""); //reset after successful completion
 
 					//send an ok
 					std::string resp = std::to_string(now) + "|login2resp|" + sessionkey;
-					write2Client(resp, sdssl);
+					write2Client(resp, clientTableEntry.first);
 #ifndef VERBOSE
 					resp = std::to_string(now) + "|login2resp|" + SESSION_KEY_PLACEHOLDER();
 #endif
@@ -324,13 +342,13 @@ int main(int argc, char* argv[])
 #ifndef VERBOSE //unless needed, don't log session keys as they're still in use
 				originalBufferCmd.replace(originalBufferCmd.find(sessionkey), SESSION_KEY_LENGTH, SESSION_KEY_PLACEHOLDER());
 #endif
-				if (!userUtils->verifySessionKey(sessionkey, sd))
+				if (!userUtils->verifySessionKey(sessionkey, clientTableEntry.first))
 				{
 					const std::string error = "INVALID SESSION ID. refusing command (" + originalBufferCmd + ")";
 					logger->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip));
 
 					const std::string invalid = std::to_string(now) + "|invalid";
-					write2Client(invalid, sdssl);
+					write2Client(invalid, clientTableEntry.first);
 					logger->insertLog(Log(Log::TAG::BADCMD, invalid, user, Log::TYPE::OUTBOUND, ip));
 					continue;
 				}
@@ -355,7 +373,7 @@ int main(int argc, char* argv[])
 					if (offline || busy || selfDial)
 					{
 						const std::string na = std::to_string(now) + "|end|" + zapper;
-						write2Client(na, sdssl);
+						write2Client(na, clientTableEntry.first);
 						logger->insertLog(Log(Log::TAG::CALL, na, touma, Log::TYPE::OUTBOUND, ip));
 						continue; //nothing more to do
 					}
@@ -367,13 +385,12 @@ int main(int argc, char* argv[])
 
 					//tell touma that zapper is being rung
 					const std::string notifyTouma = std::to_string(now) + "|available|" + zapper;
-					write2Client(notifyTouma, sdssl);
+					write2Client(notifyTouma, clientTableEntry.first);
 					logger->insertLog(Log(Log::TAG::CALL, notifyTouma, touma, Log::TYPE::OUTBOUND, ip));
 
 					//tell zapper touma wants to call her
 					const std::string notifyZapper = std::to_string(now) + "|incoming|" + touma;
-					SSL* zapperssl = clientssl[zapperCmdFd];
-					write2Client(notifyZapper, zapperssl);
+					write2Client(notifyZapper, zapperCmdFd);
 					const std::string zapperip = ipFromFd(zapperCmdFd);
 					logger->insertLog(Log(Log::TAG::CALL, notifyZapper, zapper, Log::TYPE::OUTBOUND, zapperip));
 				}
@@ -392,14 +409,13 @@ int main(int argc, char* argv[])
 
 					//arbitrarily chosen that the one who makes the call (touma) gets to generate the aes key
 					const int toumaCmdFd = userUtils->getCommandFd(touma);
-					SSL* toumaCmdSsl = clientssl[toumaCmdFd];
 					const std::string toumaResp = std::to_string(now) + "|prepare|" + userUtils->getSodiumKeyDump(zapper) + "|" + zapper;
-					write2Client(toumaResp, toumaCmdSsl);
+					write2Client(toumaResp, toumaCmdFd);
 					logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)));
 
 					//send zapper touma's public key to be able to verify that the aes256 passthrough is actually from him
 					const std::string zapperResp = std::to_string(now) + "|prepare|" + userUtils->getSodiumKeyDump(touma) + "|" + touma;
-					write2Client(zapperResp, sdssl);
+					write2Client(zapperResp, clientTableEntry.first);
 					logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip));
 				}
 				else if (command == "passthrough")
@@ -417,9 +433,8 @@ int main(int argc, char* argv[])
 					}
 
 					const int zapperfd = userUtils->getCommandFd(zapper);
-					SSL* zapperssl = clientssl[zapperfd];
 					std::string direct = std::to_string(now) + "|direct|" + end2EndKeySetup + "|" + touma;					//as in "directly" from touma, not from the server
-					write2Client(direct, zapperssl);
+					write2Client(direct, zapperfd);
 					direct.replace(direct.find(end2EndKeySetup), end2EndKeySetup.length(), AES_PLACEHOLDER());
 					logger->insertLog(Log(Log::TAG::PASSTHROUGH, direct, zapper, Log::TYPE::OUTBOUND, ipFromFd(zapperfd)));
 
@@ -441,14 +456,13 @@ int main(int argc, char* argv[])
 						//tell touma zapper accepted his call request
 						//	AND confirm to touma, it's zapper he's being connected with
 						const int toumaCmdFd = userUtils->getCommandFd(touma);
-						SSL* toumaCmdSsl = clientssl[toumaCmdFd];
 						const std::string toumaResp = std::to_string(now) + "|start|" + zapper;
-						write2Client(toumaResp, toumaCmdSsl);
+						write2Client(toumaResp, toumaCmdFd);
 						logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)));
 
 						//confirm to zapper she's being connected to touma
 						const std::string zapperResp = std::to_string(now) + "|start|" + touma;
-						write2Client(zapperResp, sdssl);
+						write2Client(zapperResp, clientTableEntry.first);
 						logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip));
 					}
 				}
@@ -468,7 +482,7 @@ int main(int argc, char* argv[])
 				}
 				else //commandContents[1] is not a known command... something fishy???
 				{
-					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, userUtils->userFromCommandFd(sd), Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, userUtils->userFromCommandFd(clientTableEntry.first), Log::TYPE::INBOUND, ip));
 				}
 			} // if FD_ISSET : figure out command or voice and handle appropriately
 		}// for loop going through the fd set
@@ -484,7 +498,7 @@ int main(int argc, char* argv[])
 #endif
 			for(int deadSock : removals)
 			{
-				if(clientssl.count(deadSock) > 0)
+				if(clients.count(deadSock) > 0)
 				{
 					removeClient(deadSock);
 				}
@@ -499,11 +513,6 @@ int main(int argc, char* argv[])
 	//stop user utilities
 	UserUtils* instance = UserUtils::getInstance();
 	instance->killInstance();
-
-	//openssl stuff
-	SSL_CTX_free(sslcontext);
-	ERR_free_strings();
-	EVP_cleanup();
 	
 	//close ports
 	close(cmdFD);
@@ -735,11 +744,9 @@ void removeClient(int sd)
 {
 	const std::string uname = userUtils->userFromCommandFd(sd);
 
-	SSL_shutdown(clientssl[sd]);
-	SSL_free(clientssl[sd]);
 	shutdown(sd, 2);
 	close(sd);
-	clientssl.erase(sd);
+	clients.erase(sd);
 
 	//clean up the live list if needed
 	userUtils->clearSession(uname);
@@ -774,8 +781,7 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 		const std::string invalid = std::to_string(now) + "|invalid";
 		if(fd > 0)
 		{
-			SSL* ssl = clientssl[fd];
-			write2Client(invalid, ssl);
+			write2Client(invalid, fd);
 			logger->insertLog(Log(tag, invalid, persona, Log::TYPE::OUTBOUND, ip));
 		}
 	}
@@ -783,17 +789,21 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 }
 
 // write a message to a client
-void write2Client(const std::string& response, SSL* respSsl)
+void write2Client(const std::string& response, int sd)
 {
-	const int errValue = SSL_write(respSsl, response.c_str(), response.size());
+	std::unique_ptr<unsigned char> encOutput;
+	int encOutputLength = 0;
+	struct ClientSodiumKeys* keys = clients[sd].get();
 
-	if(errValue <= 0)
+	sodiumEncrypt(false, (unsigned char*)(response.c_str()), response.length(), keys->symmetricKey, NULL, encOutput, encOutputLength);
+	const int errValue = write(sd, encOutput.get(), encOutputLength);
+
+	if(errValue == -1)
 	{
-		const int socket = SSL_get_fd(respSsl);
-		const std::string user = userUtils->userFromCommandFd(socket);
-		const std::string ip = ipFromFd(socket);
-		const std::string error = "ssl_write returned an error of " + std::string(ERR_error_string(ERR_get_error(), NULL));
-		logger->insertLog(Log(Log::TAG::SSL, error, user, Log::TYPE::ERROR, ip));
+		const std::string user = userUtils->userFromCommandFd(sd);
+		const std::string ip = ipFromFd(sd);
+		const std::string error = "write errno " + std::to_string(errno) + " " + std::string(strerror(errno));
+		logger->insertLog(Log(Log::TAG::TCP, error, user, Log::TYPE::ERROR, ip));
 	}
 }
 
@@ -810,41 +820,6 @@ std::string ipFromFd(int sd)
 	{
 		return "(" +std::to_string(errno) + ": " + std::string(strerror(errno)) + ")";
 	}
-}
-
-int readSSL(SSL* sdssl, unsigned char inputBuffer[])
-{
-	//read from the socket into the buffer
-	int bufferRead=0, totalRead=0;
-	bool waiting;
-	memset(inputBuffer, 0, COMMANDSIZE+1);
-	do
-	{//wait for the input chunk to come in first before doing something
-		totalRead = SSL_read(sdssl, inputBuffer, COMMANDSIZE-bufferRead);
-		if(totalRead > 0)
-		{
-			bufferRead = bufferRead + totalRead;
-		}
-		const int sslerr = SSL_get_error(sdssl, totalRead);
-		switch (sslerr)
-		{
-			case SSL_ERROR_NONE:
-				waiting = false;
-				break;
-			//other cases when necessary. right now only no error signals a successful read
-		}
-	} while(waiting && SSL_pending(sdssl));
-
-	///SSL_read return 0 = dead socket
-	if(totalRead == 0)
-	{
-		const int sd = SSL_get_fd(sdssl);
-		const std::string user = userUtils->userFromCommandFd(sd);
-		const std::string ip = ipFromFd(sd);
-		const std::string error = "socket has died";
-		logger->insertLog(Log(Log::TAG::DEADSOCK, error, user, Log::TYPE::ERROR, ip));
-	}
-	return totalRead;
 }
 
 bool legitimateAscii(unsigned char* buffer, int length)
@@ -878,12 +853,11 @@ void sendCallEnd(std::string user)
 	//send the call end
 	const std::string resp = std::to_string(time(NULL)) + "|end|" + other;
 	const int cmdFd = userUtils->getCommandFd(user);
-	SSL* ssl = clientssl[cmdFd];
-	write2Client(resp, ssl);
+	write2Client(resp, cmdFd);
 	logger->insertLog(Log(Log::TAG::END, resp, user, Log::TYPE::OUTBOUND, ipFromFd(cmdFd)));
 }
 
-void sslAccept(int cmdFD, SSL_CTX* sslcontext, struct timeval* unauthTimeout)
+void socketAccept(int cmdFD, struct timeval* unauthTimeout)
 {
 	struct sockaddr_in cli_addr;
 	socklen_t clilen = sizeof(cli_addr);
@@ -915,48 +889,9 @@ void sslAccept(int cmdFD, SSL_CTX* sslcontext, struct timeval* unauthTimeout)
 		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip));
 	}
 
-	//setup ssl connection
-	SSL* connssl = SSL_new(sslcontext);
-	SSL_set_fd(connssl, incomingCmd);
-
-	//give 10 tries to get an ssl connection because first try isn't always successful
-	int sslerr = SSL_ERROR_NONE;
-	bool proceed = false;
-	int retries = DT_SSL_ACCEPT_RETRIES;
-	while(retries > 0)
-	{
-		int result = SSL_accept(connssl);
-		sslerr = SSL_get_error(connssl, result);
-		if(sslerr == SSL_ERROR_NONE) //everything ok, proceed
-		{
-			proceed = true;
-			break;
-		}
-		else if (sslerr == SSL_ERROR_WANT_READ)
-		{//incomplete handshake, try again
-			retries--;
-		}
-		else
-		{//some other error. stop
-			break;
-		}
-	}
-
-	if(proceed)
-	{
-		const std::string message = "new command socket from " + ip;
-		logger->insertLog(Log(Log::TAG::INCOMINGCMD, message, Log::SELF(), Log::TYPE::INBOUND, ip));
-		clientssl[incomingCmd] = connssl;
-	}
-	else
-	{
-		const std::string error = "Problem initializing new command tls connection" + std::string(ERR_error_string(ERR_get_error(), NULL));
-		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip));
-		SSL_shutdown(connssl);
-		SSL_free(connssl);
-		shutdown(incomingCmd, 2);
-		close(incomingCmd);
-	}
+	//setup sodium symmetric key
+	clients[incomingCmd] = std::unique_ptr<struct ClientSodiumKeys>(new struct ClientSodiumKeys);
+	randombytes_buf(clients[incomingCmd].get()->symmetricKey, crypto_secretbox_KEYBYTES);
 }
 
 bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string& errorMessage, const std::string& user, const std::string& ip)

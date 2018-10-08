@@ -18,12 +18,9 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-
 #include <cmath>
 #include <string>
-#include <unordered_map> //hash table
+#include <unordered_map>
 #include <vector>
 #include <fstream>
 #include <random>
@@ -45,6 +42,13 @@ struct UdpArgs
 	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
 };
 
+struct ClientSodiumKeys
+{
+	bool isNew = true;
+	unsigned char tempPublicKey[crypto_box_PUBLICKEYBYTES] = {};
+	unsigned char symmetricKey[crypto_secretbox_KEYBYTES] ={};
+};
+
 //dedicated function for handling a call. each call is processed on its own thread.
 void* udpThread(void* ptr);
 
@@ -60,16 +64,13 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 
 //convert the string to c char[] and send it by ssl* (when sending, send only as many bytes as there are characters
 // and not the whole command string buffer [] size
-void write2Client(const std::string& response, SSL* respSsl);
+void write2Client(const std::string&, int sd);
 
 //get the ip address of a socket descriptor in human readable 192.168.1.1 format
 std::string ipFromFd(int sd);
 
 //accept ssl commands from the command socket
-void sslAccept(int cmdFD, SSL_CTX* sslcontext, struct timeval* unauthTimeout);
-
-//read an SSL socket into param inputBuffer. maximum read size in const.h
-int readSSL(SSL* sdssl, unsigned char inputBuffer[]);
+void socketAccept(int cmdFD, struct timeval* unauthTimeout);
 
 //check the timestamp string to see if it's within the limits
 bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string& errorMessage, const std::string& user, const std::string& ip);

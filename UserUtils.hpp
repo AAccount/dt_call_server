@@ -1,7 +1,7 @@
 /*
  * UserUtils.hpp
  *
- *  Created on: 2nd half December 2015
+ *  Created on: December 8, 2015
  *      Author: Daniel
  *      Rebranded from DbUtils
  */

@@ -83,8 +83,8 @@ std::string Log::tagString() const
 		return "ready";
 	case END:
 		return "call end";
-	case SSL:
-		return "ssl socket write";
+	case TCP:
+		return "tcp socket write";
 	case UDPTHREAD:
 		return "udp thread";
 	case USERUTILS:
