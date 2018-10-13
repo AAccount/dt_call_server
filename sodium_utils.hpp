@@ -19,10 +19,10 @@
 void sendCallEnd(std::string user);
 
 //sodium asymmetric encrypt
-void sodiumEncrypt(bool asym, unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength);
+void sodiumEncrypt(bool asym, const unsigned char* input, int inputLength, const unsigned char* myPrivate, const unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength);
 
 //sodium asymmetric decrypt
-void sodiumDecrypt(bool asym, unsigned char* input, int inputLength, unsigned char* myPrivate, unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength);
+void sodiumDecrypt(bool asym, const unsigned char* input, int inputLength, const unsigned char* myPrivate, const unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength);
 
 //disassemble/reassemble ints as seen in aclient's utils
 int reassembleInt(unsigned char* input, int accuracy);

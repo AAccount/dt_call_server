@@ -34,19 +34,13 @@
 #include "server_init.hpp"
 #include "Logger.hpp"
 #include "sodium_utils.hpp"
+#include "Client.hpp"
 
 struct UdpArgs
 {
 	int port = 0;
 	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
 	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
-};
-
-struct ClientSodiumKeys
-{
-	bool isNew = true;
-	unsigned char tempPublicKey[crypto_box_PUBLICKEYBYTES] = {};
-	unsigned char symmetricKey[crypto_secretbox_KEYBYTES] ={};
 };
 
 //dedicated function for handling a call. each call is processed on its own thread.

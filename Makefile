@@ -20,8 +20,8 @@ ifeq ($(UNAME),FreeBSD)
  CXX = clang++ -std=c++11
 endif
 
-server: server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Logger.o sodium_utils.o
-	${CXX} ${CFLAGS} ${LDFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Logger.o sodium_utils.o ${MATH} ${PTHREAD} ${SODIUM} ${INC} ${LIB}
+server: server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Logger.o sodium_utils.o Client.o
+	${CXX} ${CFLAGS} ${LDFLAGS} -o dtoperator server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Logger.o sodium_utils.o Client.o ${MATH} ${PTHREAD} ${SODIUM} ${INC} ${LIB}
 
 server.o : server.cpp server.hpp
 	${CXX} ${CFLAGS} -c server.cpp ${INC}
@@ -49,6 +49,9 @@ const.o : const.cpp const.h
 
 Logger.o : Logger.cpp Logger.hpp
 	${CXX} ${CFLAGS} -c Logger.cpp ${INC}
+	
+Client.o : Client.cpp Client.hpp
+	${CXX} ${CFLAGS} -c Client.cpp ${INC}
 
 keygen: keygen.cpp Utils.o keygen.hpp const.o
 	${CXX} ${CFLAGS} ${LDFLAGS} ${SODIUM} -o keygen keygen.cpp Utils.o const.o ${INC} ${LIB}

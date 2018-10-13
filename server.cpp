@@ -8,7 +8,7 @@
 #include "server.hpp"
 
 //associates socket descriptors to their ssl structs
-std::unordered_map<int, std::unique_ptr<struct ClientSodiumKeys>> clients;
+std::unordered_map<int, std::unique_ptr<Client>> clients;
 
 UserUtils* userUtils = UserUtils::getInstance();
 Logger* logger = Logger::getInstance();
@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
 				 * 	middle man decrypts tcp session key --> can't send to client because he can't sign as the server
 				 * Clients are required to have the server's public sodium key ahead of time.
 				 */
-				if(clientTableEntry.second.get()->isNew)
+				if(clientTableEntry.second->isNew())
 				{
 					if(amountRead == crypto_box_PUBLICKEYBYTES)
 					{
@@ -159,11 +159,15 @@ int main(int argc, char* argv[])
 						memcpy(initialTempPublic, inputBuffer, crypto_box_PUBLICKEYBYTES);
 						std::unique_ptr<unsigned char> encTCPKey;
 						int encTCPKeyLength = 0;
-						sodiumEncrypt(true, clientTableEntry.second->symmetricKey, crypto_secretbox_KEYBYTES, sodiumPrivateKey, initialTempPublic, encTCPKey, encTCPKeyLength);
+						sodiumEncrypt(true, clientTableEntry.second->getSymmetricKey(), crypto_secretbox_KEYBYTES, sodiumPrivateKey, initialTempPublic, encTCPKey, encTCPKeyLength);
 						if(encTCPKeyLength > 0)
 						{
 							write(clientTableEntry.first, encTCPKey.get(), encTCPKeyLength);
-							clientTableEntry.second.get()->isNew = false;
+							clientTableEntry.second->setSeen();
+						}
+						else //sodium encrypted command socket failed. the client can try again
+						{
+							removals.push_back(clientTableEntry.first);
 						}
 					}
 					continue; //sent the initial key. nothing left to do for this client
@@ -172,7 +176,7 @@ int main(int argc, char* argv[])
 				//for existing clients, sodium decrypt the command
 				int decLength = 0;
 				std::unique_ptr<unsigned char> decBuffer;
-				sodiumDecrypt(false, inputBuffer, amountRead, clientTableEntry.second.get()->symmetricKey, NULL, decBuffer, decLength);
+				sodiumDecrypt(false, inputBuffer, amountRead, clientTableEntry.second->getSymmetricKey(), NULL, decBuffer, decLength);
 				if(decLength == 0)
 				{
 					continue; //decryption failed, move on
@@ -531,11 +535,15 @@ void* udpThread(void* ptr)
 {
 	//unpackage media thread args
 	struct UdpArgs* receivedArgs = (struct UdpArgs*)ptr;
-	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES];
-	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES];
+	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
+	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
 	memcpy(sodiumPublicKey, receivedArgs->sodiumPublicKey, crypto_box_PUBLICKEYBYTES);
 	memcpy(sodiumPrivateKey, receivedArgs->sodiumPrivateKey, crypto_box_SECRETKEYBYTES);
 	const int mediaPort = receivedArgs->port;
+
+	//clear the keys from memory before free-ing
+	randombytes_buf(receivedArgs->sodiumPublicKey, crypto_box_PUBLICKEYBYTES);
+	randombytes_buf(receivedArgs->sodiumPrivateKey, crypto_box_SECRETKEYBYTES);
 	free(ptr);
 
 	//establish the udp socket for voice data
@@ -631,7 +639,7 @@ void* udpThread(void* ptr)
 			std::unique_ptr<unsigned char> ackEnc;
 			int encLength = 0;
 			const int userCmdPort = userUtils->getCommandFd(user);
-			unsigned char* userTCPKey = clients[userCmdPort].get()->symmetricKey;
+			const unsigned char* userTCPKey = clients[userCmdPort]->getSymmetricKey();
 			sodiumEncrypt(false, (unsigned char*)ack.c_str(), ack.length(), userTCPKey, NULL, ackEnc, encLength);
 
 			//encryption failed??
@@ -759,9 +767,9 @@ void write2Client(const std::string& response, int sd)
 {
 	std::unique_ptr<unsigned char> encOutput;
 	int encOutputLength = 0;
-	struct ClientSodiumKeys* keys = clients[sd].get();
+	std::unique_ptr<Client>& client = clients[sd];
 
-	sodiumEncrypt(false, (unsigned char*)(response.c_str()), response.length(), keys->symmetricKey, NULL, encOutput, encOutputLength);
+	sodiumEncrypt(false, (unsigned char*)(response.c_str()), response.length(), client->getSymmetricKey(), NULL, encOutput, encOutputLength);
 	const int errValue = write(sd, encOutput.get(), encOutputLength);
 
 	if(errValue == -1)
@@ -854,10 +862,7 @@ void socketAccept(int cmdFD, struct timeval* unauthTimeout)
 		const std::string error = "cannot disable nagle delay (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip));
 	}
-
-	//setup sodium symmetric key
-	clients[incomingCmd] = std::unique_ptr<struct ClientSodiumKeys>(new struct ClientSodiumKeys);
-	randombytes_buf(clients[incomingCmd].get()->symmetricKey, crypto_secretbox_KEYBYTES);
+	clients[incomingCmd] = std::unique_ptr<Client>(new Client());
 }
 
 bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string& errorMessage, const std::string& user, const std::string& ip)
