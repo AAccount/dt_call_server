@@ -24,7 +24,7 @@ bool Client::isNew() const
 	return newClient;
 }
 
-void Client::setSeen()
+void Client::hasBeenSeen()
 {
 	newClient = false;
 }

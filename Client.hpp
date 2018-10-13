@@ -16,7 +16,7 @@ public:
 	virtual ~Client();
 
 	bool isNew() const;
-	void setSeen();
+	void hasBeenSeen();
 	const unsigned char* getSymmetricKey() const;
 
 private:

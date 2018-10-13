@@ -163,7 +163,7 @@ int main(int argc, char* argv[])
 						if(encTCPKeyLength > 0)
 						{
 							write(clientTableEntry.first, encTCPKey.get(), encTCPKeyLength);
-							clientTableEntry.second->setSeen();
+							clientTableEntry.second->hasBeenSeen();
 						}
 						else //sodium encrypted command socket failed. the client can try again
 						{
