@@ -368,7 +368,7 @@ int main(int argc, char* argv[])
 				//variables written from touma calling zapper perspective
 				//command will come from touma's cmd fd
 				if (command == "call")
-				{					//timestamp|call|zapper|toumakey
+				{//timestamp|call|zapper|toumakey
 
 					const std::string zapper = commandContents.at(2);
 					const std::string touma = user;
@@ -597,12 +597,14 @@ void* udpThread(void* ptr)
 			int unsealok = crypto_box_seal_open(decrypted, trimmedReceive, receivedLength, sodiumPublicKey, sodiumPrivateKey);
 			if(unsealok != 0)
 			{
+				std::cout << "udp bad unsesal";
 				continue; //bad registration
 			}
 
 			std::string registration((char*)decrypted);
 			if(!legitimateAscii((unsigned char*)registration.c_str(), registration.length()))
 			{
+				std::cout << "udp unseal ok, bad ascii";
 				continue; //bad characters in registration
 			}
 
@@ -610,21 +612,29 @@ void* udpThread(void* ptr)
 			std::vector<std::string> registrationParsed = parse((unsigned char*)registration.c_str());
 			if(registrationParsed.size() != REGISTRATION_SEGMENTS)
 			{
+				std::cout << "udp unseal ok, ascii ok, bad format";
 				continue; //improperly formatted registration
 			}
 
-			user = userUtils->userFromSessionKey(registrationParsed.at(1));
+			const std::string sessionkey = registrationParsed.at(1);
+			user = userUtils->userFromSessionKey(sessionkey);
 			const bool timestampOK = checkTimestamp(registrationParsed.at(0), Log::TAG::UDPTHREAD, ogregistration, user, ip);
 			if(!timestampOK)
 			{
+				std::cout << "udp unseal ok, ascii ok, format ok, bad timestamp";
 				continue;
 			}
 
 			//bogus session key
 			if(user == "")
 			{
+				std::cout << "udp registration key doesn't belong to anyone";
 				continue;
 			}
+
+			//user is somebody, set the udp info
+			userUtils->setUdpSummary(sessionkey, summary);
+			userUtils->setUdpInfo(sessionkey, sender);
 
 			//if the person is not in a call, there is no need to register a media port
 			if(userUtils->getCallWith(user) == "")
