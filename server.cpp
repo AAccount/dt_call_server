@@ -597,14 +597,16 @@ void* udpThread(void* ptr)
 			int unsealok = crypto_box_seal_open(decrypted, trimmedReceive, receivedLength, sodiumPublicKey, sodiumPrivateKey);
 			if(unsealok != 0)
 			{
-				std::cout << "udp bad unsesal";
+				const std::string error = "udp bad unseal";
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
 				continue; //bad registration
 			}
 
 			std::string registration((char*)decrypted);
 			if(!legitimateAscii((unsigned char*)registration.c_str(), registration.length()))
 			{
-				std::cout << "udp unseal ok, bad ascii";
+				const std::string error = "udp unseal ok, bad ascii";
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
 				continue; //bad characters in registration
 			}
 
@@ -612,7 +614,8 @@ void* udpThread(void* ptr)
 			std::vector<std::string> registrationParsed = parse((unsigned char*)registration.c_str());
 			if(registrationParsed.size() != REGISTRATION_SEGMENTS)
 			{
-				std::cout << "udp unseal ok, ascii ok, bad format";
+				const std::string error = "udp unseal ok, ascii ok, bad format: " + ogregistration;
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
 				continue; //improperly formatted registration
 			}
 
@@ -621,14 +624,16 @@ void* udpThread(void* ptr)
 			const bool timestampOK = checkTimestamp(registrationParsed.at(0), Log::TAG::UDPTHREAD, ogregistration, user, ip);
 			if(!timestampOK)
 			{
-				std::cout << "udp unseal ok, ascii ok, format ok, bad timestamp";
+				const std::string error =  "udp unseal ok, ascii ok, format ok, bad timestamp " + ogregistration;
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
 				continue;
 			}
 
 			//bogus session key
 			if(user == "")
 			{
-				std::cout << "udp registration key doesn't belong to anyone";
+				const std::string error = "udp registration key doesn't belong to anyone " + ogregistration;
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
 				continue;
 			}
 
