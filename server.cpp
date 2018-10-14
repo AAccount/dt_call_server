@@ -55,8 +55,12 @@ int main(int argc, char* argv[])
 	//setup sodium keys
 	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
 	Utils::destringify(sodiumPublic, sodiumPublicKey);
+	char* sodiumPublicStringMemory = &sodiumPublic[0];
+	randombytes_buf(sodiumPublicStringMemory, sodiumPublic.length());
 	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
 	Utils::destringify(sodiumPrivate, sodiumPrivateKey);
+	char* sodiumPrivateStringMemory = &sodiumPrivate[0];
+	randombytes_buf(sodiumPrivateStringMemory, sodiumPrivate.length());
 
 	//package the stuff to start the udp thread and start it
 	struct UdpArgs* args = (struct UdpArgs*)malloc(sizeof(struct UdpArgs));

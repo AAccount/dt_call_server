@@ -83,6 +83,8 @@ std::string Utils::stringify(unsigned char* bytes, int length)
 			number = "0" + number;
 		}
 		result = result + number;
+		char* stringMemory = &number[0];
+		randombytes_buf(stringMemory, number.length());
 	}
 	return result;
 }
@@ -93,6 +95,8 @@ void Utils::destringify(const std::string &input, unsigned char* output)
 	{
 		std::string digit = input.substr(i, 3);
 		output[i/3] = (unsigned char)std::stoi(digit);
+		char* stringMemory = &digit[0];
+		randombytes_buf(stringMemory, digit.length());
 	}
 }
 
