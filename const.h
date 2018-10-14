@@ -13,7 +13,6 @@ const int CHALLENGE_LENGTH = 200;
 const int SESSION_KEY_LENGTH = 59;
 const std::string& SESSION_KEY_PLACEHOLDER();
 const std::string& AES_PLACEHOLDER();
-const int DT_SSL_ACCEPT_RETRIES = 10; //prefix my initials to make it NOT look like an official openssl SSL_... constant
 const int COMMAND_MAX_SEGMENTS = 5; //passthrough
 const int COMMAND_MIN_SEGMENTS = 3; //login1
 const int REGISTRATION_SEGMENTS = 2;
@@ -36,7 +35,6 @@ const std::string& LOGPREFIX();
 
 const int DEFAULTCMD = 1991;
 const int DEFAULTMEDIA = 1961;
-const std::string& DEFAULTCIPHERS();
 
 //sodium headers
 const std::string& SODIUM_PUBLIC_HEADER();

@@ -9,11 +9,11 @@
  */
 #include "server_init.hpp"
 
-void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, std::string &sodiumPublic, std::string &sodiumPrivate, Logger* logger)
+void readServerConfig(int &cmdPort, int &mediaPort, std::string &sodiumPublic, std::string &sodiumPrivate, Logger* logger)
 {
 	std::ifstream conffile(CONFFILE());
 	std::string line;
-	bool gotPublicKey = false, gotPrivateKey = false, gotCiphers = false, gotCmdPort = false, gotMediaPort = false, gotDhFile = false, gotSodiumPublic =false, gotSodiumPrivate = false;
+	bool gotCmdPort = false, gotMediaPort = false, gotSodiumPublic =false, gotSodiumPrivate = false;
 
 	while(getline(conffile, line))
 	{
@@ -49,30 +49,6 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, 
 		{
 			mediaPort = atoi(value.c_str());
 			gotMediaPort = true;
-			continue;
-		}
-		else if (var == "public")
-		{
-			publicKeyFile = value;
-			gotPublicKey = true;
-			continue;
-		}
-		else if (var == "private")
-		{
-			privateKeyFile = value;
-			gotPrivateKey = true;
-			continue;
-		}
-		else if (var == "ciphers")
-		{
-			ciphers = value;
-			gotCiphers = true;
-			continue;
-		}
-		else if (var == "dhfile")
-		{
-			dhfile = value;
-			gotDhFile = true;
 			continue;
 		}
 		else if(var == "public_sodium")
@@ -111,23 +87,8 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, 
 	}
 
 	//at the minimum a public and private key must be specified. everything else has a default value
-	if (!gotPublicKey || !gotPrivateKey || !gotDhFile || !gotSodiumPublic || !gotSodiumPrivate)
+	if (!gotSodiumPublic || !gotSodiumPrivate)
 	{
-		if(!gotPublicKey)
-		{
-			std::string error = "Your did not specify a PUBLIC key pem in: " + CONFFILE() + "\n";
-			std::cerr << error << "\n";
-		}
-		if(!gotPrivateKey)
-		{
-			std::string error = "Your did not specify a PRIVATE key pem in: " + CONFFILE() + "\n";
-			std::cerr << error << "\n";
-		}
-		if(!gotDhFile)
-		{
-			std::string error = "Your did not specify a DH file for DHE ciphers in: " + CONFFILE() + "\n";
-			std::cerr << error << "\n";
-		}
 		if(!gotSodiumPublic)
 		{
 			std::string error = "Your did not specify a SODIUM PUBLIC key in: " + CONFFILE() + "\n";
@@ -150,11 +111,6 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, 
 	if(!gotMediaPort)
 	{
 		std::string message= "Using default media port of: " + std::to_string(mediaPort);
-		logger->insertLog(Log(Log::TAG::STARTUP, message, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
-	}
-	if(!gotCiphers)
-	{
-		std::string message = "Using default ciphers (no ECDHE): " + ciphers;
 		logger->insertLog(Log(Log::TAG::STARTUP, message, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
 	}
 

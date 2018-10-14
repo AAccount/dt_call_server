@@ -29,15 +29,11 @@ int main(int argc, char* argv[])
 	int cmdPort = DEFAULTCMD; //command port stuff
 	int mediaPort = DEFAULTMEDIA;
 
-	std::string publicKeyFile = "";
-	std::string privateKeyFile = "";
-	std::string ciphers = DEFAULTCIPHERS();
-	std::string dhfile = "";
 	std::string sodiumPublic = "";
 	std::string sodiumPrivate = "";
 
 	//use a helper function to read the config file
-	readServerConfig(cmdPort, mediaPort, publicKeyFile, privateKeyFile, ciphers, dhfile, sodiumPublic, sodiumPrivate, logger);
+	readServerConfig(cmdPort, mediaPort, sodiumPublic, sodiumPrivate, logger);
 
 	//socket read timeout option
 	struct timeval unauthTimeout; //for new sockets

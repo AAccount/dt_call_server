@@ -22,7 +22,7 @@
 #include "Log.hpp"
 #include "UserUtils.hpp"
 
-void readServerConfig(int &cmdPort, int &mediaPort, std::string &publicKeyFile, std::string &privateKeyFile, std::string &ciphers, std::string &dhfile, std::string &sodiumPublic, std::string &sodium_private, Logger* logger);
+void readServerConfig(int &cmdPort, int &mediaPort, std::string &sodiumPublic, std::string &sodium_private, Logger* logger);
 void setupListeningSocket(int type, struct timeval* timeout, int* fd, struct sockaddr_in* info, int port);
 
 #endif /* SERVER_INIT_HPP_ */
