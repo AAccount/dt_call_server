@@ -162,7 +162,14 @@ int main(int argc, char* argv[])
 						sodiumEncrypt(true, clientTableEntry.second->getSymmetricKey(), crypto_secretbox_KEYBYTES, sodiumPrivateKey, initialTempPublic, encTCPKey, encTCPKeyLength);
 						if(encTCPKeyLength > 0)
 						{
-							write(clientTableEntry.first, encTCPKey.get(), encTCPKeyLength);
+							const int errValue = write(clientTableEntry.first, encTCPKey.get(), encTCPKeyLength);
+							if(errValue == -1)
+							{
+								const std::string ip = ipFromFd(clientTableEntry.first);
+								const std::string error = "initial sodium socket setup write errno " + std::to_string(errno) + " " + std::string(strerror(errno));
+								logger->insertLog(Log(Log::TAG::TCP, error, Log::DONTKNOW(), Log::TYPE::ERROR, ip));
+								removals.push_back(clientTableEntry.first);
+							}
 							clientTableEntry.second->hasBeenSeen();
 						}
 						else //sodium encrypted command socket failed. the client can try again
