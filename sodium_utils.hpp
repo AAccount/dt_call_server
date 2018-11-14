@@ -10,6 +10,8 @@
 #include <string>
 #include <memory>
 
+#include <arpa/inet.h>
+
 #include <sodium.h>
 #include <string.h>
 
@@ -25,7 +27,7 @@ void sodiumEncrypt(bool asym, const unsigned char* input, int inputLength, const
 void sodiumDecrypt(bool asym, const unsigned char* input, int inputLength, const unsigned char* myPrivate, const unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength);
 
 //disassemble/reassemble ints as seen in aclient's utils
-int reassembleInt(unsigned char* input, int accuracy);
-void disassembleInt(int input, int accuracy, unsigned char* output);
+int reassembleInt(unsigned char* input);
+void disassembleInt(int input, unsigned char* output);
 
 #endif /* SODIUM_UTILS_HPP_ */

@@ -43,16 +43,16 @@ void sodiumEncrypt(bool asym, const unsigned char* input, int inputLength, const
 		outputLength = 0;
 		return;
 	}
-	unsigned char messageLengthDisassembled[JAVA_MAX_PRECISION_INT] = {};
-	disassembleInt(inputLength, JAVA_MAX_PRECISION_INT, messageLengthDisassembled);
+	unsigned char messageLengthDisassembled[sizeof(uint32_t)] = {};
+	disassembleInt(inputLength, messageLengthDisassembled);
 
 	//assemble the output
-	const int finalSetupLength = crypto_box_NONCEBYTES+JAVA_MAX_PRECISION_INT+cipherTextLength;
+	const int finalSetupLength = crypto_box_NONCEBYTES+sizeof(uint32_t)+cipherTextLength;
 	unsigned char* finalSetup = new unsigned char[finalSetupLength];
 	memset(finalSetup, 0, finalSetupLength);
 	memcpy(finalSetup, nonce, crypto_box_NONCEBYTES);
-	memcpy(finalSetup+crypto_box_NONCEBYTES, messageLengthDisassembled, JAVA_MAX_PRECISION_INT);
-	memcpy(finalSetup+crypto_box_NONCEBYTES+JAVA_MAX_PRECISION_INT, cipherText, cipherTextLength);
+	memcpy(finalSetup+crypto_box_NONCEBYTES, messageLengthDisassembled, sizeof(uint32_t));
+	memcpy(finalSetup+crypto_box_NONCEBYTES+sizeof(uint32_t), cipherText, cipherTextLength);
 	output = std::unique_ptr<unsigned char>(finalSetup);
 	outputLength = finalSetupLength;
 
@@ -84,17 +84,17 @@ void sodiumDecrypt(bool asym, const unsigned char* input, int inputLength, const
 	memcpy(nonce, input, nonceLength);
 
 	//get the message length (and figure out the cipher text length)
-	if((nonceLength + JAVA_MAX_PRECISION_INT) > inputLength)
+	if((nonceLength + sizeof(uint32_t)) > inputLength)
 	{
 		//invalid encrypted bytes, doesn't have a message length
 		output = std::unique_ptr<unsigned char>(); //pointer to nothing
 		outputLength = 0;
 		return;
 	}
-	unsigned char messageLengthDisassembled[JAVA_MAX_PRECISION_INT];
-	memcpy(messageLengthDisassembled, input+crypto_box_NONCEBYTES, JAVA_MAX_PRECISION_INT);
-	const int messageLength = reassembleInt(messageLengthDisassembled, JAVA_MAX_PRECISION_INT);
-	const int cipherLength = inputLength - crypto_box_NONCEBYTES - JAVA_MAX_PRECISION_INT;
+	unsigned char messageLengthDisassembled[sizeof(uint32_t)];
+	memcpy(messageLengthDisassembled, input+crypto_box_NONCEBYTES, sizeof(uint32_t));
+	const int messageLength = reassembleInt(messageLengthDisassembled);
+	const int cipherLength = inputLength - crypto_box_NONCEBYTES - sizeof(uint32_t);
 
 	//check to make sure the message length makes sense
 	const bool messageCompressed = messageLength > cipherLength; //this isn't a compression function. not possible
@@ -107,7 +107,7 @@ void sodiumDecrypt(bool asym, const unsigned char* input, int inputLength, const
 	}
 
 	unsigned char cipherText[cipherLength] = {};
-	memcpy(cipherText, input+crypto_box_NONCEBYTES+JAVA_MAX_PRECISION_INT, cipherLength);
+	memcpy(cipherText, input+crypto_box_NONCEBYTES+sizeof(uint32_t), cipherLength);
 	//store the message in somewhere it is guaranteed to fit in case messageLength is bogus/malicious
 	unsigned char messageStorage[cipherLength] = {};
 
@@ -136,20 +136,15 @@ void sodiumDecrypt(bool asym, const unsigned char* input, int inputLength, const
 	outputLength = messageLength;
 }
 
-void disassembleInt(int input, int accuracy, unsigned char* output)
+void disassembleInt(int input, unsigned char* output)
 {
-	for(int i=0; i<accuracy; i++)
-	{
-		output[i] = (unsigned char)((input >> (SIZEOF_JBYTE*(accuracy-1-i))) & 127); //127 = 0111 1111 because of java's forced signed byte
-	}
+	input = htonl(input);
+	memcpy(output, &input, sizeof(uint32_t));
 }
 
-int reassembleInt(unsigned char* input, int accuracy)
+int reassembleInt(unsigned char* input)
 {
 	int result = 0;
-	for(int i=0; i<accuracy; i++)
-	{
-		result = result +((int)input[i]) << (SIZEOF_JBYTE*(accuracy-1-i));
-	}
-	return result;
+	memcpy(&result, input, sizeof(uint32_t));
+	return ntohl(result);
 }
