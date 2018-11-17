@@ -38,10 +38,8 @@ int main(int argc, char** argv)
 
 	randombytes_buf(publicKey, crypto_box_PUBLICKEYBYTES);
 	randombytes_buf(privateKey, crypto_box_SECRETKEYBYTES);
-	char* publicKeyStringMemory = &publicKeyString[0];
-	char* privateKeyStringMemory = &privateKeyString[0];
-	randombytes_buf(publicKeyStringMemory, publicKeyString.length());
-	randombytes_buf(privateKeyStringMemory, privateKeyString.length());
+	const char* privateKeyStringMemory = &privateKeyString[0];
+	randombytes_buf((void*)privateKeyStringMemory, privateKeyString.length());
 
 	return 0;
 }
