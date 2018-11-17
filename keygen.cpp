@@ -36,7 +36,6 @@ int main(int argc, char** argv)
 	privateFile << privateKeyString;
 	privateFile.close();
 
-	randombytes_buf(publicKey, crypto_box_PUBLICKEYBYTES);
 	randombytes_buf(privateKey, crypto_box_SECRETKEYBYTES);
 	const char* privateKeyStringMemory = &privateKeyString[0];
 	randombytes_buf((void*)privateKeyStringMemory, privateKeyString.length());
