@@ -9,6 +9,7 @@
 #define KEYGEN_HPP_
 
 #include "Utils.hpp"
+#include "const.h"
 #include <sodium.h>
 #include <fstream>
 #include <iostream>
