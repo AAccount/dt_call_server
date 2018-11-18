@@ -131,14 +131,6 @@ int main(int argc, char* argv[])
 				if(amountRead < 1)
 				{
 					removals.push_back(clientTableEntry.first);
-
-					//check if this person was in a call. send call drop to the other person
-					const std::string user = userUtils->userFromCommandFd(clientTableEntry.first);
-					const std::string other = userUtils->getCallWith(user);
-					if(other != "")
-					{
-						sendCallEnd(other);
-					}
 					continue;
 				}
 
@@ -275,7 +267,7 @@ int main(int argc, char* argv[])
 					continue; //login command, no session key to verify, continue to the next fd after proccessing login1
 				}
 				else if (command == "login2")
-				{ //timestamp|login2|username|challenge
+				{ //timestamp|login2|username|challenge|keepudp(optional)
 
 					//ok to store challenge answer in the log. challenge is single use, disposable
 					const std::string username = commandContents.at(2);
@@ -324,19 +316,27 @@ int main(int argc, char* argv[])
 						removals.push_back(oldcmd);
 					}
 
-					//for cases where you were in a call but your connection died. call record will still be there
-					//	since you didn't formally send a call end
-					const std::string other = userUtils->getCallWith(username);
-					if (other != "")
-					{
-						sendCallEnd(other);
-					}
-
 					//dissociate old fd from user otherwise the person will have 2 commandfds listed in
 					//	comamandfdMap. remove client will see the old fd pointing to the user and will clear
 					//	the user's session key and fds. don't want them cleared as they're now the new ones.
 					//	immediately clean up this person's records before all the new stuff goes in
-					userUtils->clearSession(username);
+					bool keepudp = false;
+					if(commandContents.size() == 5 && commandContents.at(4)=="keepudp")
+					{
+						keepudp = true;
+					}
+
+					if(!keepudp)
+					{
+						//for cases where you were in a call but your connection died. call record will still be there
+						//	since you didn't formally send a call end
+						const std::string other = userUtils->getCallWith(username);
+						if (other != "")
+						{
+							sendCallEnd(other);
+						}
+					}
+					userUtils->clearSession(username, keepudp);
 
 					//challenge was correct and wasn't "", set the info
 					const std::string sessionkey = Utils::randomString(SESSION_KEY_LENGTH);
@@ -745,7 +745,7 @@ void removeClient(int sd)
 	clients.erase(sd);
 
 	//clean up the live list if needed
-	userUtils->clearSession(uname);
+	userUtils->clearSession(uname, true);
 }
 
 //before doing an accept, reject, end command check to see if it's for a real call

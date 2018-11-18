@@ -46,7 +46,7 @@ public:
 	std::string getSessionKey(const std::string& uname) const;
 	void setSessionKey(const std::string& username, const std::string& sessionkey);
 	bool verifySessionKey(const std::string& sessionkey, int fd) const;
-	void clearSession(const std::string& username);
+	void clearSession(const std::string& username, bool keepudp);
 
 	std::string userFromCommandFd(int fd) const;
 	int getCommandFd(const std::string& user) const;

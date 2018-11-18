@@ -164,7 +164,7 @@ void UserUtils::setCommandFd(const std::string& sessionid, int fd)
 	}
 }
 
-void UserUtils::clearSession(const std::string& username)
+void UserUtils::clearSession(const std::string& username, bool keepudp)
 {
 	if(nameMap.count(username) > 0)
 	{
@@ -178,10 +178,14 @@ void UserUtils::clearSession(const std::string& username)
 		commandfdMap.erase(user->getCommandfd());
 		user->setCommandfd(0);
 
-		//remove udp info
-		clearUdpInfo(username);
+		if(!keepudp)
+		{
+			std::cout << "keeping udp info for " << username << "\n";
+			//remove udp info
+			clearUdpInfo(username);
 
-		removeCallPair(username);
+			removeCallPair(username);
+		}
 		//don't reset the challenge because when old fds exist when doing login1
 		//	the challenge that is set will be erased at the end of that select round.
 		//	on the next round when doing login2 it will look like a fake/hacked login
