@@ -787,6 +787,12 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 // write a message to a client
 void write2Client(const std::string& response, int sd)
 {
+	//in case the client disappears suddenly
+	if(clients.count(sd) == 0)
+	{
+		return;
+	}
+
 	std::unique_ptr<unsigned char> encOutput;
 	int encOutputLength = 0;
 	std::unique_ptr<Client>& client = clients[sd];
