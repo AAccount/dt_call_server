@@ -20,21 +20,13 @@
 #include <sodium.h>
 #include "const.h"
 
-class Utils
+namespace Utils
 {
-	public:
-		//used for parsing the configuration file: remove whitespace preceding/trailing and comments
-		static std::string trim(std::string const &input);
-		static std::string randomString(int length);
+	//used for parsing the configuration file: remove whitespace preceding/trailing and comments
+	std::string trim(std::string const &input);
 
-		//turn unsigned char array into/out of string of #s
-		static std::string stringify(unsigned char* bytes, int length);
-		static void destringify(const std::string &input, unsigned char* output);
-
-		//verify basic key file formatting based on header and string length
-		static bool checkSodiumPublic(const std::string& input);
-		static bool checkSodiumPrivate(const std::string& input);
-		static std::string dumpSmallFile(const std::string& path);
+	//verify basic key file formatting based on header and string length
+	std::string dumpSmallFile(const std::string& path);
 
 };
 

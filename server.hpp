@@ -35,6 +35,7 @@
 #include "Logger.hpp"
 #include "sodium_utils.hpp"
 #include "Client.hpp"
+#include "stringify.hpp"
 
 struct UdpArgs
 {
@@ -42,6 +43,9 @@ struct UdpArgs
 	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
 	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
 };
+
+//send a call end command. its own function (unlike the other commands) to detect dropped calls
+void sendCallEnd(std::string user);
 
 //dedicated function for handling a call. each call is processed on its own thread.
 void* udpThread(void* ptr);

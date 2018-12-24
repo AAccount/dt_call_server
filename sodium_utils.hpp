@@ -15,19 +15,25 @@
 #include <sodium.h>
 #include <string.h>
 
-#include "const.h"
+namespace SodiumUtils
+{
+	//sodium asymmetric encrypt
+	void sodiumEncrypt(bool asym, const unsigned char* input, int inputLength, const unsigned char* myPrivate, const unsigned char* yourPublic, std::unique_ptr<unsigned char[]>& output, int& outputLength);
 
-//send a call end command. its own function (unlike the other commands) to detect dropped calls
-void sendCallEnd(std::string user);
+	//sodium asymmetric decrypt
+	void sodiumDecrypt(bool asym, const unsigned char* input, int inputLength, const unsigned char* myPrivate, const unsigned char* yourPublic, std::unique_ptr<unsigned char[]>& output, int& outputLength);
 
-//sodium asymmetric encrypt
-void sodiumEncrypt(bool asym, const unsigned char* input, int inputLength, const unsigned char* myPrivate, const unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength);
+	//disassemble/reassemble ints as seen in aclient's utils
+	int reassembleInt(unsigned char* input);
+	void disassembleInt(int input, unsigned char* output);
 
-//sodium asymmetric decrypt
-void sodiumDecrypt(bool asym, const unsigned char* input, int inputLength, const unsigned char* myPrivate, const unsigned char* yourPublic, std::unique_ptr<unsigned char>& output, int& outputLength);
+	//sodium file headers
+	const std::string& SODIUM_PUBLIC_HEADER();
+	const std::string& SODIUM_PRIVATE_HEADER();
 
-//disassemble/reassemble ints as seen in aclient's utils
-int reassembleInt(unsigned char* input);
-void disassembleInt(int input, unsigned char* output);
+	bool checkSodiumPublic(const std::string& input);
+	bool checkSodiumPrivate(const std::string& input);
 
+	std::string randomString(int length);
+}
 #endif /* SODIUM_UTILS_HPP_ */

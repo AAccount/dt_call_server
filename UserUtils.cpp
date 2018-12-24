@@ -56,14 +56,14 @@ UserUtils::UserUtils()
 
 		//destringify the user's sodium public key
 		unsigned char publicKeyBytes[crypto_box_PUBLICKEYBYTES];
-		if(!Utils::checkSodiumPublic(sodiumKeyDump))
+		if(!SodiumUtils::checkSodiumPublic(sodiumKeyDump))
 		{
 			std::cerr << "User sodium public key error for: " << name << "\n";
 			continue;
 		}
-		std::string header = SODIUM_PUBLIC_HEADER();
+		std::string header = SodiumUtils::SODIUM_PUBLIC_HEADER();
 		sodiumKeyDump = sodiumKeyDump.substr(header.length(), crypto_box_PUBLICKEYBYTES*3);
-		Utils::destringify(sodiumKeyDump, publicKeyBytes);
+		Stringify::destringify(sodiumKeyDump, publicKeyBytes);
 
 		//finally create the user object
 		User* user = new User(name, publicKeyBytes, sodiumKeyDumpOriginal);

@@ -21,6 +21,7 @@
 #include "const.h"
 #include "Log.hpp"
 #include "UserUtils.hpp"
+#include "sodium_utils.hpp"
 
 void readServerConfig(int &cmdPort, int &mediaPort, std::string &sodiumPublic, std::string &sodium_private, Logger* logger);
 void setupListeningSocket(int type, struct timeval* timeout, int* fd, struct sockaddr_in* info, int port);

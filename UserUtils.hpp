@@ -30,6 +30,8 @@
 #include "Log.hpp"
 #include "User.hpp"
 #include "Logger.hpp"
+#include "sodium_utils.hpp"
+#include "stringify.hpp"
 
 class UserUtils
 {

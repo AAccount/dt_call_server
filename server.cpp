@@ -54,11 +54,11 @@ int main(int argc, char* argv[])
 
 	//setup sodium keys
 	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
-	Utils::destringify(sodiumPublic, sodiumPublicKey);
+	Stringify::destringify(sodiumPublic, sodiumPublicKey);
 	char* sodiumPublicStringMemory = &sodiumPublic[0];
 	randombytes_buf(sodiumPublicStringMemory, sodiumPublic.length());
 	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
-	Utils::destringify(sodiumPrivate, sodiumPrivateKey);
+	Stringify::destringify(sodiumPrivate, sodiumPrivateKey);
 	char* sodiumPrivateStringMemory = &sodiumPrivate[0];
 	randombytes_buf(sodiumPrivateStringMemory, sodiumPrivate.length());
 
@@ -149,9 +149,9 @@ int main(int argc, char* argv[])
 						//send the equivalent of the SSL key
 						unsigned char initialTempPublic[crypto_box_PUBLICKEYBYTES] = {};
 						memcpy(initialTempPublic, inputBuffer, crypto_box_PUBLICKEYBYTES);
-						std::unique_ptr<unsigned char> encTCPKey;
+						std::unique_ptr<unsigned char[]> encTCPKey;
 						int encTCPKeyLength = 0;
-						sodiumEncrypt(true, clientTableEntry.second->getSymmetricKey(), crypto_secretbox_KEYBYTES, sodiumPrivateKey, initialTempPublic, encTCPKey, encTCPKeyLength);
+						SodiumUtils::sodiumEncrypt(true, clientTableEntry.second->getSymmetricKey(), crypto_secretbox_KEYBYTES, sodiumPrivateKey, initialTempPublic, encTCPKey, encTCPKeyLength);
 						if(encTCPKeyLength > 0)
 						{
 							const int errValue = write(clientTableEntry.first, encTCPKey.get(), encTCPKeyLength);
@@ -174,8 +174,8 @@ int main(int argc, char* argv[])
 
 				//for existing clients, sodium decrypt the command
 				int decLength = 0;
-				std::unique_ptr<unsigned char> decBuffer;
-				sodiumDecrypt(false, inputBuffer, amountRead, clientTableEntry.second->getSymmetricKey(), NULL, decBuffer, decLength);
+				std::unique_ptr<unsigned char[]> decBuffer;
+				SodiumUtils::sodiumDecrypt(false, inputBuffer, amountRead, clientTableEntry.second->getSymmetricKey(), NULL, decBuffer, decLength);
 				if(decLength == 0)
 				{
 					continue; //decryption failed, move on
@@ -245,20 +245,20 @@ int main(int argc, char* argv[])
 					}
 
 					//generate the challenge gibberish
-					const std::string challenge = Utils::randomString(CHALLENGE_LENGTH);
+					const std::string challenge = SodiumUtils::randomString(CHALLENGE_LENGTH);
 					userUtils->setChallenge(username, challenge);
 #ifdef VERBOSE
 					std::cout << "challenge: " << challenge << "\n";
 #endif
 					int encLength = 0;
-					std::unique_ptr<unsigned char> enc;
-					sodiumEncrypt(true, (unsigned char*) (challenge.c_str()), challenge.length(), sodiumPrivateKey, userSodiumPublic, enc, encLength);
+					std::unique_ptr<unsigned char[]> enc;
+					SodiumUtils::sodiumEncrypt(true, (unsigned char*) (challenge.c_str()), challenge.length(), sodiumPrivateKey, userSodiumPublic, enc, encLength);
 					if (encLength < 1)
 					{
 						logger->insertLog(Log(Log::TAG::LOGIN, "sodium encryption of the challenge failed", username, Log::TYPE::ERROR, ip));
 						continue;
 					}
-					const std::string encString = Utils::stringify(enc.get(), encLength);
+					const std::string encString = Stringify::stringify(enc.get(), encLength);
 
 					//send the challenge
 					const std::string resp = std::to_string(now) + "|login1resp|" + encString;
@@ -339,7 +339,7 @@ int main(int argc, char* argv[])
 					userUtils->clearSession(username, keepudp);
 
 					//challenge was correct and wasn't "", set the info
-					const std::string sessionkey = Utils::randomString(SESSION_KEY_LENGTH);
+					const std::string sessionkey = SodiumUtils::randomString(SESSION_KEY_LENGTH);
 					userUtils->setSessionKey(username, sessionkey);
 					userUtils->setCommandFd(sessionkey, clientTableEntry.first);
 					userUtils->setChallenge(username, ""); //reset after successful completion
@@ -658,11 +658,11 @@ void* udpThread(void* ptr)
 			//create and encrypt ack
 			const time_t now=time(NULL);
 			const std::string ack = std::to_string(now);
-			std::unique_ptr<unsigned char> ackEnc;
+			std::unique_ptr<unsigned char[]> ackEnc;
 			int encLength = 0;
 			const int userCmdPort = userUtils->getCommandFd(user);
 			const unsigned char* userTCPKey = clients[userCmdPort]->getSymmetricKey();
-			sodiumEncrypt(false, (unsigned char*)ack.c_str(), ack.length(), userTCPKey, NULL, ackEnc, encLength);
+			SodiumUtils::sodiumEncrypt(false, (unsigned char*)ack.c_str(), ack.length(), userTCPKey, NULL, ackEnc, encLength);
 
 			//encryption failed??
 			if(encLength == 0)
@@ -793,11 +793,11 @@ void write2Client(const std::string& response, int sd)
 		return;
 	}
 
-	std::unique_ptr<unsigned char> encOutput;
+	std::unique_ptr<unsigned char[]> encOutput;
 	int encOutputLength = 0;
 	std::unique_ptr<Client>& client = clients[sd];
 
-	sodiumEncrypt(false, (unsigned char*)(response.c_str()), response.length(), client->getSymmetricKey(), NULL, encOutput, encOutputLength);
+	SodiumUtils::sodiumEncrypt(false, (unsigned char*)(response.c_str()), response.length(), client->getSymmetricKey(), NULL, encOutput, encOutputLength);
 	const int errValue = write(sd, encOutput.get(), encOutputLength);
 
 	if(errValue == -1)

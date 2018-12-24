@@ -4,7 +4,7 @@
 
 const std::string& VERSION()
 {
-	const static std::string value = "7.2: {git revision here}";
+	const static std::string value = "7.3: {git revision here}";
 	return value;
 }
 
@@ -59,17 +59,5 @@ const std::string& LOGFOLDER()
 const std::string& LOGPREFIX()
 {
 	const static std::string value = "log ";
-	return value;
-}
-
-const std::string& SODIUM_PUBLIC_HEADER()
-{
-	const static std::string value = "SODIUM PUBLIC KEY\n";
-	return value;
-}
-
-const std::string& SODIUM_PRIVATE_HEADER()
-{
-	const static std::string value = "SODIUM PRIVATE KEY\n";
 	return value;
 }

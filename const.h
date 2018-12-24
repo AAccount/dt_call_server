@@ -36,10 +36,6 @@ const std::string& LOGPREFIX();
 const int DEFAULTCMD = 1991;
 const int DEFAULTMEDIA = 1961;
 
-//sodium headers
-const std::string& SODIUM_PUBLIC_HEADER();
-const std::string& SODIUM_PRIVATE_HEADER();
-
 typedef enum {NONE, INIT, INCALL, INVALID} ustate; //user state
 
 #endif
