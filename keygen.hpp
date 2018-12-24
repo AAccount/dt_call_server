@@ -14,5 +14,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-
+#include "sodium_utils.hpp"
+#include "stringify.hpp"
 #endif /* KEYGEN_HPP_ */

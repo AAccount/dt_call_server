@@ -20,8 +20,8 @@ int main(int argc, char** argv)
 	crypto_box_keypair(publicKey, privateKey);
 
 	//stringify
-	const std::string publicKeyString = SODIUM_PUBLIC_HEADER() + Utils::stringify(publicKey, crypto_box_PUBLICKEYBYTES);
-	const std::string privateKeyString = SODIUM_PRIVATE_HEADER() + Utils::stringify(privateKey, crypto_box_SECRETKEYBYTES);
+	const std::string publicKeyString = SodiumUtils::SODIUM_PUBLIC_HEADER() + Stringify::stringify(publicKey, crypto_box_PUBLICKEYBYTES);
+	const std::string privateKeyString = SodiumUtils::SODIUM_PRIVATE_HEADER() + Stringify::stringify(privateKey, crypto_box_SECRETKEYBYTES);
 
 	//export to /tmp
 	const std::string publicLocation = "/tmp/"+name+"_public.na";
