@@ -29,9 +29,6 @@ const int AUTHTIMEOUT = 2; //seconds
 //#define LIVE
 const std::string& CONFFILE();
 const std::string& USERSFILE();
-const std::string& LOGFOLDER();
-
-const std::string& LOGPREFIX();
 
 const int DEFAULTCMD = 1991;
 const int DEFAULTMEDIA = 1961;

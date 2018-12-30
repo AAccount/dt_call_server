@@ -15,6 +15,22 @@ pthread_cond_t Logger::wakeup;
 std::queue<Log> Logger::backlog;
 Logger* Logger::instance = NULL;
 
+const std::string& Logger::LOGFOLDER()
+{
+#ifdef LIVE
+	const static std::string value = "/var/log/dtoperator/";
+#else
+	const static std::string value = "/tmp/";
+#endif
+	return value;
+}
+
+const std::string& Logger::LOGPREFIX()
+{
+	const static std::string value = "log ";
+	return value;
+}
+
 Logger* Logger::getInstance()
 {
 	if(instance == NULL)

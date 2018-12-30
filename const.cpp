@@ -45,19 +45,3 @@ const std::string& USERSFILE()
 #endif
 	return value;
 }
-
-const std::string& LOGFOLDER()
-{
-#ifdef LIVE
-	const static std::string value = "/var/log/dtoperator/";
-#else
-	const static std::string value = "/tmp/";
-#endif
-	return value;
-}
-
-const std::string& LOGPREFIX()
-{
-	const static std::string value = "log ";
-	return value;
-}

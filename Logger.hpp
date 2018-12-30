@@ -14,7 +14,6 @@
 #include <string.h>
 
 #include "Log.hpp"
-#include "const.h"
 
 class Logger
 {
@@ -40,6 +39,9 @@ private:
 
 	//don't allow copying the logger. there is only the 1
 	Logger(const Logger&) = delete;
+
+	const static std::string& LOGFOLDER();
+	const static std::string& LOGPREFIX();
 };
 
 #endif /* LOGGER_HPP_ */
