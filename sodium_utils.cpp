@@ -110,7 +110,6 @@ void SodiumUtils::sodiumEncrypt(bool asym, const unsigned char* input, int input
 
 	//assemble the output
 	const int finalSetupLength = crypto_box_NONCEBYTES+sizeof(uint32_t)+cipherTextLength;
-//	unsigned char* finalSetup = new unsigned char[finalSetupLength];
 	output = std::make_unique<unsigned char[]>(finalSetupLength);
 	memset(output.get(), 0, finalSetupLength);
 	memcpy(output.get(), nonce, crypto_box_NONCEBYTES);
@@ -193,9 +192,7 @@ void SodiumUtils::sodiumDecrypt(bool asym, const unsigned char* input, int input
 	//now that the message has been successfully decrypted, take in on blind faith messageLength makes was ok
 	//	up to the next function to make sure the decryption contents aren't truncated by a malicious messageLength
 	output = std::make_unique<unsigned char[]>(messageLength);
-//	unsigned char* message = new unsigned char[messageLength];
 	memcpy(output.get(), messageStorage, messageLength);
-//	output = std::unique_ptr<unsigned char>(message);
 	outputLength = messageLength;
 }
 
