@@ -12,7 +12,7 @@ std::ofstream *Logger::logfile;
 pthread_t Logger::diskThread;
 pthread_mutex_t Logger::qMutex;
 pthread_cond_t Logger::wakeup;
-std::queue<Log> Logger::backlog;
+std::queue<std::string> Logger::backlog;
 Logger* Logger::instance = NULL;
 std::string Logger::folder = "";
 
@@ -70,7 +70,7 @@ void* Logger::diskRw(void* ignored)
 		{
 			//get the next log item
 			pthread_mutex_lock(&qMutex);
-				const Log log = backlog.front();
+				const std::string log = backlog.front();
 				backlog.pop();
 				empty = backlog.empty();
 			pthread_mutex_unlock(&qMutex);
@@ -88,14 +88,7 @@ void* Logger::diskRw(void* ignored)
 			*(logfile) << log << "\n";
 			logfile->flush(); // write immediately to the file
 
-			if(log.getType() == Log::TYPE::ERROR)
-			{//make errors dead obvious when testing
-				std::cerr << log << "\n";
-			}
-			else
-			{
-				std::cout << log << "\n";
-			}
+			std::cout << log << "\n";
 		}
 
 		//no more logs to write? wait until there is one
@@ -113,7 +106,7 @@ void* Logger::diskRw(void* ignored)
 	}
 }
 
-void Logger::insertLog(const Log& dbl)
+void Logger::insertLog(const std::string& dbl)
 {
 	//put a new log in the backlog
 	pthread_mutex_lock(&qMutex);

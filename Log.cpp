@@ -27,6 +27,13 @@ Log::Log(TAG ctag, const std::string& cmessage, const std::string& cuser, TYPE c
 {
 }
 
+std::string Log::toString() const
+{
+	std::ostringstream ss;
+	ss << *this;
+	return ss.str();
+}
+
 std::ostream& operator<<(std::ostream &strm, const Log& l)
 {
 	time_t now = time(0);

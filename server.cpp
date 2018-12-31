@@ -17,12 +17,12 @@ int main(int argc, char* argv[])
 {
 
 	const std::string start = "starting call operator V" + VERSION();
-	logger->insertLog(Log(Log::TAG::STARTUP, start, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
+	logger->insertLog(Log(Log::TAG::STARTUP, start, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()).toString());
 
 	//initialize library
 	if(sodium_init() < 0)
 	{
-		logger->insertLog(Log(Log::TAG::STARTUP, "couldn't initialize sodium library", Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
+		logger->insertLog(Log(Log::TAG::STARTUP, "couldn't initialize sodium library", Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()).toString());
 		exit(1);
 	}
 
@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
 	if(pthread_create(&callThread, NULL, udpThread, args) != 0)
 	{
 		std::string error = "cannot create the udp thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()));
+		logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 		exit(1); //with no udp thread the server cannot handle any calls
 	}
 
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
 		if(sockets < 0)
 		{
 			std::string error = "read fds select system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-			logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()));
+			logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 			exit(1); //see call thread fx for why
 		}
 #ifdef VERBOSE
@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
 							{
 								const std::string ip = ipFromFd(clientTableEntry.first);
 								const std::string error = "initial sodium socket setup write errno " + std::to_string(errno) + " " + std::string(strerror(errno));
-								logger->insertLog(Log(Log::TAG::TCP, error, Log::DONTKNOW(), Log::TYPE::ERROR, ip));
+								logger->insertLog(Log(Log::TAG::TCP, error, Log::DONTKNOW(), Log::TYPE::ERROR, ip).toString());
 								removals.push_back(clientTableEntry.first);
 							}
 							clientTableEntry.second->hasBeenSeen();
@@ -187,7 +187,7 @@ int main(int argc, char* argv[])
 					const std::string unexpected = "unexpected byte in string";
 					const std::string user = userUtils->userFromCommandFd(clientTableEntry.first);
 					const std::string ip = ipFromFd(clientTableEntry.first);
-					logger->insertLog(Log(Log::TAG::BADCMD, unexpected, user, Log::TYPE::ERROR, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, unexpected, user, Log::TYPE::ERROR, ip).toString());
 					continue;
 				}
 
@@ -211,7 +211,7 @@ int main(int argc, char* argv[])
 				const int segments = commandContents.size();
 				if(segments < COMMAND_MIN_SEGMENTS || segments > COMMAND_MAX_SEGMENTS)
 				{
-					logger->insertLog(Log(Log::TAG::BADCMD, error+"\nbad amount of command segments: " + std::to_string(segments), user, Log::TYPE::ERROR, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, error+"\nbad amount of command segments: " + std::to_string(segments), user, Log::TYPE::ERROR, ip).toString());
 					continue;
 				}
 
@@ -226,7 +226,7 @@ int main(int argc, char* argv[])
 				if (command == "login1") //you can do string comparison like this in c++
 				{ //timestamp|login1|username
 					const std::string username = commandContents.at(2);
-					logger->insertLog(Log(Log::TAG::LOGIN, originalBufferCmd, username, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::LOGIN, originalBufferCmd, username, Log::TYPE::INBOUND, ip).toString());
 
 					//don't immediately remove old command fd. this would allow anyone
 					//	to send a login1 command and kick out a legitimately logged in person.
@@ -238,7 +238,7 @@ int main(int argc, char* argv[])
 					{
 						//not a real user. send login rejection
 						const std::string invalid = std::to_string(now) + "|invalid";
-						logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip));
+						logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip).toString());
 						write2Client(invalid, clientTableEntry.first);
 						removals.push_back(clientTableEntry.first); //nothing useful can come from this socket
 						continue;
@@ -255,7 +255,7 @@ int main(int argc, char* argv[])
 					SodiumUtils::sodiumEncrypt(true, (unsigned char*) (challenge.c_str()), challenge.length(), sodiumPrivateKey, userSodiumPublic, enc, encLength);
 					if (encLength < 1)
 					{
-						logger->insertLog(Log(Log::TAG::LOGIN, "sodium encryption of the challenge failed", username, Log::TYPE::ERROR, ip));
+						logger->insertLog(Log(Log::TAG::LOGIN, "sodium encryption of the challenge failed", username, Log::TYPE::ERROR, ip).toString());
 						continue;
 					}
 					const std::string encString = Stringify::stringify(enc.get(), encLength);
@@ -263,7 +263,7 @@ int main(int argc, char* argv[])
 					//send the challenge
 					const std::string resp = std::to_string(now) + "|login1resp|" + encString;
 					write2Client(resp, clientTableEntry.first);
-					logger->insertLog(Log(Log::TAG::LOGIN, resp, username, Log::TYPE::OUTBOUND, ip));
+					logger->insertLog(Log(Log::TAG::LOGIN, resp, username, Log::TYPE::OUTBOUND, ip).toString());
 					continue; //login command, no session key to verify, continue to the next fd after proccessing login1
 				}
 				else if (command == "login2")
@@ -271,7 +271,7 @@ int main(int argc, char* argv[])
 
 					//ok to store challenge answer in the log. challenge is single use, disposable
 					const std::string username = commandContents.at(2);
-					logger->insertLog(Log(Log::TAG::LOGIN, originalBufferCmd, username, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::LOGIN, originalBufferCmd, username, Log::TYPE::INBOUND, ip).toString());
 					const std::string triedChallenge = commandContents.at(3);
 
 					//check the challenge
@@ -285,7 +285,7 @@ int main(int argc, char* argv[])
 					{
 						//person doesn't have a challenge to answer or isn't supposed to be
 						const std::string invalid = std::to_string(now) + "|invalid";
-						logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip));
+						logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip).toString());
 						write2Client(invalid, clientTableEntry.first);
 						removals.push_back(clientTableEntry.first); //nothing useful can come from this socket
 
@@ -301,7 +301,7 @@ int main(int argc, char* argv[])
 					if (setsockopt(clientTableEntry.first, SOL_SOCKET, SO_RCVTIMEO, (char*) &authTimeout, sizeof(authTimeout)) < 0)
 					{
 						const std::string error = "cannot set timeout for authenticated command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-						logger->insertLog(Log(Log::TAG::LOGIN, error, Log::SELF(), Log::TYPE::ERROR, ip));
+						logger->insertLog(Log(Log::TAG::LOGIN, error, Log::SELF(), Log::TYPE::ERROR, ip).toString());
 					}
 
 					//now that the person has successfully logged in, remove the old information.
@@ -350,7 +350,7 @@ int main(int argc, char* argv[])
 #ifndef VERBOSE
 					resp = std::to_string(now) + "|login2resp|" + SESSION_KEY_PLACEHOLDER();
 #endif
-					logger->insertLog(Log(Log::TAG::LOGIN, resp, username, Log::TYPE::OUTBOUND, ip));
+					logger->insertLog(Log(Log::TAG::LOGIN, resp, username, Log::TYPE::OUTBOUND, ip).toString());
 					continue; //login command, no session key to verify, continue to the next fd after proccessing login2
 				}
 
@@ -364,11 +364,11 @@ int main(int argc, char* argv[])
 				if (!userUtils->verifySessionKey(sessionkey, clientTableEntry.first))
 				{
 					const std::string error = "INVALID SESSION ID. refusing command (" + originalBufferCmd + ")";
-					logger->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip).toString());
 
 					const std::string invalid = std::to_string(now) + "|invalid";
 					write2Client(invalid, clientTableEntry.first);
-					logger->insertLog(Log(Log::TAG::BADCMD, invalid, user, Log::TYPE::OUTBOUND, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, invalid, user, Log::TYPE::OUTBOUND, ip).toString());
 					continue;
 				}
 
@@ -379,7 +379,7 @@ int main(int argc, char* argv[])
 
 					const std::string zapper = commandContents.at(2);
 					const std::string touma = user;
-					logger->insertLog(Log(Log::TAG::CALL, originalBufferCmd, touma, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::CALL, originalBufferCmd, touma, Log::TYPE::INBOUND, ip).toString());
 					const int zapperCmdFd = userUtils->getCommandFd(zapper);
 
 					//find out if zapper has a command fd (signed in)
@@ -393,7 +393,7 @@ int main(int argc, char* argv[])
 					{
 						const std::string na = std::to_string(now) + "|end|" + zapper;
 						write2Client(na, clientTableEntry.first);
-						logger->insertLog(Log(Log::TAG::CALL, na, touma, Log::TYPE::OUTBOUND, ip));
+						logger->insertLog(Log(Log::TAG::CALL, na, touma, Log::TYPE::OUTBOUND, ip).toString());
 						continue; //nothing more to do
 					}
 
@@ -405,13 +405,13 @@ int main(int argc, char* argv[])
 					//tell touma that zapper is being rung
 					const std::string notifyTouma = std::to_string(now) + "|available|" + zapper;
 					write2Client(notifyTouma, clientTableEntry.first);
-					logger->insertLog(Log(Log::TAG::CALL, notifyTouma, touma, Log::TYPE::OUTBOUND, ip));
+					logger->insertLog(Log(Log::TAG::CALL, notifyTouma, touma, Log::TYPE::OUTBOUND, ip).toString());
 
 					//tell zapper touma wants to call her
 					const std::string notifyZapper = std::to_string(now) + "|incoming|" + touma;
 					write2Client(notifyZapper, zapperCmdFd);
 					const std::string zapperip = ipFromFd(zapperCmdFd);
-					logger->insertLog(Log(Log::TAG::CALL, notifyZapper, zapper, Log::TYPE::OUTBOUND, zapperip));
+					logger->insertLog(Log(Log::TAG::CALL, notifyZapper, zapper, Log::TYPE::OUTBOUND, zapperip).toString());
 				}
 				//variables written when zapper accepets touma's call
 				//command will come from zapper's cmd fd
@@ -419,7 +419,7 @@ int main(int argc, char* argv[])
 				{					//timestamp|accept|touma|zapperkey
 					const std::string zapper = user;
 					const std::string touma = commandContents.at(2);
-					logger->insertLog(Log(Log::TAG::ACCEPT, originalBufferCmd, zapper, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::ACCEPT, originalBufferCmd, zapper, Log::TYPE::INBOUND, ip).toString());
 
 					if (!isRealCall(zapper, touma, Log::TAG::ACCEPT))
 					{
@@ -430,12 +430,12 @@ int main(int argc, char* argv[])
 					const int toumaCmdFd = userUtils->getCommandFd(touma);
 					const std::string toumaResp = std::to_string(now) + "|prepare|" + userUtils->getSodiumKeyDump(zapper) + "|" + zapper;
 					write2Client(toumaResp, toumaCmdFd);
-					logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)));
+					logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)).toString());
 
 					//send zapper touma's public key to be able to verify that the aes256 passthrough is actually from him
 					const std::string zapperResp = std::to_string(now) + "|prepare|" + userUtils->getSodiumKeyDump(touma) + "|" + touma;
 					write2Client(zapperResp, clientTableEntry.first);
-					logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip));
+					logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip).toString());
 				}
 				else if (command == "passthrough")
 				{
@@ -444,7 +444,7 @@ int main(int argc, char* argv[])
 					const std::string touma = user;
 					const std::string end2EndKeySetup = commandContents.at(3);
 					originalBufferCmd.replace(originalBufferCmd.find(end2EndKeySetup), end2EndKeySetup.length(), AES_PLACEHOLDER());
-					logger->insertLog(Log(Log::TAG::PASSTHROUGH, originalBufferCmd, user, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::PASSTHROUGH, originalBufferCmd, user, Log::TYPE::INBOUND, ip).toString());
 
 					if (!isRealCall(touma, zapper, Log::TAG::PASSTHROUGH))
 					{
@@ -455,14 +455,14 @@ int main(int argc, char* argv[])
 					std::string direct = std::to_string(now) + "|direct|" + end2EndKeySetup + "|" + touma;					//as in "directly" from touma, not from the server
 					write2Client(direct, zapperfd);
 					direct.replace(direct.find(end2EndKeySetup), end2EndKeySetup.length(), AES_PLACEHOLDER());
-					logger->insertLog(Log(Log::TAG::PASSTHROUGH, direct, zapper, Log::TYPE::OUTBOUND, ipFromFd(zapperfd)));
+					logger->insertLog(Log(Log::TAG::PASSTHROUGH, direct, zapper, Log::TYPE::OUTBOUND, ipFromFd(zapperfd)).toString());
 
 				}
 				else if (command == "ready")
 				{					//timestamp|ready|touma|zapperkey
 					const std::string zapper = user;
 					const std::string touma = commandContents.at(2);
-					logger->insertLog(Log(Log::TAG::READY, originalBufferCmd, user, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::READY, originalBufferCmd, user, Log::TYPE::INBOUND, ip).toString());
 					if (!isRealCall(zapper, touma, Log::TAG::READY))
 					{
 						continue;
@@ -477,12 +477,12 @@ int main(int argc, char* argv[])
 						const int toumaCmdFd = userUtils->getCommandFd(touma);
 						const std::string toumaResp = std::to_string(now) + "|start|" + zapper;
 						write2Client(toumaResp, toumaCmdFd);
-						logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)));
+						logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)).toString());
 
 						//confirm to zapper she's being connected to touma
 						const std::string zapperResp = std::to_string(now) + "|start|" + touma;
 						write2Client(zapperResp, clientTableEntry.first);
-						logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip));
+						logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip).toString());
 					}
 				}
 				//whether it's a call end or call timeout or call reject, the result is the same
@@ -490,7 +490,7 @@ int main(int argc, char* argv[])
 				{ //timestamp|end|zapper|toumakey
 					const std::string zapper = commandContents.at(2);
 					const std::string touma = user;
-					logger->insertLog(Log(Log::TAG::END, originalBufferCmd, touma, Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::END, originalBufferCmd, touma, Log::TYPE::INBOUND, ip).toString());
 
 					if (!isRealCall(touma, zapper, Log::TAG::END))
 					{
@@ -501,7 +501,7 @@ int main(int argc, char* argv[])
 				}
 				else //commandContents[1] is not a known command... something fishy???
 				{
-					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, userUtils->userFromCommandFd(clientTableEntry.first), Log::TYPE::INBOUND, ip));
+					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, userUtils->userFromCommandFd(clientTableEntry.first), Log::TYPE::INBOUND, ip).toString());
 				}
 			} // if FD_ISSET : figure out command or voice and handle appropriately
 		}// for loop going through the fd set
@@ -563,7 +563,7 @@ void* udpThread(void* ptr)
 	if(setsockopt(mediaFd, IPPROTO_IP, IP_TOS, (char*)&express, sizeof(int)) < 0)
 	{
 		std::string error="cannot set udp socket dscp expedited (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()));
+		logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 
 	while(true)
@@ -578,7 +578,7 @@ void* udpThread(void* ptr)
 		if(receivedLength < 0)
 		{
 			const std::string error = "udp read error with errno " + std::to_string(errno) + ": " + std::string(strerror(errno));
-			logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()));
+			logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 			continue; //received nothing, this round is a write off
 		}
 
@@ -605,7 +605,7 @@ void* udpThread(void* ptr)
 			if(unsealok != 0)
 			{
 				const std::string error = "udp bad unseal";
-				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip).toString());
 				continue; //bad registration
 			}
 
@@ -613,7 +613,7 @@ void* udpThread(void* ptr)
 			if(!legitimateAscii((unsigned char*)registration.c_str(), registration.length()))
 			{
 				const std::string error = "udp unseal ok, bad ascii";
-				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip).toString());
 				continue; //bad characters in registration
 			}
 
@@ -622,7 +622,7 @@ void* udpThread(void* ptr)
 			if(registrationParsed.size() != REGISTRATION_SEGMENTS)
 			{
 				const std::string error = "udp unseal ok, ascii ok, bad format: " + ogregistration;
-				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip).toString());
 				continue; //improperly formatted registration
 			}
 
@@ -632,7 +632,7 @@ void* udpThread(void* ptr)
 			if(!timestampOK)
 			{
 				const std::string error =  "udp unseal ok, ascii ok, format ok, bad timestamp " + ogregistration;
-				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip).toString());
 				continue;
 			}
 
@@ -640,7 +640,7 @@ void* udpThread(void* ptr)
 			if(user == "")
 			{
 				const std::string error = "udp registration key doesn't belong to anyone " + ogregistration;
-				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip).toString());
 				continue;
 			}
 
@@ -668,7 +668,7 @@ void* udpThread(void* ptr)
 			if(encLength == 0)
 			{
 				const std::string error = "failed to sodium encrypt udp ack???\n";
-				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip).toString());
 				continue;
 			}
 
@@ -677,7 +677,7 @@ void* udpThread(void* ptr)
 			if(sent < 0)
 			{
 				const std::string error = "udp sendto failed during media port registration with errno (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip).toString());
 			}
 		}
 		else if(state == INCALL)
@@ -698,7 +698,7 @@ void* udpThread(void* ptr)
 			{
 				const std::string error = "udp sendto failed during live call with errno (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 				const std::string ip = std::string(inet_ntoa(otherSocket.sin_addr));
-				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip));
+				logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user , Log::TYPE::ERROR, ip).toString());
 			}
 		}
 	}
@@ -771,14 +771,14 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 		const int fd = userUtils->getCommandFd(persona);
 		const std::string ip = ipFromFd(fd);
 		const std::string error = persona + " sent a command for a nonexistant call";
-		logger->insertLog(Log(tag, error, persona, Log::TYPE::ERROR, ip));
+		logger->insertLog(Log(tag, error, persona, Log::TYPE::ERROR, ip).toString());
 
 		const time_t now = time(NULL);
 		const std::string invalid = std::to_string(now) + "|invalid";
 		if(fd > 0)
 		{
 			write2Client(invalid, fd);
-			logger->insertLog(Log(tag, invalid, persona, Log::TYPE::OUTBOUND, ip));
+			logger->insertLog(Log(tag, invalid, persona, Log::TYPE::OUTBOUND, ip).toString());
 		}
 	}
 	return real;
@@ -805,7 +805,7 @@ void write2Client(const std::string& response, int sd)
 		const std::string user = userUtils->userFromCommandFd(sd);
 		const std::string ip = ipFromFd(sd);
 		const std::string error = "write errno " + std::to_string(errno) + " " + std::string(strerror(errno));
-		logger->insertLog(Log(Log::TAG::TCP, error, user, Log::TYPE::ERROR, ip));
+		logger->insertLog(Log(Log::TAG::TCP, error, user, Log::TYPE::ERROR, ip).toString());
 	}
 }
 
@@ -856,7 +856,7 @@ void sendCallEnd(std::string user)
 	const std::string resp = std::to_string(time(NULL)) + "|end|" + other;
 	const int cmdFd = userUtils->getCommandFd(user);
 	write2Client(resp, cmdFd);
-	logger->insertLog(Log(Log::TAG::END, resp, user, Log::TYPE::OUTBOUND, ipFromFd(cmdFd)));
+	logger->insertLog(Log(Log::TAG::END, resp, user, Log::TYPE::OUTBOUND, ipFromFd(cmdFd)).toString());
 }
 
 void socketAccept(int cmdFD, struct timeval* unauthTimeout)
@@ -868,7 +868,7 @@ void socketAccept(int cmdFD, struct timeval* unauthTimeout)
 	if(incomingCmd < 0)
 	{
 		const std::string error = "accept system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, Log::DONTKNOW()));
+		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, Log::DONTKNOW()).toString());
 		return;
 	}
 	const std::string ip = inet_ntoa(cli_addr.sin_addr);
@@ -877,7 +877,7 @@ void socketAccept(int cmdFD, struct timeval* unauthTimeout)
 	if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*)unauthTimeout, sizeof(struct timeval)) < 0)
 	{
 		const std::string error = "cannot set timeout for incoming command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip));
+		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip).toString());
 		shutdown(incomingCmd, 2);
 		close(incomingCmd);
 		return;
@@ -888,7 +888,7 @@ void socketAccept(int cmdFD, struct timeval* unauthTimeout)
 	if(setsockopt(incomingCmd, IPPROTO_TCP, TCP_NODELAY, (char*)&nagle, sizeof(int)))
 	{
 		const std::string error = "cannot disable nagle delay (" + std::to_string(errno) + ") " + std::string(strerror(errno));
-		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip));
+		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip).toString());
 	}
 	clients[incomingCmd] = std::unique_ptr<Client>(new Client());
 }
@@ -909,25 +909,25 @@ bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string
 			const uint64_t mins = timeDifference / 60;
 			const uint64_t seconds = timeDifference - mins * 60;
 			const std::string error = "timestamp received was outside the " + std::to_string(MARGIN_OF_ERROR) + " minute margin of error: " + std::to_string(mins) + "mins, " + std::to_string(seconds) + "seconds" + errorMessage;
-			logger->insertLog(Log(tag, error, user, Log::TYPE::ERROR, ip));
+			logger->insertLog(Log(tag, error, user, Log::TYPE::ERROR, ip).toString());
 			return false;
 		}
 	}
 	catch(std::invalid_argument &badarg)
 	{ //timestamp couldn't be parsed. assume someone is trying something fishy
-		logger->insertLog(Log(tag, "invalid_argument: " + errorMessage, user, Log::TYPE::INBOUND, ip));
+		logger->insertLog(Log(tag, "invalid_argument: " + errorMessage, user, Log::TYPE::INBOUND, ip).toString());
 
 		const std::string error="INVALID ARGUMENT EXCEPTION: " + errorMessage;
-		logger->insertLog(Log(tag, error, user, Log::TYPE::ERROR, ip));
+		logger->insertLog(Log(tag, error, user, Log::TYPE::ERROR, ip).toString());
 
 		return false;
 	}
 	catch(std::out_of_range &exrange)
 	{
-		logger->insertLog(Log(tag, "out_of_range: " + errorMessage, user, Log::TYPE::INBOUND, ip));
+		logger->insertLog(Log(tag, "out_of_range: " + errorMessage, user, Log::TYPE::INBOUND, ip).toString());
 
 		const std::string error="OUT OF RANGE: " + errorMessage;
-		logger->insertLog(Log(tag, error, user, Log::TYPE::ERROR, ip));
+		logger->insertLog(Log(tag, error, user, Log::TYPE::ERROR, ip).toString());
 
 		return false;
 	}

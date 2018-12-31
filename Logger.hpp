@@ -8,18 +8,17 @@
 #ifndef LOGGER_HPP_
 #define LOGGER_HPP_
 
+#include <iostream>
 #include <fstream>
 #include <queue>
 #include <pthread.h>
 #include <string.h>
 
-#include "Log.hpp"
-
 class Logger
 {
 public:
 	static Logger* getInstance(const std::string& folder);
-	void insertLog(const Log& l);
+	void insertLog(const std::string& l);
 
 private:
 	static Logger* instance;
@@ -35,7 +34,7 @@ private:
 	static pthread_mutex_t qMutex;
 	static pthread_cond_t wakeup;
 	static void* diskRw(void* ignored);
-	static std::queue<Log> backlog;
+	static std::queue<std::string> backlog;
 
 	//don't allow copying the logger. there is only the 1
 	Logger(const Logger&) = delete;

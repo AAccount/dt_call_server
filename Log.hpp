@@ -3,6 +3,7 @@
 
 #include <string>
 #include <iostream>
+#include <sstream>
 
 class Log
 {
@@ -14,6 +15,7 @@ public:
 
 	TYPE getType() const;
 	Log(TAG ctag, const std::string& cmessage, const std::string& user, TYPE type, const std::string& ip);
+	std::string toString() const;
 
 	static const std::string& SELF();
 	static const std::string& SELFIP();

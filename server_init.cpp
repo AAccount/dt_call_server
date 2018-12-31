@@ -82,7 +82,7 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &sodiumPublic, s
 		else
 		{
 			std::string unknown = "unknown variable parsed: " + line;
-			logger->insertLog(Log(Log::TAG::STARTUP, unknown, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
+			logger->insertLog(Log(Log::TAG::STARTUP, unknown, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()).toString());
 		}
 	}
 
@@ -106,12 +106,12 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &sodiumPublic, s
 	if(!gotCmdPort)
 	{
 		std::string message =  "Using default command port of: " + std::to_string(cmdPort);
-		logger->insertLog(Log(Log::TAG::STARTUP, message, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
+		logger->insertLog(Log(Log::TAG::STARTUP, message, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()).toString());
 	}
 	if(!gotMediaPort)
 	{
 		std::string message= "Using default media port of: " + std::to_string(mediaPort);
-		logger->insertLog(Log(Log::TAG::STARTUP, message, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()));
+		logger->insertLog(Log(Log::TAG::STARTUP, message, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()).toString());
 	}
 
 }
