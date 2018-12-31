@@ -24,9 +24,9 @@ const std::string& Logger::LOGPREFIX()
 
 Logger* Logger::getInstance(const std::string& pfolder)
 {
-	folder = pfolder;
 	if(instance == NULL)
 	{
+		folder = pfolder;
 		instance = new Logger();
 	}
 	return instance;
