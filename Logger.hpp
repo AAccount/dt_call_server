@@ -18,7 +18,7 @@
 class Logger
 {
 public:
-	static Logger* getInstance();
+	static Logger* getInstance(const std::string& folder);
 	void insertLog(const Log& l);
 
 private:
@@ -40,7 +40,7 @@ private:
 	//don't allow copying the logger. there is only the 1
 	Logger(const Logger&) = delete;
 
-	const static std::string& LOGFOLDER();
+	static std::string folder;
 	const static std::string& LOGPREFIX();
 };
 

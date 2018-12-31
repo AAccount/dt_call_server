@@ -11,7 +11,7 @@
 std::unordered_map<int, std::unique_ptr<Client>> clients;
 
 UserUtils* userUtils = UserUtils::getInstance();
-Logger* logger = Logger::getInstance();
+Logger* logger = Logger::getInstance(LOGFOLDER());
 
 int main(int argc, char* argv[])
 {

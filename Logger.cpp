@@ -14,16 +14,7 @@ pthread_mutex_t Logger::qMutex;
 pthread_cond_t Logger::wakeup;
 std::queue<Log> Logger::backlog;
 Logger* Logger::instance = NULL;
-
-const std::string& Logger::LOGFOLDER()
-{
-#ifdef LIVE
-	const static std::string value = "/var/log/dtoperator/";
-#else
-	const static std::string value = "/tmp/";
-#endif
-	return value;
-}
+std::string Logger::folder = "";
 
 const std::string& Logger::LOGPREFIX()
 {
@@ -31,8 +22,9 @@ const std::string& Logger::LOGPREFIX()
 	return value;
 }
 
-Logger* Logger::getInstance()
+Logger* Logger::getInstance(const std::string& pfolder)
 {
+	folder = pfolder;
 	if(instance == NULL)
 	{
 		instance = new Logger();
@@ -47,7 +39,7 @@ Logger::Logger()
 	logTimeT = time(NULL);
 	const std::string nowString = std::string(ctime(&logTimeT));
 	const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
-	logfile = new std::ofstream(LOGFOLDER()+logName);
+	logfile = new std::ofstream(folder+logName);
 
 	//keep disk IO on its own thread. don't know what kind of disk you'll get
 	//don't let a slow disk stall the whole program just for logging.
@@ -91,7 +83,7 @@ void* Logger::diskRw(void* ignored)
 				logTimeT = now;
 				const std::string nowString = std::string(ctime(&logTimeT));
 				const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
-				logfile->open(LOGFOLDER()+logName);
+				logfile->open(folder+logName);
 			}
 			*(logfile) << log << "\n";
 			logfile->flush(); // write immediately to the file
