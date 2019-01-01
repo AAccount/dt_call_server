@@ -28,6 +28,7 @@ Logger* Logger::getInstance(const std::string& pfolder)
 	{
 		folder = pfolder;
 		instance = new Logger();
+		backlog = std::queue<std::string>();
 	}
 	return instance;
 }
