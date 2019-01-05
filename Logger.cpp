@@ -32,7 +32,7 @@ Logger::Logger(const std::string& cfolder)
 
 	const std::string nowString = std::string(ctime(&logTimeT));
 	const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
-	logfile = new std::ofstream(folder+logName);
+	logfile = std::ofstream(folder+logName);
 
 	pthread_t diskThread;
 	if (pthread_create(&diskThread, NULL, diskRw, this) != 0) //have to pass "this", instance won't be available until the constructor exits
@@ -45,7 +45,8 @@ Logger::Logger(const std::string& cfolder)
 
 Logger::~Logger()
 {
-	delete logfile;
+	logfile.flush();
+	logfile.close();
 }
 
 void* Logger::diskRw(void* context)
@@ -59,14 +60,14 @@ void* Logger::diskRw(void* context)
 		const time_t now = time(NULL);
 		if((now - self->logTimeT) > 60*60*24)
 		{//if the log is too old, close it and start another one
-			self->logfile->close();
+			self->logfile.close();
 			self->logTimeT = now;
 			const std::string nowString = std::string(ctime(&self->logTimeT));
 			const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
-			self->logfile->open(self->folder+logName);
+			self->logfile.open(self->folder+logName);
 		}
-		*(self->logfile) << log << "\n";
-		self->logfile->flush(); // write immediately to the file
+		self->logfile << log << "\n";
+		self->logfile.flush(); // write immediately to the file
 
 		std::cout << log << "\n";
 	}
