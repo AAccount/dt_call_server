@@ -13,6 +13,7 @@
 #include <queue>
 #include <pthread.h>
 #include <string.h>
+#include "BlockingQ.hpp"
 
 class Logger
 {
@@ -22,24 +23,22 @@ public:
 
 private:
 	static Logger* instance;
-	Logger();
+	Logger(const std::string& cfolder);
 	virtual ~Logger();
 
 	//output log (changed every 24 hours)
-	static std::ofstream* logfile;
-	static time_t logTimeT;
+	std::ofstream* logfile;
+	time_t logTimeT;
+	std::string folder;
+
+	BlockingQ<std::string> q;
 
 	//log disk writing thread stuff
-	static pthread_t diskThread;
-	static pthread_mutex_t qMutex;
-	static pthread_cond_t wakeup;
-	static void* diskRw(void* ignored);
-	static std::queue<std::string> backlog;
+	static void* diskRw(void* context);
 
 	//don't allow copying the logger. there is only the 1
 	Logger(const Logger&) = delete;
 
-	static std::string folder;
 	const static std::string& LOGPREFIX();
 };
 

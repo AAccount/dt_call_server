@@ -61,7 +61,7 @@ User.o : User.cpp User.hpp
 const.o : const.cpp const.h
 	${CXX} ${CFLAGS} -c const.cpp ${INC}
 
-liblogger.so : Logger.cpp Logger.hpp
+liblogger.so : Logger.cpp Logger.hpp BlockingQ.hpp
 	${CXX} ${CFLAGS} ${SHARED} -o ${@} Logger.cpp ${INC}
 	
 Client.o : Client.cpp Client.hpp
