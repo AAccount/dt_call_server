@@ -68,7 +68,7 @@ Client.o : Client.cpp Client.hpp
 	${CXX} ${CFLAGS} -c Client.cpp ${INC}
 
 keygen: keygen.cpp Utils.o keygen.hpp const.o
-	${CXX} ${CFLAGS} ${LDFLAGS} ${SODIUM} -o keygen keygen.cpp Utils.o const.o sodium_utils.o stringify.o ${INC} ${LIB}
+	${CXX} ${CFLAGS} ${LDFLAGS} ${SODIUM} -o keygen keygen.cpp Utils.o const.o stringify.cpp sodium_utils.cpp ${INC} ${LIB}
 	
 clean:
 	rm dtoperator *.o keygen *.so
