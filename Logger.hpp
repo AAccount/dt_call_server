@@ -23,7 +23,7 @@ public:
 
 private:
 	static Logger* instance;
-	Logger(const std::string& cfolder);
+	explicit Logger(const std::string& cfolder);
 	virtual ~Logger();
 
 	//output log (changed every 24 hours)

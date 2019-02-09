@@ -205,17 +205,16 @@ int main(int argc, char* argv[])
 				const std::vector<std::string> commandContents = parse((unsigned char*)bufferCmd.c_str());
 				const std::string ip = ipFromFd(clientTableEntry.first);
 				const std::string user=userUtils->userFromCommandFd(clientTableEntry.first);
-				const std::string error = " (" + originalBufferCmd + ")";
 				const time_t now = time(NULL);
 
 				const int segments = commandContents.size();
 				if(segments < COMMAND_MIN_SEGMENTS || segments > COMMAND_MAX_SEGMENTS)
 				{
-					logger->insertLog(Log(Log::TAG::BADCMD, error+"\nbad amount of command segments: " + std::to_string(segments), user, Log::TYPE::ERROR, ip).toString());
+					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd+"\nbad amount of command segments: " + std::to_string(segments), user, Log::TYPE::ERROR, ip).toString());
 					continue;
 				}
 
-				const bool timestampOK = checkTimestamp((const std::string&)commandContents.at(0), Log::TAG::BADCMD, error, user, ip);
+				const bool timestampOK = checkTimestamp((const std::string&)commandContents.at(0), Log::TAG::BADCMD, originalBufferCmd, user, ip);
 				if (!timestampOK)
 				{
 					//checkTimestamp will logg an error

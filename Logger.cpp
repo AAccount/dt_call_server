@@ -24,12 +24,11 @@ Logger* Logger::getInstance(const std::string& pfolder)
 	return instance;
 }
 
-Logger::Logger(const std::string& cfolder)
+Logger::Logger(const std::string& cfolder) :
+folder(cfolder),
+logTimeT(time(NULL)),
+q(BlockingQ<std::string>())
 {
-	logTimeT = time(NULL);
-	folder = cfolder;
-	q = BlockingQ<std::string>();
-
 	const std::string nowString = std::string(ctime(&logTimeT));
 	const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
 	logfile = std::ofstream(folder+logName);
@@ -51,7 +50,7 @@ Logger::~Logger()
 
 void* Logger::diskRw(void* context)
 {
-	Logger* self = (Logger*)context;
+	Logger* self = static_cast<Logger*>(context);
 	while(true)
 	{
 		const std::string log = self->q.pop();
