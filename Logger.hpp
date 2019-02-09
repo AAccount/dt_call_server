@@ -29,7 +29,7 @@ private:
 	//output log (changed every 24 hours)
 	std::ofstream logfile;
 	time_t logTimeT;
-	std::string folder;
+	const std::string folder;
 
 	BlockingQ<std::string> q;
 
