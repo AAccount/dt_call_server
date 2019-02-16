@@ -1,6 +1,6 @@
 # VoIP server for [AClient](https://github.com/AAccount/dt_call_aclient) and [GTK Client](https://github.com/AAccount/dt_call_gtkclient)
 
-The VoIP server for my android and test java client. Its dependancies libsodium.
+The VoIP server for my android and desktop Linux GTK client. Its dependancy is libsodium.
 
 Works on Linux:
 ![Linux Screenshot](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20Fedora24.png "Call server running on Fedora 24 x64")
