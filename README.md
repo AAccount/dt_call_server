@@ -1,4 +1,4 @@
-# VoIP server for [AClient](https://github.com/AAccount/dt_call_aclient)
+# VoIP server for [AClient](https://github.com/AAccount/dt_call_aclient) and [GTK Client](https://github.com/AAccount/dt_call_gtkclient)
 
 The VoIP server for my android and test java client. Its dependancies libsodium.
 
