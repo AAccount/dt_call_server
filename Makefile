@@ -1,14 +1,7 @@
-#JCALLDIAG: show the call contents as text for jclient. won't show anything meaningful in a real call
 #VERBOSE: print out a summary of what happened every single select call. (the old cout, pre dblog, debugging output)
 MATH = -lm
 PTHREAD = -pthread
 SODIUM = -lsodium
-
-SHARED = -shared -fPIC
-SELF_LOCATION = -L.
-SELF_SODIUM = -lsodiumutils
-SELF_STRINGIFY = -lstringify
-SELF_LOGGER = -llogger
 
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
@@ -27,12 +20,11 @@ ifeq ($(UNAME),FreeBSD)
  CXX = clang++ -std=c++14
 endif
 
-OBJS = server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Client.o
-SELF_LIBS = libsodiumutils.so libstringify.so liblogger.so
+OBJS = server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Client.o sodium_utils.o stringify.o Logger.o
 TARGET = dtoperator
 
 all: ${OBJS} ${SELF_LIBS}
-	${CXX} ${CFLAGS} ${LDFLAGS} -o ${TARGET} ${OBJS} ${SELF_LOCATION} ${SELF_SODIUM} ${SELF_STRINGIFY} ${SELF_LOGGER} ${MATH} ${PTHREAD} ${SODIUM} ${INC} ${LIB}
+	${CXX} ${CFLAGS} ${LDFLAGS} -o ${TARGET} ${OBJS} ${MATH} ${PTHREAD} ${SODIUM} ${INC} ${LIB}
 
 server.o : server.cpp server.hpp
 	${CXX} ${CFLAGS} -c server.cpp ${INC}
@@ -40,11 +32,11 @@ server.o : server.cpp server.hpp
 server_init.o : server_init.cpp server_init.hpp
 	${CXX} ${CFLAGS} -c server_init.cpp ${INC}
 
-libsodiumutils.so : sodium_utils.cpp sodium_utils.hpp
-	${CXX} ${CFLAGS} ${SHARED} -o ${@} sodium_utils.cpp ${INC} ${SODIUM}
+sodium_utils.o : sodium_utils.cpp sodium_utils.hpp
+	${CXX} ${CFLAGS} -c sodium_utils.cpp ${INC} ${SODIUM}
 
-libstringify.so : stringify.cpp stringify.hpp
-	${CXX} ${CFLAGS} ${SHARED} -o ${@} stringify.cpp ${INC}
+stringify.o : stringify.cpp stringify.hpp
+	${CXX} ${CFLAGS} -c stringify.cpp ${INC}
 
 UserUtils.o : UserUtils.cpp UserUtils.hpp
 	${CXX} ${CFLAGS} -c UserUtils.cpp ${INC}
@@ -61,15 +53,15 @@ User.o : User.cpp User.hpp
 const.o : const.cpp const.h
 	${CXX} ${CFLAGS} -c const.cpp ${INC}
 
-liblogger.so : Logger.cpp Logger.hpp BlockingQ.hpp
-	${CXX} ${CFLAGS} ${SHARED} -o ${@} Logger.cpp ${INC}
+Logger.o : Logger.cpp Logger.hpp BlockingQ.hpp
+	${CXX} ${CFLAGS} -c Logger.cpp ${INC}
 	
 Client.o : Client.cpp Client.hpp
 	${CXX} ${CFLAGS} -c Client.cpp ${INC}
 
 keygen: keygen.cpp Utils.o keygen.hpp const.o
-	${CXX} ${CFLAGS} ${LDFLAGS} ${SODIUM} -o keygen keygen.cpp Utils.o const.o stringify.cpp sodium_utils.cpp ${INC} ${LIB}
+	${CXX} ${CFLAGS} ${LDFLAGS} ${SODIUM} -o keygen keygen.cpp Utils.cpp const.cpp stringify.cpp sodium_utils.cpp ${INC} ${LIB}
 	
 clean:
-	rm dtoperator *.o keygen *.so
+	rm dtoperator *.o keygen
 
