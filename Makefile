@@ -12,8 +12,8 @@ ifeq ($(UNAME),Linux)
 endif
 
 ifeq ($(UNAME),FreeBSD)
- CFLAGS = -O2 -march=native -Werror -fPIE
- DBGFLAGS = -g -Werror -fPIE
+ OPTCFLAGS = -O2 -march=native -Werror -fPIE
+ CFLAGS = -g -Werror -fPIE
  LDFLAGS = -pie
  INC = -I /usr/local/include
  LIB = -L /usr/local/lib
@@ -23,7 +23,7 @@ endif
 OBJS = server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Client.o sodium_utils.o stringify.o Logger.o
 TARGET = dtoperator
 
-all: ${OBJS} ${SELF_LIBS}
+all: ${OBJS}
 	${CXX} ${CFLAGS} ${LDFLAGS} -o ${TARGET} ${OBJS} ${MATH} ${PTHREAD} ${SODIUM} ${INC} ${LIB}
 
 server.o : server.cpp server.hpp
@@ -33,7 +33,7 @@ server_init.o : server_init.cpp server_init.hpp
 	${CXX} ${CFLAGS} -c server_init.cpp ${INC}
 
 sodium_utils.o : sodium_utils.cpp sodium_utils.hpp
-	${CXX} ${CFLAGS} -c sodium_utils.cpp ${INC} ${SODIUM}
+	${CXX} ${CFLAGS} -c sodium_utils.cpp ${INC}
 
 stringify.o : stringify.cpp stringify.hpp
 	${CXX} ${CFLAGS} -c stringify.cpp ${INC}

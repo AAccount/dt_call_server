@@ -76,6 +76,7 @@ int main(int argc, char* argv[])
 		exit(1); //with no udp thread the server cannot handle any calls
 	}
 
+	std::unique_ptr<unsigned char[]> inputBufferArray = std::make_unique<unsigned char[]>(COMMANDSIZE);
 	while(true) //forever
 	{
 #ifdef VERBOSE
@@ -126,7 +127,8 @@ int main(int argc, char* argv[])
 #endif
 
 				//read the socket and make sure it wasn't just a socket death notice
-				unsigned char inputBuffer[COMMANDSIZE + 1] = {};
+				unsigned char* inputBuffer = inputBufferArray.get();
+				memset(inputBuffer, 0, COMMANDSIZE);
 				const int amountRead = read(clientTableEntry.first, inputBuffer, COMMANDSIZE);
 				if(amountRead < 1)
 				{
@@ -565,10 +567,12 @@ void* udpThread(void* ptr)
 		logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 
+	std::unique_ptr<unsigned char[]> mediaBufferArray = std::make_unique<unsigned char[]>(MEDIASIZE);
 	while(true)
 	{
 		//setup buffer to receive on udp socket
-		unsigned char mediaBuffer[MEDIASIZE+1] = {};
+		unsigned char* mediaBuffer = mediaBufferArray.get();
+		memset(mediaBuffer, 0, MEDIASIZE);
 		struct sockaddr_in sender;
 		socklen_t senderLength = sizeof(struct sockaddr_in);
 
@@ -597,10 +601,9 @@ void* udpThread(void* ptr)
 
 			const std::string ip = std::string(inet_ntoa(sender.sin_addr));
 
-			unsigned char trimmedReceive [receivedLength] = {};
-			unsigned char decrypted [receivedLength] = {}; //extra space will be zeroed creating an automatically zero terminated string
-			memcpy(trimmedReceive, mediaBuffer, receivedLength);
-			int unsealok = crypto_box_seal_open(decrypted, trimmedReceive, receivedLength, sodiumPublicKey, sodiumPrivateKey);
+			std::unique_ptr<unsigned char[]> decryptedArray = std::make_unique<unsigned char[]>(MEDIASIZE);
+			unsigned char* decrypted = decryptedArray.get(); //extra space will be zeroed creating an automatically zero terminated string
+			int unsealok = crypto_box_seal_open(decrypted, mediaBuffer, receivedLength, sodiumPublicKey, sodiumPrivateKey);
 			if(unsealok != 0)
 			{
 				const std::string error = "udp bad unseal";

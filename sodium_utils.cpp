@@ -71,16 +71,13 @@ std::string SodiumUtils::randomString(int length)
 void SodiumUtils::sodiumEncrypt(bool asym, const unsigned char* input, int inputLength, const unsigned char* myPrivate, const unsigned char* yourPublic, std::unique_ptr<unsigned char[]>& output, int& outputLength)
 {
 	//setup nonce (like password salt)
-	int nonceLength = 0;
+	int nonceLength = crypto_secretbox_NONCEBYTES;
 	if(asym)
 	{
 		nonceLength = crypto_box_NONCEBYTES;
 	}
-	else
-	{
-		nonceLength = crypto_secretbox_NONCEBYTES;
-	}
-	unsigned char nonce[nonceLength] = {};
+	std::unique_ptr<unsigned char[]> nonceArray = std::make_unique<unsigned char[]>(nonceLength);
+	unsigned char* nonce = nonceArray.get();
 	randombytes_buf(nonce, nonceLength);
 
 	//setup cipher text
@@ -125,15 +122,12 @@ void SodiumUtils::sodiumDecrypt(bool asym, const unsigned char* input, int input
 	//input[nonce|message length|encrypted]
 
 	//extracts nonce (sorta like a salt)
-	int nonceLength = 0;
+	int nonceLength = crypto_secretbox_NONCEBYTES;
 	if(asym)
 	{
 		nonceLength = crypto_box_NONCEBYTES;
 	}
-	else
-	{
-		nonceLength = crypto_secretbox_NONCEBYTES;
-	}
+
 	if(nonceLength > inputLength)
 	{
 		//invalid encrypted bytes, doesn't have a nonce
@@ -141,7 +135,8 @@ void SodiumUtils::sodiumDecrypt(bool asym, const unsigned char* input, int input
 		outputLength = 0;
 		return;
 	}
-	unsigned char nonce[nonceLength] = {};
+	std::unique_ptr<unsigned char[]> nonceArray = std::make_unique<unsigned char[]>(nonceLength);
+	unsigned char* nonce = nonceArray.get();
 	memcpy(nonce, input, nonceLength);
 
 	//get the message length (and figure out the cipher text length)
@@ -167,10 +162,12 @@ void SodiumUtils::sodiumDecrypt(bool asym, const unsigned char* input, int input
 		return;
 	}
 
-	unsigned char cipherText[cipherLength] = {};
+	std::unique_ptr<unsigned char[]> cipherTextArray = std::make_unique<unsigned char[]>(cipherLength);
+	unsigned char* cipherText = cipherTextArray.get();
 	memcpy(cipherText, input+crypto_box_NONCEBYTES+sizeof(uint32_t), cipherLength);
 	//store the message in somewhere it is guaranteed to fit in case messageLength is bogus/malicious
-	unsigned char messageStorage[cipherLength] = {};
+	std::unique_ptr<unsigned char[]> messageStorageArray = std::make_unique<unsigned char[]>(cipherLength);
+	unsigned char* messageStorage = messageStorageArray.get();
 
 	int libsodiumOK = 0;
 	if(asym)
