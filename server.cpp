@@ -146,31 +146,37 @@ int main(int argc, char* argv[])
 				 */
 				if(clientTableEntry.second->isNew())
 				{
-					if(amountRead == crypto_box_PUBLICKEYBYTES)
+					const std::string ip = ipFromFd(clientTableEntry.first);
+					std::unique_ptr<unsigned char[]> decryptedInputBuffer = std::make_unique<unsigned char[]>(COMMANDSIZE);
+					unsigned char* initialTempPublic = decryptedInputBuffer.get(); //extra space will be zeroed
+					int unsealok = crypto_box_seal_open(initialTempPublic, inputBuffer, amountRead, sodiumPublicKey, sodiumPrivateKey);
+					if(unsealok != 0)
 					{
-						//send the equivalent of the SSL key
-						unsigned char initialTempPublic[crypto_box_PUBLICKEYBYTES] = {};
-						memcpy(initialTempPublic, inputBuffer, crypto_box_PUBLICKEYBYTES);
-						std::unique_ptr<unsigned char[]> encTCPKey;
-						int encTCPKeyLength = 0;
-						SodiumUtils::sodiumEncrypt(true, clientTableEntry.second->getSymmetricKey(), crypto_secretbox_KEYBYTES, sodiumPrivateKey, initialTempPublic, encTCPKey, encTCPKeyLength);
-						if(encTCPKeyLength > 0)
+						const std::string error = "bad initial sodium socket setup";
+						logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::DONTKNOW() , Log::TYPE::ERROR, ip).toString());
+						continue;
+					}
+
+					//send the equivalent of the SSL key
+					std::unique_ptr<unsigned char[]> encTCPKey;
+					int encTCPKeyLength = 0;
+					SodiumUtils::sodiumEncrypt(true, clientTableEntry.second->getSymmetricKey(), crypto_secretbox_KEYBYTES, sodiumPrivateKey, initialTempPublic, encTCPKey, encTCPKeyLength);
+					if(encTCPKeyLength > 0)
+					{
+						const int errValue = write(clientTableEntry.first, encTCPKey.get(), encTCPKeyLength);
+						if(errValue == -1)
 						{
-							const int errValue = write(clientTableEntry.first, encTCPKey.get(), encTCPKeyLength);
-							if(errValue == -1)
-							{
-								const std::string ip = ipFromFd(clientTableEntry.first);
-								const std::string error = "initial sodium socket setup write errno " + std::to_string(errno) + " " + std::string(strerror(errno));
-								logger->insertLog(Log(Log::TAG::TCP, error, Log::DONTKNOW(), Log::TYPE::ERROR, ip).toString());
-								removals.push_back(clientTableEntry.first);
-							}
-							clientTableEntry.second->hasBeenSeen();
-						}
-						else //sodium encrypted command socket failed. the client can try again
-						{
+							const std::string error = "initial sodium socket setup write errno " + std::to_string(errno) + " " + std::string(strerror(errno));
+							logger->insertLog(Log(Log::TAG::TCP, error, Log::DONTKNOW(), Log::TYPE::ERROR, ip).toString());
 							removals.push_back(clientTableEntry.first);
 						}
+							clientTableEntry.second->hasBeenSeen();
 					}
+					else //sodium encrypted command socket failed. the client can try again
+					{
+						removals.push_back(clientTableEntry.first);
+					}
+
 					continue; //sent the initial key. nothing left to do for this client
 				}
 

@@ -4,7 +4,7 @@
 
 const std::string& VERSION()
 {
-	const static std::string value = "7.3: {git revision here}";
+	const static std::string value = "7.4: {git revision here}";
 	return value;
 }
 
