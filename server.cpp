@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
 				if(clientTableEntry.second->isNew())
 				{
 					const std::string ip = ipFromFd(clientTableEntry.first);
-					std::unique_ptr<unsigned char[]> decryptedInputBuffer = std::make_unique<unsigned char[]>(COMMANDSIZE);
+					std::unique_ptr<unsigned char[]> decryptedInputBuffer = std::make_unique<unsigned char[]>(COMMANDSIZE);//need to have space for malicious input that may be as long as the whole buffer
 					unsigned char* initialTempPublic = decryptedInputBuffer.get(); //extra space will be zeroed
 					int unsealok = crypto_box_seal_open(initialTempPublic, inputBuffer, amountRead, sodiumPublicKey, sodiumPrivateKey);
 					if(unsealok != 0)
