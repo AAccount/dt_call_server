@@ -5,19 +5,26 @@ SODIUM = -lsodium
 
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
- OPTCFLAGS = -flto -O2 -march=native -Werror -fPIE -D_FORTIFY_SOURCE=2
- CFLAGS = -g -Werror -fPIE
- LDFLAGS = -pie
- CXX = g++ -std=c++14
+	ifeq ($(shell uname -p),ppc64le)
+		#Only alternate arch ever tested with dtoperator courtesy of a Raptor Blackbird
+		NATIVECPU = -mcpu=native
+	else
+		#Assume x86(_64) unless otherwise
+		NATIVECPU = -march=native
+	endif
+	OPTCFLAGS = -flto -O2 ${NATIVECPU} -Werror -fPIE -D_FORTIFY_SOURCE=2
+	CFLAGS = -g -Werror -fPIE
+	LDFLAGS = -pie
+	CXX = g++ -std=c++14
 endif
 
 ifeq ($(UNAME),FreeBSD)
- OPTCFLAGS = -O2 -march=native -Werror -fPIE
- CFLAGS = -g -Werror -fPIE
- LDFLAGS = -pie
- INC = -I /usr/local/include
- LIB = -L /usr/local/lib
- CXX = clang++ -std=c++14
+	OPTCFLAGS = -O2 -march=native -Werror -fPIE
+	CFLAGS = -g -Werror -fPIE
+	LDFLAGS = -pie
+	INC = -I /usr/local/include
+	LIB = -L /usr/local/lib
+	CXX = clang++ -std=c++14
 endif
 
 OBJS = server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Client.o sodium_utils.o stringify.o Logger.o
