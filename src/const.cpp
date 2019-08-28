@@ -4,7 +4,7 @@
 
 const std::string& VERSION()
 {
-	const static std::string value = "7.4: {git revision here}";
+	const static std::string value = "7.5: {git revision here}";
 	return value;
 }
 
@@ -23,35 +23,5 @@ const std::string& AES_PLACEHOLDER()
 const std::string& JBYTE()
 {
 	const static std::string value = "D";
-	return value;
-}
-
-const std::string& CONFFILE()
-{
-#ifdef LIVE
-	const static std::string value = "/etc/dtoperator/dtoperator.conf";
-#else
-	const static std::string value = "/home/Daniel/dtoperator/dtoperator.conf";
-#endif
-	return value;
-}
-
-const std::string& USERSFILE()
-{
-#ifdef LIVE
-	const static std::string value = "/etc/dtoperator/users";
-#else
-	const static std::string value = "/home/Daniel/dtoperator/users";
-#endif
-	return value;
-}
-
-const std::string& LOGFOLDER()
-{
-#ifdef LIVE
-	const static std::string value = "/var/log/dtoperator/";
-#else
-	const static std::string value = "/tmp/";
-#endif
 	return value;
 }

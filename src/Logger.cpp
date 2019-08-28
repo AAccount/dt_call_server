@@ -6,8 +6,20 @@
  */
 
 #include "Logger.hpp"
+#include "Utils.hpp"
 
 Logger* Logger::instance = NULL;
+std::string Logger::logLocation;
+bool Logger::alreadySetLogLocation = false;
+
+void Logger::setLogLocation(const std::string& folder)
+{
+	if(!alreadySetLogLocation)
+	{
+		logLocation = folder;
+	}
+	alreadySetLogLocation = true;
+}
 
 const std::string& Logger::LOGPREFIX()
 {
@@ -15,23 +27,29 @@ const std::string& Logger::LOGPREFIX()
 	return value;
 }
 
-Logger* Logger::getInstance(const std::string& pfolder)
+Logger* Logger::getInstance()
 {
 	if(instance == NULL)
 	{
-		instance = new Logger(pfolder);
+		instance = new Logger();
 	}
 	return instance;
 }
 
-Logger::Logger(const std::string& cfolder) :
-folder(cfolder),
+Logger::Logger() :
+folder(logLocation),
 logTimeT(time(NULL)),
 q(BlockingQ<std::string>())
 {
+	if(!Utils::fileExists(logLocation))
+	{
+		std::cerr << "Log folder doesn't exist: " << logLocation << "\n";
+		exit(1);
+	}
+	
 	const std::string nowString = std::string(ctime(&logTimeT));
 	const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
-	logfile = std::ofstream(folder+logName);
+	logfile = std::ofstream(folder+"/"+logName);
 
 	pthread_t diskThread;
 	if (pthread_create(&diskThread, NULL, diskRw, this) != 0) //have to pass "this", instance won't be available until the constructor exits
@@ -63,7 +81,7 @@ void* Logger::diskRw(void* context)
 			self->logTimeT = now;
 			const std::string nowString = std::string(ctime(&self->logTimeT));
 			const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
-			self->logfile.open(self->folder+logName);
+			self->logfile.open(self->folder+"/"+logName);
 		}
 		self->logfile << log << "\n";
 		self->logfile.flush(); // write immediately to the file

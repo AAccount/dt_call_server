@@ -9,6 +9,18 @@
 
 //static members
 UserUtils* UserUtils::instance;
+std::string UserUtils::usersFileLocation;
+bool UserUtils::alreadySetFileLocation = false;
+
+void UserUtils::setFileLocation(const std::string& fileLocation)
+{
+	const std::string FILE_NAME = "users";
+	if(!alreadySetFileLocation)
+	{
+		usersFileLocation = fileLocation + "/" + FILE_NAME;
+	}
+	alreadySetFileLocation = true;
+}
 
 UserUtils* UserUtils::getInstance()
 {
@@ -22,7 +34,13 @@ UserUtils* UserUtils::getInstance()
 UserUtils::UserUtils()
 {
 	//generate all user objects and have them accessible by name
-	std::ifstream usersfile(USERSFILE());
+	if(!Utils::fileExists(usersFileLocation))
+	{
+		std::cerr << "Users file does not exist: " << usersFileLocation << "\n";
+		exit(1);
+	}
+	
+	std::ifstream usersfile(usersFileLocation);
 	std::string line;
 
 	while(std::getline(usersfile, line))
@@ -129,7 +147,7 @@ void UserUtils::setChallenge(const std::string& username, const std::string& cha
 	else
 	{
 		std::string error = "trying to set challenge for somebody that doesn't exist: " + username;
-		Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+		Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 }
 
@@ -144,7 +162,7 @@ void UserUtils::setSessionKey(const std::string& username, const std::string& se
 	else
 	{
 		std::string error = "trying to set a session key for somebody that doesn't exist: " + username;
-		Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+		Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 }
 
@@ -160,7 +178,7 @@ void UserUtils::setCommandFd(const std::string& sessionid, int fd)
 	else
 	{
 		std::string error = "trying to set a command file descriptor for a session that isn't registered";
-		Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+		Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 }
 
@@ -193,7 +211,7 @@ void UserUtils::clearSession(const std::string& username, bool keepudp)
 	else
 	{
 		std::string error = "trying to clear a session for somebody that doesn't exist: " + username;
-		Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+		Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 }
 
@@ -216,7 +234,7 @@ std::string UserUtils::userFromCommandFd(int fd) const
 	}
 
 	std::string error="no user matches the command fd supplied";
-	Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+	Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	return "";
 }
 
@@ -227,7 +245,7 @@ std::string UserUtils::userFromSessionKey(const std::string& sessionid) const
 		return sessionkeyMap.at(sessionid)->getUname();
 	}
 	std::string error = "no user matches the session id supplied";
-	Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+	Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	return "";
 }
 
@@ -239,7 +257,7 @@ int UserUtils::getCommandFd(const std::string& user) const
 		return userObj->getCommandfd();
 	}
 	std::string error = "tried to get a comamnd fd for somebody that doesn't exist: " + user;
-	Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+	Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	return 0;
 }
 
@@ -250,7 +268,7 @@ std::string UserUtils::getSessionKey(const std::string& uname) const
 		return nameMap.at(uname)->getSessionkey();
 	}
 	std::string error = "tried to get a session key for somebody that doesn't exist: " + uname;
-	Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+	Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	return "";
 }
 
@@ -274,7 +292,7 @@ void UserUtils::setUdpSummary(const std::string& sessionkey, const std::string& 
 	else
 	{
 		std::string error = "tried to set a udp summary for an unregistered session key";
-		Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+		Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 }
 
@@ -288,7 +306,7 @@ void UserUtils::setUdpInfo(const std::string& sessionkey, struct sockaddr_in inf
 	else
 	{
 		std::string error = "tried to set a udp sockaddr_in for an unregistered session key";
-		Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+		Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 }
 
@@ -312,7 +330,7 @@ void UserUtils::clearUdpInfo(const std::string& uname)
 	else
 	{
 		std::string error = "tried to clear udp info for somebody that doesn't exist: " + uname;
-		Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+		Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 }
 
@@ -334,7 +352,7 @@ void UserUtils::setUserState(const std::string& uname, ustate newstate)
 	else
 	{
 		std::string error = "tried to set user state for somebody that doesn't exist: " + uname;
-		Logger::getInstance(LOGFOLDER())->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+		Logger::getInstance()->insertLog(Log(Log::TAG::USERUTILS, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 }
 

@@ -9,9 +9,17 @@
  */
 #include "server_init.hpp"
 
-void readServerConfig(int &cmdPort, int &mediaPort, std::string &sodiumPublic, std::string &sodiumPrivate, Logger* logger)
+void readServerConfig(std::string& settingsLocation, int& cmdPort, int& mediaPort, std::string& sodiumPublic, std::string& sodiumPrivate, Logger* logger)
 {
-	std::ifstream conffile(CONFFILE());
+	const std::string FILE_NAME = "dtoperator.conf";
+	const std::string fileLocation = settingsLocation + "/" + FILE_NAME;
+	if(!Utils::fileExists(fileLocation))
+	{
+		std::cerr << "config file " << FILE_NAME << " not found in " << fileLocation << "\n";
+		exit(1);
+	}
+	
+	std::ifstream conffile(fileLocation);
 	std::string line;
 	bool gotCmdPort = false, gotMediaPort = false, gotSodiumPublic =false, gotSodiumPrivate = false;
 
@@ -91,12 +99,12 @@ void readServerConfig(int &cmdPort, int &mediaPort, std::string &sodiumPublic, s
 	{
 		if(!gotSodiumPublic)
 		{
-			std::string error = "Your did not specify a SODIUM PUBLIC key in: " + CONFFILE() + "\n";
+			std::string error = "Your did not specify a SODIUM PUBLIC key in: " + fileLocation + "\n";
 			std::cerr << error << "\n";
 		}
 		if(!gotSodiumPrivate)
 		{
-			std::string error = "Your did not specify a SODIUM PRIVATE key in: " + CONFFILE() + "\n";
+			std::string error = "Your did not specify a SODIUM PRIVATE key in: " + fileLocation + "\n";
 			std::cerr << error << "\n";
 		}
 		exit(1);

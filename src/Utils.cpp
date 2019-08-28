@@ -42,3 +42,12 @@ std::string Utils::dumpSmallFile(const std::string& path)
 	fileStream.close();
 	return stringStream.str();
 }
+
+//https://stackoverflow.com/questions/12774207/fastest-way-to-check-if-a-file-exist-using-standard-c-c11-c
+bool Utils::fileExists(const std::string& path)
+{
+	struct stat buffer;
+	memset(&buffer, 0, sizeof(struct stat));
+	const int result = stat(path.c_str(), &buffer);
+	return (result == 0);
+}

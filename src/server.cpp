@@ -10,14 +10,57 @@
 //associates socket descriptors to their ssl structs
 std::unordered_map<int, std::unique_ptr<Client>> clients;
 
-UserUtils* userUtils = UserUtils::getInstance();
-Logger* logger = Logger::getInstance(LOGFOLDER());
-
 int main(int argc, char* argv[])
 {
+	std::string settingsLocation = "/etc/dtoperator";
+	std::string logLocation = "/var/log/dtoperator";
+	
+	//read command line arguments if they're there
+	if(argc == 5)
+	{
+		const std::string SETTINGS = "--settings";
+		const std::string LOG = "--log";
+		
+		const std::string arg1(argv[1]);
+		const std::string value1(argv[2]);
+		const std::string arg2(argv[3]);
+		const std::string value2(argv[4]);
+		
+		if(arg1 == SETTINGS)
+		{
+			settingsLocation = value1;
+		}
+		if(arg1 == LOG)
+		{
+			logLocation = value1;
+		}
+		
+		if(arg2 == SETTINGS)
+		{
+			settingsLocation = value2;
+		}
+		if(arg2 == LOG)
+		{
+			logLocation = value2;
+		}
+	}
+	else
+	{
+		std::cout << "Command line arguments dtoperator --settings /path/to/settings --log /where/logs/go" << "\n";
+		std::cout << "Using default values for settings and log location " << settingsLocation << " " << logLocation << "\n";
+	}
+	
+	//initialize the logger first because user utils needs the logger
+	Logger::setLogLocation(logLocation);
+	Logger* logger = Logger::getInstance();
+
+	//initialize user utils
+	UserUtils::setFileLocation(settingsLocation);
+	UserUtils* userUtils = UserUtils::getInstance();
+
 	const std::string start = "starting call operator V" + VERSION();
 	logger->insertLog(Log(Log::TAG::STARTUP, start, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()).toString());
-
+	
 	//initialize library
 	if(sodium_init() < 0)
 	{
@@ -32,7 +75,7 @@ int main(int argc, char* argv[])
 	std::string sodiumPrivate = "";
 
 	//use a helper function to read the config file
-	readServerConfig(cmdPort, mediaPort, sodiumPublic, sodiumPrivate, logger);
+	readServerConfig(settingsLocation, cmdPort, mediaPort, sodiumPublic, sodiumPrivate, logger);
 
 	//socket read timeout option
 	struct timeval unauthTimeout; //for new sockets
@@ -536,8 +579,7 @@ int main(int argc, char* argv[])
 	}
 
 	//stop user utilities
-	UserUtils* instance = UserUtils::getInstance();
-	instance->killInstance();
+	userUtils->killInstance();
 	
 	//close ports
 	close(cmdFD);
@@ -546,6 +588,9 @@ int main(int argc, char* argv[])
 
 void* udpThread(void* ptr)
 {
+	UserUtils* userUtils = UserUtils::getInstance();
+	Logger* logger = Logger::getInstance();
+
 	//unpackage media thread args
 	struct UdpArgs* receivedArgs = (struct UdpArgs*)ptr;
 	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
@@ -745,6 +790,7 @@ std::vector<std::string> parse(unsigned char command[])
 // sd: a client's socket descriptor
 void removeClient(int sd)
 {
+	UserUtils* userUtils = UserUtils::getInstance();
 	const std::string uname = userUtils->userFromCommandFd(sd);
 
 	shutdown(sd, 2);
@@ -759,8 +805,10 @@ void removeClient(int sd)
 //	or someone trying to get smart with the server
 bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG tag)
 {
-	bool real = true;
+	Logger* logger = Logger::getInstance();
 
+	bool real = true;
+	UserUtils* userUtils = UserUtils::getInstance();
 	const std::string awith = userUtils->getCallWith(persona);
 	const std::string bwith = userUtils->getCallWith(personb);
 	if((awith == "") || (bwith == ""))
@@ -794,6 +842,8 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 // write a message to a client
 void write2Client(const std::string& response, int sd)
 {
+	Logger* logger = Logger::getInstance();
+
 	//in case the client disappears suddenly
 	if(clients.count(sd) == 0)
 	{
@@ -809,6 +859,7 @@ void write2Client(const std::string& response, int sd)
 
 	if(errValue == -1)
 	{
+		UserUtils* userUtils = UserUtils::getInstance();
 		const std::string user = userUtils->userFromCommandFd(sd);
 		const std::string ip = ipFromFd(sd);
 		const std::string error = "write errno " + std::to_string(errno) + " " + std::string(strerror(errno));
@@ -853,7 +904,10 @@ bool legitimateAscii(unsigned char* buffer, int length)
 
 void sendCallEnd(std::string user)
 {
+	Logger* logger = Logger::getInstance();
+
 	//reset both peoples's states and remove the call pair record
+	UserUtils* userUtils = UserUtils::getInstance();
 	const std::string other = userUtils->getCallWith(user);
 	userUtils->setUserState(user, NONE);
 	userUtils->setUserState(other, NONE);
@@ -868,6 +922,8 @@ void sendCallEnd(std::string user)
 
 void socketAccept(int cmdFD, struct timeval* unauthTimeout)
 {
+	Logger* logger = Logger::getInstance();
+
 	struct sockaddr_in cli_addr;
 	socklen_t clilen = sizeof(cli_addr);
 
@@ -902,6 +958,7 @@ void socketAccept(int cmdFD, struct timeval* unauthTimeout)
 
 bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string& errorMessage, const std::string& user, const std::string& ip)
 {
+	Logger* logger = Logger::getInstance();
 	try
 	{
 		const uint64_t timestamp = (uint64_t) std::stoull(tsString); //catch is for this

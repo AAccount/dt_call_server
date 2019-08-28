@@ -18,13 +18,16 @@
 class Logger
 {
 public:
-	static Logger* getInstance(const std::string& folder);
+	static void setLogLocation(const std::string& folder);
+	static Logger* getInstance();
 	void insertLog(const std::string& l);
 
 private:
 	static Logger* instance;
-	explicit Logger(const std::string& cfolder);
+	explicit Logger();
 	virtual ~Logger();
+	static bool alreadySetLogLocation;
+	static std::string logLocation;
 
 	//output log (changed every 24 hours)
 	std::ofstream logfile;

@@ -36,8 +36,9 @@
 class UserUtils
 {
 public:
+	static void setFileLocation(const std::string& fileLocation);
 	static UserUtils* getInstance();
-
+	
 	bool getSodiumPublicKey(const std::string& username, unsigned char (&output)[crypto_box_PUBLICKEYBYTES]) const;
 	std::string getSodiumKeyDump(const std::string& uname) const;
 
@@ -73,6 +74,8 @@ private:
 	UserUtils();
 	~UserUtils();
 	static UserUtils* instance;
+	static std::string usersFileLocation;
+	static bool alreadySetFileLocation;
 
 	//various hash maps to lookup the user by.
 	//	a crude in memory db.

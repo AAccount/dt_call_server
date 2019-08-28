@@ -18,6 +18,8 @@
 #include <time.h>
 #include <stdint.h>
 #include <sodium.h>
+#include <sys/stat.h>
+#include <string.h>
 #include "const.h"
 
 namespace Utils
@@ -27,7 +29,9 @@ namespace Utils
 
 	//verify basic key file formatting based on header and string length
 	std::string dumpSmallFile(const std::string& path);
-
+	
+	//check if a file exists
+	bool fileExists(const std::string& path);
 };
 
 #endif /* UTILS_HPP_ */
