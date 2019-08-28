@@ -1,7 +1,7 @@
 /*
  * server.cpp
  *
- *  Created on: December 8, 2015 (according to testing public.pem)
+ *  Created on: December 8, 2015
  *      Author: Daniel
  */
 
@@ -15,7 +15,6 @@ Logger* logger = Logger::getInstance(LOGFOLDER());
 
 int main(int argc, char* argv[])
 {
-
 	const std::string start = "starting call operator V" + VERSION();
 	logger->insertLog(Log(Log::TAG::STARTUP, start, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()).toString());
 

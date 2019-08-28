@@ -6,7 +6,7 @@ SODIUM = -lsodium
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
 	ifeq ($(shell uname -p),ppc64le)
-		#Only alternate arch ever tested with dtoperator courtesy of a Raptor Blackbird
+		#Only alternate arch ever tested with dtoperator courtesy of my Raptor Blackbird
 		NATIVECPU = -mcpu=native
 	else
 		#Assume x86(_64) unless otherwise
@@ -33,41 +33,41 @@ TARGET = dtoperator
 all: ${OBJS}
 	${CXX} ${CFLAGS} ${LDFLAGS} -o ${TARGET} ${OBJS} ${MATH} ${PTHREAD} ${SODIUM} ${INC} ${LIB}
 
-server.o : server.cpp server.hpp
-	${CXX} ${CFLAGS} -c server.cpp ${INC}
+server.o : src/server.cpp src/server.hpp
+	${CXX} ${CFLAGS} -c src/server.cpp ${INC}
 	
-server_init.o : server_init.cpp server_init.hpp
-	${CXX} ${CFLAGS} -c server_init.cpp ${INC}
+server_init.o : src/server_init.cpp src/server_init.hpp
+	${CXX} ${CFLAGS} -c src/server_init.cpp ${INC}
 
-sodium_utils.o : sodium_utils.cpp sodium_utils.hpp
-	${CXX} ${CFLAGS} -c sodium_utils.cpp ${INC}
+sodium_utils.o : src/sodium_utils.cpp src/sodium_utils.hpp
+	${CXX} ${CFLAGS} -c src/sodium_utils.cpp ${INC}
 
-stringify.o : stringify.cpp stringify.hpp
-	${CXX} ${CFLAGS} -c stringify.cpp ${INC}
+stringify.o : src/stringify.cpp src/stringify.hpp
+	${CXX} ${CFLAGS} -c src/stringify.cpp ${INC}
 
-UserUtils.o : UserUtils.cpp UserUtils.hpp
-	${CXX} ${CFLAGS} -c UserUtils.cpp ${INC}
+UserUtils.o : src/UserUtils.cpp src/UserUtils.hpp
+	${CXX} ${CFLAGS} -c src/UserUtils.cpp ${INC}
 	
-Log.o : Log.cpp Log.hpp
-	${CXX} ${CFLAGS} -c Log.cpp ${INC}
+Log.o : src/Log.cpp src/Log.hpp
+	${CXX} ${CFLAGS} -c src/Log.cpp ${INC}
 	
-Utils.o : Utils.cpp Utils.hpp
-	${CXX} ${CFLAGS} -c Utils.cpp ${INC}
+Utils.o : src/Utils.cpp src/Utils.hpp
+	${CXX} ${CFLAGS} -c src/Utils.cpp ${INC}
 	
-User.o : User.cpp User.hpp
-	${CXX} ${CFLAGS} -c User.cpp ${INC}
+User.o : src/User.cpp src/User.hpp
+	${CXX} ${CFLAGS} -c src/User.cpp ${INC}
 
-const.o : const.cpp const.h
-	${CXX} ${CFLAGS} -c const.cpp ${INC}
+const.o : src/const.cpp src/const.h
+	${CXX} ${CFLAGS} -c src/const.cpp ${INC}
 
-Logger.o : Logger.cpp Logger.hpp BlockingQ.hpp
-	${CXX} ${CFLAGS} -c Logger.cpp ${INC}
+Logger.o : src/Logger.cpp src/Logger.hpp src/BlockingQ.hpp
+	${CXX} ${CFLAGS} -c src/Logger.cpp ${INC}
 	
-Client.o : Client.cpp Client.hpp
-	${CXX} ${CFLAGS} -c Client.cpp ${INC}
+Client.o : src/Client.cpp src/Client.hpp
+	${CXX} ${CFLAGS} -c src/Client.cpp ${INC}
 
-keygen: keygen.cpp Utils.o keygen.hpp const.o
-	${CXX} ${CFLAGS} ${LDFLAGS} ${SODIUM} -o keygen keygen.cpp Utils.cpp const.cpp stringify.cpp sodium_utils.cpp ${INC} ${LIB}
+keygen: src/keygen.cpp Utils.o src/keygen.hpp const.o
+	${CXX} ${CFLAGS} ${LDFLAGS} ${SODIUM} -o keygen src/keygen.cpp src/Utils.cpp src/const.cpp src/stringify.cpp src/sodium_utils.cpp ${INC} ${LIB}
 	
 clean:
 	rm dtoperator *.o keygen
