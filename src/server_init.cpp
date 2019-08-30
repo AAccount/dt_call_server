@@ -153,6 +153,13 @@ void setupListeningSocket(int type, struct timeval* timeout, int* fd, struct soc
 			std::cerr << error << "\n";
 			exit(1);
 		}
+		const int reuse = 1;
+		if(setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse, sizeof(int)) < 0)
+		{
+			std::string error="cannot set tcp socket options (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+			std::cerr << error << "\n";
+			exit(1);
+		}
 		listen(*fd, MAXLISTENWAIT);
 	}
 }
