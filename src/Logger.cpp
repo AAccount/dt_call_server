@@ -51,13 +51,16 @@ q(BlockingQ<std::string>())
 	const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
 	logfile = std::ofstream(folder+"/"+logName);
 
-	pthread_t diskThread;
-	if (pthread_create(&diskThread, NULL, diskRw, this) != 0) //have to pass "this", instance won't be available until the constructor exits
+	try
+	{
+		std::thread diskThread(&Logger::diskRw, this);
+		diskThread.detach();
+	}
+	catch(std::system_error& e)
 	{
 		std::cerr << "cannot create the disk rw thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 		exit(1);
 	}
-
 }
 
 Logger::~Logger()
@@ -66,25 +69,24 @@ Logger::~Logger()
 	logfile.close();
 }
 
-void* Logger::diskRw(void* context)
+void Logger::diskRw()
 {
-	Logger* self = static_cast<Logger*>(context);
 	while(true)
 	{
-		const std::string log = self->q.pop();
+		const std::string log = q.pop();
 
 		//figure out if the current log is over 1 day old
 		const time_t now = time(NULL);
-		if((now - self->logTimeT) > 60*60*24)
+		if((now -logTimeT) > 60*60*24)
 		{//if the log is too old, close it and start another one
-			self->logfile.close();
-			self->logTimeT = now;
-			const std::string nowString = std::string(ctime(&self->logTimeT));
+			logfile.close();
+			logTimeT = now;
+			const std::string nowString = std::string(ctime(&logTimeT));
 			const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
-			self->logfile.open(self->folder+"/"+logName);
+			logfile.open(folder+"/"+logName);
 		}
-		self->logfile << log << "\n";
-		self->logfile.flush(); // write immediately to the file
+		logfile << log << "\n";
+		logfile.flush(); // write immediately to the file
 
 		std::cout << log << "\n";
 	}

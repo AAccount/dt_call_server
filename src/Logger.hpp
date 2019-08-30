@@ -11,7 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <queue>
-#include <pthread.h>
+#include <thread>
 #include <string.h>
 #include "BlockingQ.hpp"
 
@@ -37,7 +37,7 @@ private:
 	BlockingQ<std::string> q;
 
 	//log disk writing thread stuff
-	static void* diskRw(void* context);
+	void diskRw();
 
 	//don't allow copying the logger. there is only the 1
 	Logger(const Logger&) = delete;
