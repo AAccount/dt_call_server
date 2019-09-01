@@ -104,16 +104,18 @@ int main(int argc, char* argv[])
 	char* sodiumPrivateStringMemory = &sodiumPrivate[0];
 	randombytes_buf(sodiumPrivateStringMemory, sodiumPrivate.length());
 
-	//package the stuff to start the udp thread and start it
-	struct UdpArgs* args = (struct UdpArgs*)malloc(sizeof(struct UdpArgs));
-	memset(args, 0, sizeof(struct UdpArgs));
-	args->port = mediaPort;
-	memcpy(args->sodiumPrivateKey, sodiumPrivateKey, crypto_box_SECRETKEYBYTES);
-	memcpy(args->sodiumPublicKey, sodiumPublicKey, crypto_box_PUBLICKEYBYTES);
-	pthread_t callThread;
-	if(pthread_create(&callThread, NULL, udpThread, args) != 0)
+	std::unique_ptr<unsigned char[]> udpPublicKey = std::make_unique<unsigned char[]>(crypto_box_PUBLICKEYBYTES);
+	memcpy(udpPublicKey.get(), sodiumPublicKey, crypto_box_PUBLICKEYBYTES);
+	std::unique_ptr<unsigned char[]> udpPrivateKey = std::make_unique<unsigned char[]>(crypto_box_SECRETKEYBYTES);
+	memcpy(udpPublicKey.get(), sodiumPrivateKey, crypto_box_SECRETKEYBYTES);
+	try
 	{
-		std::string error = "cannot create the udp thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		std::thread udpThreadObj(udpThread, mediaPort, std::move(udpPublicKey), std::move(udpPrivateKey));
+		udpThreadObj.detach();
+	}
+	catch(std::system_error& e)
+	{
+		std::string error = "cannot create the udp thread (" + std::string(e.what()) + ") ";
 		logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 		exit(1); //with no udp thread the server cannot handle any calls
 	}
@@ -586,23 +588,16 @@ int main(int argc, char* argv[])
 	return 0; 
 }
 
-void* udpThread(void* ptr)
+void udpThread(int port, std::unique_ptr<unsigned char[]> publicKey, std::unique_ptr<unsigned char[]> privateKey)
 {
 	UserUtils* userUtils = UserUtils::getInstance();
 	Logger* logger = Logger::getInstance();
 
-	//unpackage media thread args
-	struct UdpArgs* receivedArgs = (struct UdpArgs*)ptr;
-	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
-	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
-	memcpy(sodiumPublicKey, receivedArgs->sodiumPublicKey, crypto_box_PUBLICKEYBYTES);
-	memcpy(sodiumPrivateKey, receivedArgs->sodiumPrivateKey, crypto_box_SECRETKEYBYTES);
-	const int mediaPort = receivedArgs->port;
-
-	//clear the keys from memory before free-ing
-	randombytes_buf(receivedArgs->sodiumPublicKey, crypto_box_PUBLICKEYBYTES);
-	randombytes_buf(receivedArgs->sodiumPrivateKey, crypto_box_SECRETKEYBYTES);
-	free(ptr);
+	std::unique_ptr<unsigned char[]> sodiumPublicPtr = std::move(publicKey);
+	std::unique_ptr<unsigned char[]> sodiumPrivatePtr = std::move(privateKey);
+	unsigned char* sodiumPublicKey = sodiumPublicPtr.get();
+	unsigned char* sodiumPrivateKey= sodiumPrivatePtr.get();	
+	const int mediaPort = port;
 
 	//establish the udp socket for voice data
 	int mediaFd;
@@ -754,7 +749,6 @@ void* udpThread(void* ptr)
 			}
 		}
 	}
-	return NULL;
 }
 
 

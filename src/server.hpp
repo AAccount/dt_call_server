@@ -6,7 +6,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include <pthread.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -26,6 +25,7 @@
 #include <random>
 #include <algorithm>
 #include <memory>
+#include <thread>
 
 #include "Log.hpp"
 #include "UserUtils.hpp"
@@ -37,18 +37,11 @@
 #include "Client.hpp"
 #include "stringify.hpp"
 
-struct UdpArgs
-{
-	int port = 0;
-	unsigned char sodiumPublicKey[crypto_box_PUBLICKEYBYTES] = {};
-	unsigned char sodiumPrivateKey[crypto_box_SECRETKEYBYTES] = {};
-};
-
 //send a call end command. its own function (unlike the other commands) to detect dropped calls
 void sendCallEnd(std::string user);
 
-//dedicated function for handling a call. each call is processed on its own thread.
-void* udpThread(void* ptr);
+//dedicated function for handling a call. each call is processed on this thread.
+void udpThread(int port, std::unique_ptr<unsigned char[]> publicKey, std::unique_ptr<unsigned char[]> privateKey);
 
 //parse incoming server commands (split the incoming command string by the | character)
 std::vector<std::string> parse(unsigned char command[]);
