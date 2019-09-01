@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <netinet/in.h>
-#include <pthread.h>
 
 #include "Utils.hpp"
 #include "const.h"
