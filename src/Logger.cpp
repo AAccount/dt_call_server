@@ -39,7 +39,7 @@ Logger* Logger::getInstance()
 Logger::Logger() :
 folder(logLocation),
 logTimeT(time(NULL)),
-q(BlockingQ<std::string>())
+q()
 {
 	if(!Utils::fileExists(logLocation))
 	{

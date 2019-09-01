@@ -9,7 +9,8 @@
 #define BLOCKINGQ_HPP_
 
 #include <queue>
-#include <pthread.h>
+#include <mutex>
+#include <condition_variable>
 
 template <class T>
 class BlockingQ
@@ -22,39 +23,40 @@ public:
 	T pop();
 
 private:
-	pthread_mutex_t qMutex;
-	pthread_cond_t wakeup;
+	std::condition_variable wakeup;
+	std::mutex qtex;
 	std::queue<T> q;
 };
 
 template<typename T>
-BlockingQ<T>::BlockingQ()
+BlockingQ<T>::BlockingQ() :
+q(),
+qtex(),
+wakeup()
 {
-	pthread_mutex_init(&qMutex, NULL);
-	pthread_cond_init(&wakeup, NULL);
-	q = std::queue<T>();
 }
 
 template<typename T>
 void BlockingQ<T>::push(const T& item)
 {
-	pthread_mutex_lock(&qMutex);
+	{
+		std::unique_lock<std::mutex> qLock(qtex);
 		q.push(item);
-	pthread_mutex_unlock(&qMutex);
-	pthread_cond_signal(&wakeup);
+	}
+	wakeup.notify_all();
 }
 
 template<typename T>
 T BlockingQ<T>::pop()
 {
-	pthread_mutex_lock(&qMutex);
-		while(q.empty())
-		{
-			pthread_cond_wait(&wakeup, &qMutex);
-		}
-		T item = q.front();
-		q.pop();
-	pthread_mutex_unlock(&qMutex);
+	std::unique_lock<std::mutex> qLock(qtex);
+	while (q.empty())
+	{
+		wakeup.wait(qLock);
+	}
+	T item = q.front();
+	q.pop();
+
 	return item;
 }
 #endif /* BLOCKINGQ_HPP_ */
