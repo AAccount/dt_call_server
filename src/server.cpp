@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
 	std::unique_ptr<unsigned char[]> udpPublicKey = std::make_unique<unsigned char[]>(crypto_box_PUBLICKEYBYTES);
 	memcpy(udpPublicKey.get(), sodiumPublicKey, crypto_box_PUBLICKEYBYTES);
 	std::unique_ptr<unsigned char[]> udpPrivateKey = std::make_unique<unsigned char[]>(crypto_box_SECRETKEYBYTES);
-	memcpy(udpPublicKey.get(), sodiumPrivateKey, crypto_box_SECRETKEYBYTES);
+	memcpy(udpPrivateKey.get(), sodiumPrivateKey, crypto_box_SECRETKEYBYTES);
 	try
 	{
 		std::thread udpThreadObj(udpThread, mediaPort, std::move(udpPublicKey), std::move(udpPrivateKey));
