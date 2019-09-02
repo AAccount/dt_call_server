@@ -3,12 +3,12 @@
 The VoIP server for my android and desktop Linux GTK client. Its dependancy is libsodium.
 
 Works on Linux:
-![Linux Screenshot](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20Fedora24.png "Call server running on Fedora 24 x64")
+![Linux Screenshot](https://github.com/AAccount/dt_call_server/blob/master/screenshots/Screenshot%20Fedora24.png "Call server running on Fedora 24 x64")
 and FreeBSD:
-![FreeBSD Screenshot](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20FreeBSD11.png "Call server running on FreeBSD 11 amd64")
+![FreeBSD Screenshot](https://github.com/AAccount/dt_call_server/blob/master/screenshots/Screenshot%20FreeBSD11.png "Call server running on FreeBSD 11 amd64")
 
 The server is written in C/(self taught)C++ to minimize resource usage. Coordinating 1 voice call on my former 2004 Pentium4 Northwood with 2GB of ram home server running Debian 8 x86 produces an occasional cpu spike of 0.5%.
-![CPU Usage 2004era P4](https://github.com/AAccount/dt_call_server/blob/master/Screenshot%20Live%20Call%20CPU.png)
+![CPU Usage 2004era P4](https://github.com/AAccount/dt_call_server/blob/master/screenshots/Screenshot%20Live%20Call%20CPU.png)
 
 Commands are sent as a string of characters delimited by the "|" character.
 
