@@ -34,7 +34,7 @@ UserUtils* UserUtils::getInstance()
 UserUtils::UserUtils()
 {
 	//generate all user objects and have them accessible by name
-	if(!Utils::fileExists(usersFileLocation))
+	if(!ServerUtils::fileExists(usersFileLocation))
 	{
 		std::cerr << "Users file does not exist: " << usersFileLocation << "\n";
 		exit(1);
@@ -58,8 +58,8 @@ UserUtils::UserUtils()
 		getline(ss, publicKeyPath, '>');
 
 		//cleanup the surrounding whitespace and strip the end of line comment
-		name = Utils::trim(name);
-		publicKeyPath = Utils::trim(publicKeyPath);
+		name = ServerUtils::trim(name);
+		publicKeyPath = ServerUtils::trim(publicKeyPath);
 
 		//need both a name and a public key to continue
 		if(name == "" || publicKeyPath == "")
@@ -69,7 +69,7 @@ UserUtils::UserUtils()
 		}
 
 		//read the user's sodium public key into a file
-		std::string sodiumKeyDump = Utils::dumpSmallFile(publicKeyPath);
+		std::string sodiumKeyDump = ServerUtils::dumpSmallFile(publicKeyPath);
 		std::string sodiumKeyDumpOriginal = sodiumKeyDump;
 
 		//destringify the user's sodium public key

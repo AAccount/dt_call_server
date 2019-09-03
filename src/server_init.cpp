@@ -13,7 +13,7 @@ void readServerConfig(std::string& settingsLocation, int& cmdPort, int& mediaPor
 {
 	const std::string FILE_NAME = "dtoperator.conf";
 	const std::string fileLocation = settingsLocation + "/" + FILE_NAME;
-	if(!Utils::fileExists(fileLocation))
+	if(!ServerUtils::fileExists(fileLocation))
 	{
 		std::cerr << "config file " << FILE_NAME << " not found in " << fileLocation << "\n";
 		exit(1);
@@ -38,8 +38,8 @@ void readServerConfig(std::string& settingsLocation, int& cmdPort, int& mediaPor
 		std::getline(ss, value, '=');
 
 		//cleanup the surrounding whitespace and strip the end of line comment
-		var = Utils::trim(var);
-		value = Utils::trim(value);
+		var = ServerUtils::trim(var);
+		value = ServerUtils::trim(value);
 
 		//if there is no value then go on to the next line
 		if(value == "")
@@ -61,7 +61,7 @@ void readServerConfig(std::string& settingsLocation, int& cmdPort, int& mediaPor
 		}
 		else if(var == "public_sodium")
 		{
-			std::string keyDump = Utils::dumpSmallFile(value);
+			std::string keyDump = ServerUtils::dumpSmallFile(value);
 			if(SodiumUtils::checkSodiumPublic(keyDump))
 			{
 				std::string header = SodiumUtils::SODIUM_PUBLIC_HEADER();
@@ -75,7 +75,7 @@ void readServerConfig(std::string& settingsLocation, int& cmdPort, int& mediaPor
 		}
 		else if(var == "private_sodium")
 		{
-			std::string keyDump = Utils::dumpSmallFile(value);
+			std::string keyDump = ServerUtils::dumpSmallFile(value);
 			if(SodiumUtils::checkSodiumPrivate(keyDump))
 			{
 				std::string header = SodiumUtils::SODIUM_PRIVATE_HEADER();

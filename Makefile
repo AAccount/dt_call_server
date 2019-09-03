@@ -27,7 +27,7 @@ ifeq ($(UNAME),FreeBSD)
 	CXX = clang++ -std=c++14
 endif
 
-OBJS = server.o server_init.o UserUtils.o Log.o Utils.o User.o const.o Client.o sodium_utils.o stringify.o Logger.o
+OBJS = server.o server_init.o UserUtils.o Log.o ServerUtils.o User.o const.o Client.o sodium_utils.o stringify.o Logger.o
 TARGET = dtoperator
 
 all: ${OBJS}
@@ -51,8 +51,8 @@ UserUtils.o : src/UserUtils.cpp src/UserUtils.hpp
 Log.o : src/Log.cpp src/Log.hpp
 	${CXX} ${CFLAGS} -c src/Log.cpp ${INC}
 	
-Utils.o : src/Utils.cpp src/Utils.hpp
-	${CXX} ${CFLAGS} -c src/Utils.cpp ${INC}
+ServerUtils.o : src/ServerUtils.cpp src/ServerUtils.hpp
+	${CXX} ${CFLAGS} -c src/ServerUtils.cpp ${INC}
 	
 User.o : src/User.cpp src/User.hpp
 	${CXX} ${CFLAGS} -c src/User.cpp ${INC}

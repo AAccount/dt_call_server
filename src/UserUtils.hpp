@@ -24,7 +24,7 @@
 #include <string.h>
 #include <netinet/in.h>
 
-#include "Utils.hpp"
+#include "ServerUtils.hpp"
 #include "const.h"
 #include "Log.hpp"
 #include "User.hpp"

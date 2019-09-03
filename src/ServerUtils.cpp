@@ -5,10 +5,10 @@
  *      Author: Daniel
  */
 
-#include "Utils.hpp"
+#include "ServerUtils.hpp"
 
 //https://stackoverflow.com/questions/1798112/removing-leading-and-trailing-spaces-from-a-string
-std::string Utils::trim (std::string const &input)
+std::string ServerUtils::trim (std::string const &input)
 {//
 	//nothing to trim in a blank string
 	if(input.length() == 0)
@@ -34,7 +34,7 @@ std::string Utils::trim (std::string const &input)
 	return input.substr(beginning, range);
 }
 
-std::string Utils::dumpSmallFile(const std::string& path)
+std::string ServerUtils::dumpSmallFile(const std::string& path)
 {
 	std::ifstream fileStream(path);
 	std::stringstream stringStream;
@@ -44,7 +44,7 @@ std::string Utils::dumpSmallFile(const std::string& path)
 }
 
 //https://stackoverflow.com/questions/12774207/fastest-way-to-check-if-a-file-exist-using-standard-c-c11-c
-bool Utils::fileExists(const std::string& path)
+bool ServerUtils::fileExists(const std::string& path)
 {
 	struct stat buffer;
 	memset(&buffer, 0, sizeof(struct stat));

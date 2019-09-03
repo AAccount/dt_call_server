@@ -30,7 +30,7 @@
 #include "Log.hpp"
 #include "UserUtils.hpp"
 #include "const.h"
-#include "Utils.hpp"
+#include "ServerUtils.hpp"
 #include "server_init.hpp"
 #include "Logger.hpp"
 #include "sodium_utils.hpp"

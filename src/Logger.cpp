@@ -6,7 +6,7 @@
  */
 
 #include "Logger.hpp"
-#include "Utils.hpp"
+#include "ServerUtils.hpp"
 
 Logger* Logger::instance = NULL;
 std::string Logger::logLocation;
@@ -41,7 +41,7 @@ folder(logLocation),
 logTimeT(time(NULL)),
 q()
 {
-	if(!Utils::fileExists(logLocation))
+	if(!ServerUtils::fileExists(logLocation))
 	{
 		std::cerr << "Log folder doesn't exist: " << logLocation << "\n";
 		exit(1);

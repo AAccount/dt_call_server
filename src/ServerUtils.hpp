@@ -7,8 +7,8 @@
  *  Common stuff used by multiple files
  */
 
-#ifndef UTILS_HPP_
-#define UTILS_HPP_
+#ifndef SERVER_UTILS_HPP_
+#define SERVER_UTILS_HPP_
 #include <stdint.h>
 #include <string>
 #include <random>
@@ -20,9 +20,8 @@
 #include <sodium.h>
 #include <sys/stat.h>
 #include <string.h>
-#include "const.h"
 
-namespace Utils
+namespace ServerUtils
 {
 	//used for parsing the configuration file: remove whitespace preceding/trailing and comments
 	std::string trim(std::string const &input);
