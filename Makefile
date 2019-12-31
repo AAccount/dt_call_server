@@ -18,7 +18,7 @@ ifeq ($(UNAME),Linux)
 	CXX = g++ -std=c++14
 endif
 
-ifeq ($(UNAME),FreeBSD)
+ifeq ($(UNAME), $(filter $(UNAME), FreeBSD OpenBSD))
 	OPTCFLAGS = -O2 -march=native -Werror -fPIE
 	CFLAGS = -g -Werror -fPIE
 	LDFLAGS = -pie
