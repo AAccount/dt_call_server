@@ -97,7 +97,6 @@ void SodiumUtils::sodiumEncrypt(bool asym, const unsigned char* input, int input
 	//encryption failed
 	if(libsodiumOK != 0)
 	{
-		output = std::unique_ptr<unsigned char[]>(); //pointer to nothing
 		outputLength = 0;
 		return;
 	}
@@ -107,7 +106,6 @@ void SodiumUtils::sodiumEncrypt(bool asym, const unsigned char* input, int input
 
 	//assemble the output
 	const int finalSetupLength = crypto_box_NONCEBYTES+sizeof(uint32_t)+cipherTextLength;
-	output = std::make_unique<unsigned char[]>(finalSetupLength);
 	memset(output.get(), 0, finalSetupLength);
 	memcpy(output.get(), nonce, crypto_box_NONCEBYTES);
 	memcpy(output.get()+crypto_box_NONCEBYTES, messageLengthDisassembled, sizeof(uint32_t));
@@ -131,7 +129,6 @@ void SodiumUtils::sodiumDecrypt(bool asym, const unsigned char* input, int input
 	if(nonceLength > inputLength)
 	{
 		//invalid encrypted bytes, doesn't have a nonce
-		output = std::unique_ptr<unsigned char[]>(); //pointer to nothing
 		outputLength = 0;
 		return;
 	}
@@ -143,7 +140,6 @@ void SodiumUtils::sodiumDecrypt(bool asym, const unsigned char* input, int input
 	if((nonceLength + sizeof(uint32_t)) > inputLength)
 	{
 		//invalid encrypted bytes, doesn't have a message length
-		output = std::unique_ptr<unsigned char[]>(); //pointer to nothing
 		outputLength = 0;
 		return;
 	}
@@ -157,7 +153,6 @@ void SodiumUtils::sodiumDecrypt(bool asym, const unsigned char* input, int input
 	const bool messageMIA = messageLength < 1;
 	if(messageCompressed || messageMIA)
 	{
-		output = std::unique_ptr<unsigned char[]>(); //pointer to nothing
 		outputLength = 0;
 		return;
 	}
@@ -181,14 +176,12 @@ void SodiumUtils::sodiumDecrypt(bool asym, const unsigned char* input, int input
 
 	if(libsodiumOK != 0)
 	{
-		output = std::unique_ptr<unsigned char[]>(); //pointer to nothing
 		outputLength = 0;
 		return;
 	}
 
 	//now that the message has been successfully decrypted, take in on blind faith messageLength makes was ok
 	//	up to the next function to make sure the decryption contents aren't truncated by a malicious messageLength
-	output = std::make_unique<unsigned char[]>(messageLength);
 	memcpy(output.get(), messageStorage, messageLength);
 	outputLength = messageLength;
 }

@@ -73,8 +73,16 @@ void Logger::diskRw()
 {
 	while(true)
 	{
-		const std::string log = q.pop();
-
+		std::string log = "";
+		try
+		{
+			log = q.pop();
+		}
+		catch(std::runtime_error& error)
+		{
+			log = "logger's q was interrupted??";
+		}
+		
 		//figure out if the current log is over 1 day old
 		const time_t now = time(NULL);
 		if((now -logTimeT) > 60*60*24)

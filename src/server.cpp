@@ -202,7 +202,7 @@ int main(int argc, char* argv[])
 					}
 
 					//send the equivalent of the SSL key
-					std::unique_ptr<unsigned char[]> encTCPKey;
+					std::unique_ptr<unsigned char[]> encTCPKey = std::make_unique<unsigned char[]>(COMMANDSIZE);
 					int encTCPKeyLength = 0;
 					SodiumUtils::sodiumEncrypt(true, clientTableEntry.second->getSymmetricKey(), crypto_secretbox_KEYBYTES, sodiumPrivateKey, initialTempPublic, encTCPKey, encTCPKeyLength);
 					if(encTCPKeyLength > 0)
@@ -226,7 +226,7 @@ int main(int argc, char* argv[])
 
 				//for existing clients, sodium decrypt the command
 				int decLength = 0;
-				std::unique_ptr<unsigned char[]> decBuffer;
+				std::unique_ptr<unsigned char[]> decBuffer = std::make_unique<unsigned char[]>(COMMANDSIZE);
 				SodiumUtils::sodiumDecrypt(false, inputBuffer, amountRead, clientTableEntry.second->getSymmetricKey(), NULL, decBuffer, decLength);
 				if(decLength == 0)
 				{
@@ -302,7 +302,7 @@ int main(int argc, char* argv[])
 					std::cout << "challenge: " << challenge << "\n";
 #endif
 					int encLength = 0;
-					std::unique_ptr<unsigned char[]> enc;
+					std::unique_ptr<unsigned char[]> enc = std::make_unique<unsigned char[]>(COMMANDSIZE);
 					SodiumUtils::sodiumEncrypt(true, (unsigned char*) (challenge.c_str()), challenge.length(), sodiumPrivateKey, userSodiumPublic, enc, encLength);
 					if (encLength < 1)
 					{
@@ -705,7 +705,7 @@ void udpThread(int port, std::unique_ptr<unsigned char[]> publicKey, std::unique
 			//create and encrypt ack
 			const time_t now=time(NULL);
 			const std::string ack = std::to_string(now);
-			std::unique_ptr<unsigned char[]> ackEnc;
+			std::unique_ptr<unsigned char[]> ackEnc = std::make_unique<unsigned char[]>(COMMANDSIZE);
 			int encLength = 0;
 			const int userCmdPort = userUtils->getCommandFd(user);
 			const unsigned char* userTCPKey = clients[userCmdPort]->getSymmetricKey();
@@ -844,7 +844,7 @@ void write2Client(const std::string& response, int sd)
 		return;
 	}
 
-	std::unique_ptr<unsigned char[]> encOutput;
+	std::unique_ptr<unsigned char[]> encOutput = std::make_unique<unsigned char[]>(COMMANDSIZE);
 	int encOutputLength = 0;
 	std::unique_ptr<Client>& client = clients[sd];
 
