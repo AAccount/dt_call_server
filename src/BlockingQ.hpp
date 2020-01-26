@@ -71,6 +71,7 @@ T BlockingQ<T>::pop()
 	{
 		if(interrupted)
 		{
+			interrupted = false;
 			throw std::runtime_error("Blocking Q was interrupted");
 		}
 		wakeup.wait(qLock);
