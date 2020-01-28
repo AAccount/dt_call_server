@@ -23,7 +23,7 @@
 #include "UserUtils.hpp"
 #include "sodium_utils.hpp"
 
-void readServerConfig(std::string& settingsLocation, int &cmdPort, int &mediaPort, std::string &sodiumPublic, std::string &sodium_private, Logger* logger);
+void readServerConfig(const std::string& settingsLocation, int &cmdPort, int &mediaPort, std::string &sodiumPublic, std::string &sodium_private, Logger* logger);
 void setupListeningSocket(int type, struct timeval* timeout, int* fd, struct sockaddr_in* info, int port);
 
 #endif /* SERVER_INIT_HPP_ */

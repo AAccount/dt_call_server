@@ -9,7 +9,7 @@
  */
 #include "server_init.hpp"
 
-void readServerConfig(std::string& settingsLocation, int& cmdPort, int& mediaPort, std::string& sodiumPublic, std::string& sodiumPrivate, Logger* logger)
+void readServerConfig(const std::string& settingsLocation, int& cmdPort, int& mediaPort, std::string& sodiumPublic, std::string& sodiumPrivate, Logger* logger)
 {
 	const std::string FILE_NAME = "dtoperator.conf";
 	const std::string fileLocation = settingsLocation + "/" + FILE_NAME;

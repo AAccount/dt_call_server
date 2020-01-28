@@ -846,7 +846,7 @@ void write2Client(const std::string& response, int sd)
 
 	std::unique_ptr<unsigned char[]> encOutput = std::make_unique<unsigned char[]>(COMMANDSIZE);
 	int encOutputLength = 0;
-	std::unique_ptr<Client>& client = clients[sd];
+	const std::unique_ptr<Client>& client = clients[sd];
 
 	SodiumUtils::sodiumEncrypt(false, (unsigned char*)(response.c_str()), response.length(), client->getSymmetricKey(), NULL, encOutput, encOutputLength);
 	const int errValue = write(sd, encOutput.get(), encOutputLength);
