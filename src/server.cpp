@@ -888,7 +888,7 @@ bool legitimateAscii(unsigned char* buffer, int length)
 	return true;
 }
 
-void sendCallEnd(std::string user)
+void sendCallEnd(const std::string& user)
 {
 	Logger* logger = Logger::getInstance();
 

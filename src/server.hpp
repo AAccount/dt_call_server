@@ -39,7 +39,7 @@
 #include "stringify.hpp"
 
 //send a call end command. its own function (unlike the other commands) to detect dropped calls
-void sendCallEnd(std::string user);
+void sendCallEnd(const std::string& user);
 
 //dedicated function for handling a call. each call is processed on this thread.
 void udpThread(int port, const std::unique_ptr<unsigned char[]>& publicKey, const std::unique_ptr<unsigned char[]>& privateKey);
