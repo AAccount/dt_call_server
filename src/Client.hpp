@@ -6,6 +6,8 @@
  */
 #ifndef CLIENT_HPP_
 #define CLIENT_HPP_
+#include <memory>
+
 #include <sodium.h>
 #include <string.h>
 
@@ -17,10 +19,10 @@ public:
 
 	bool isNew() const;
 	void hasBeenSeen();
-	const unsigned char* getSymmetricKey() const;
+	const std::unique_ptr<unsigned char[]>& getSymmetricKey() const;
 
 private:
-	unsigned char symmetricKey[crypto_secretbox_KEYBYTES] = {};
+	std::unique_ptr<unsigned char[]> symmetricKey;;
 	bool newClient;
 };
 

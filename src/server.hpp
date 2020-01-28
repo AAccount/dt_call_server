@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <memory>
 #include <thread>
+#include <functional>
 
 #include "Log.hpp"
 #include "UserUtils.hpp"
@@ -41,7 +42,7 @@
 void sendCallEnd(std::string user);
 
 //dedicated function for handling a call. each call is processed on this thread.
-void udpThread(int port, std::unique_ptr<unsigned char[]> publicKey, std::unique_ptr<unsigned char[]> privateKey);
+void udpThread(int port, const std::unique_ptr<unsigned char[]>& publicKey, const std::unique_ptr<unsigned char[]>& privateKey);
 
 //parse incoming server commands (split the incoming command string by the | character)
 std::vector<std::string> parse(unsigned char command[]);

@@ -8,15 +8,16 @@
 #include "Client.hpp"
 
 Client::Client() :
-	newClient(true)
+newClient(true),
+symmetricKey(std::make_unique<unsigned char[]>(crypto_secretbox_KEYBYTES))
 {
-	randombytes_buf(symmetricKey, crypto_secretbox_KEYBYTES);
+	randombytes_buf(symmetricKey.get(), crypto_secretbox_KEYBYTES);
 }
 
 Client::~Client()
 {
 	//remove the old key from memory??
-	randombytes_buf(symmetricKey, crypto_secretbox_KEYBYTES);
+	randombytes_buf(symmetricKey.get(), crypto_secretbox_KEYBYTES);
 }
 
 bool Client::isNew() const
@@ -29,7 +30,7 @@ void Client::hasBeenSeen()
 	newClient = false;
 }
 
-const unsigned char* Client::getSymmetricKey() const
+const std::unique_ptr<unsigned char[]>& Client::getSymmetricKey() const
 {
 	return symmetricKey;
 }
