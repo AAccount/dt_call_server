@@ -6,7 +6,6 @@
  */
 
 #include "Logger.hpp"
-#include "ServerUtils.hpp"
 
 Logger* Logger::instance = NULL;
 std::string Logger::logLocation;

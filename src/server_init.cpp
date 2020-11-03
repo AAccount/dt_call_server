@@ -9,6 +9,29 @@
  */
 #include "server_init.hpp"
 
+void initDtOperator(int argc, char* argv[], int& commandFd, int& mediaFd, const std::unique_ptr<unsigned char[]>& publicKey, const std::unique_ptr<unsigned char[]>& privateKey)
+{
+	std::string settingsLocation = "/etc/dtoperator";
+	std::string logLocation = "/var/log/dtoperator";
+	parseArgv(argc, argv, settingsLocation, logLocation);
+	Logger::setLogLocation(logLocation);
+	UserUtils::setFileLocation(settingsLocation);
+
+	Logger* logger = Logger::getInstance();
+	const std::string start = "starting call operator V" + VERSION;
+	logger->insertLog(Log(Log::TAG::STARTUP, start, Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()).toString());
+	
+	int cmdPort, mediaPort;
+	std::string sodiumPublicString, sodiumPrivateString;
+	readServerConfig(settingsLocation, cmdPort, mediaPort, sodiumPublicString, sodiumPrivateString, logger);
+
+	commandFd = setupCommandFd(cmdPort);
+	mediaFd = setupMediaFd(mediaPort, logger);
+
+	initializeSodiumKeys(logger, sodiumPublicString, sodiumPrivateString, publicKey, privateKey);
+	ignoreSigPipe();
+}
+
 void readServerConfig(const std::string& settingsLocation, int& cmdPort, int& mediaPort, std::string& sodiumPublic, std::string& sodiumPrivate, Logger* logger)
 {
 	const std::string FILE_NAME = "dtoperator.conf";
@@ -162,4 +185,97 @@ void setupListeningSocket(int type, struct timeval* timeout, int* fd, struct soc
 		}
 		listen(*fd, MAXLISTENWAIT);
 	}
+}
+
+void parseArgv(int argc, char* argv[], std::string& settingsLocation, std::string& logLocation)
+{
+	//read command line arguments if they're there
+	if(argc == 5)
+	{
+		const std::string SETTINGS = "--settings";
+		const std::string LOG = "--log";
+		
+		const std::string arg1(argv[1]);
+		const std::string value1(argv[2]);
+		const std::string arg2(argv[3]);
+		const std::string value2(argv[4]);
+		
+		if(arg1 == SETTINGS)
+		{
+			settingsLocation = value1;
+		}
+		if(arg1 == LOG)
+		{
+			logLocation = value1;
+		}
+		
+		if(arg2 == SETTINGS)
+		{
+			settingsLocation = value2;
+		}
+		if(arg2 == LOG)
+		{
+			logLocation = value2;
+		}
+	}
+	else
+	{
+		std::cout << "Command line arguments dtoperator --settings /path/to/settings --log /where/logs/go" << "\n";
+		std::cout << "Using default values for settings and log location " << settingsLocation << " " << logLocation << "\n";
+	}
+}
+
+void ignoreSigPipe()
+{
+	//sigpipe is thrown for closing the broken connection. it's gonna happen for a voip server handling mobile clients
+	//what're you gonna do about it... IGNORE IT!!
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGPIPE);
+	pthread_sigmask(SIG_BLOCK, &set, NULL);
+}
+
+int setupCommandFd(int cmdPort)
+{
+	struct timeval unauthTimeout; //for new sockets
+	unauthTimeout.tv_sec = 0;
+	unauthTimeout.tv_usec = UNAUTHTIMEOUT;
+
+	int cmdFd;
+	struct sockaddr_in serv_cmd;
+	setupListeningSocket(SOCK_STREAM, &unauthTimeout, &cmdFd, &serv_cmd, cmdPort);
+	return cmdFd;
+}
+
+int setupMediaFd(int mediaPort, Logger* logger)
+{
+	int mediaFd;
+	struct sockaddr_in mediaInfo;
+	setupListeningSocket(SOCK_DGRAM, NULL, &mediaFd, &mediaInfo, mediaPort);
+
+	//make the socket an expedited one
+	const int express = IPTOS_DSCP_EF;
+	if(setsockopt(mediaFd, IPPROTO_IP, IP_TOS, (char*)&express, sizeof(int)) < 0)
+	{
+		std::string error="cannot set udp socket dscp expedited (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
+	}
+	return mediaFd;
+}
+
+void initializeSodiumKeys(Logger* logger, std::string& publicString, std::string& privateString, const std::unique_ptr<unsigned char[]>& publicKey, const std::unique_ptr<unsigned char[]>& privateKey)
+{
+	if(sodium_init() < 0)
+	{
+		logger->insertLog(Log(Log::TAG::STARTUP, "couldn't initialize sodium library", Log::SELF(), Log::TYPE::SYSTEM, Log::SELFIP()).toString());
+		exit(1);
+	}
+
+	Stringify::destringify(publicString, publicKey.get());
+	char* sodiumPublicStringMemory = &publicString[0];
+	randombytes_buf(sodiumPublicStringMemory, publicString.length());
+
+	Stringify::destringify(privateString, privateKey.get());
+	char* sodiumPrivateStringMemory = &privateString[0];
+	randombytes_buf(sodiumPrivateStringMemory, privateString.length());
 }

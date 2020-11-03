@@ -28,14 +28,19 @@
 #include <thread>
 #include <functional>
 
-#include "Log.hpp"
-#include "UserUtils.hpp"
+#include "Log/Log.hpp"
+#include "Log/Logger.hpp"
+#include "User/UserUtils.hpp"
+#include "User/Client.hpp"
+#include "ServerCommand/ServerCommands.hpp"
+#include "ServerCommand/CommandContext.hpp"
+#include "ServerCommand/CommandUtils.hpp"
+#include "ServerCommand/UdpContext.hpp"
+#include "ServerCommand/UdpCommand.hpp"
 #include "const.h"
 #include "ServerUtils.hpp"
 #include "server_init.hpp"
-#include "Logger.hpp"
 #include "sodium_utils.hpp"
-#include "Client.hpp"
 #include "stringify.hpp"
 
 //send a call end command. its own function (unlike the other commands) to detect dropped calls
@@ -43,9 +48,6 @@ void sendCallEnd(const std::string& user);
 
 //dedicated function for handling a call. each call is processed on this thread.
 void udpThread(int port, const std::unique_ptr<unsigned char[]>& publicKey, const std::unique_ptr<unsigned char[]>& privateKey);
-
-//parse incoming server commands (split the incoming command string by the | character)
-std::vector<std::string> parse(unsigned char command[]);
 
 //remove a client's command and media or only media depending what kind of sd is given
 void removeClient(int sd);
@@ -63,11 +65,5 @@ std::string ipFromFd(int sd);
 
 //accept ssl commands from the command socket
 void socketAccept(int cmdFD, struct timeval* unauthTimeout);
-
-//check the timestamp string to see if it's within the limits
-bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string& errorMessage, const std::string& user, const std::string& ip);
-
-//check to see if the bytes in the buffer are legitimate ascii characters of interest and doesn't contain any junk
-bool legitimateAscii(unsigned char* buffer, int length);
 
 #endif

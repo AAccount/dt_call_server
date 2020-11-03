@@ -8,7 +8,7 @@
 #ifndef KEYGEN_HPP_
 #define KEYGEN_HPP_
 
-#include "Utils.hpp"
+#include "ServerUtils.hpp"
 #include "const.h"
 #include <sodium.h>
 #include <fstream>

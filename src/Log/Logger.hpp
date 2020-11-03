@@ -14,6 +14,7 @@
 #include <thread>
 #include <string.h>
 #include "BlockingQ.hpp"
+#include "../ServerUtils.hpp"
 
 class Logger
 {

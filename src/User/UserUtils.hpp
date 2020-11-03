@@ -24,13 +24,13 @@
 #include <string.h>
 #include <netinet/in.h>
 
-#include "ServerUtils.hpp"
-#include "const.h"
-#include "Log.hpp"
 #include "User.hpp"
-#include "Logger.hpp"
-#include "sodium_utils.hpp"
-#include "stringify.hpp"
+#include "../Log/Log.hpp"
+#include "../Log/Logger.hpp"
+#include "../ServerUtils.hpp"
+#include "../const.h"
+#include "../sodium_utils.hpp"
+#include "../stringify.hpp"
 
 class UserUtils
 {
