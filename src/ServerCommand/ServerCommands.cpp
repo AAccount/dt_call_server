@@ -242,7 +242,6 @@ void cmdCall(CommandContext& ctx)
 {
 	Logger* logger = ctx.getLogger();
 	UserUtils* userUtils = ctx.getUserUtils();
-	std::vector<int>& removals = ctx.getRemovals();
 	const std::vector<std::string> commandContents = ctx.getCommandContents();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
@@ -293,7 +292,6 @@ void cmdAccept(CommandContext& ctx)
 {
 	Logger* logger = ctx.getLogger();
 	UserUtils* userUtils = ctx.getUserUtils();
-	std::vector<int>& removals = ctx.getRemovals();
 	const std::vector<std::string> commandContents = ctx.getCommandContents();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
@@ -325,7 +323,6 @@ void cmdPassthrough(CommandContext& ctx)
 {
 	Logger* logger = ctx.getLogger();
 	UserUtils* userUtils = ctx.getUserUtils();
-	std::vector<int>& removals = ctx.getRemovals();
 	const std::vector<std::string> commandContents = ctx.getCommandContents();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
@@ -355,7 +352,6 @@ void cmdReady(CommandContext& ctx)
 {
 	Logger* logger = ctx.getLogger();
 	UserUtils* userUtils = ctx.getUserUtils();
-	std::vector<int>& removals = ctx.getRemovals();
 	const std::vector<std::string> commandContents = ctx.getCommandContents();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
@@ -434,7 +430,6 @@ bool isRealCall(CommandContext& ctx, const std::string& persona, const std::stri
 		const std::string error = persona + " sent a command for a nonexistant call";
 		logger->insertLog(Log(tag, error, persona, Log::TYPE::ERROR, ip).toString());
 
-		const time_t now = time(NULL);
 		const std::string invalid = std::to_string(now) + "|invalid";
 		if(fd > 0)
 		{

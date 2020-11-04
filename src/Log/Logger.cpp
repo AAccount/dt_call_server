@@ -20,12 +20,6 @@ void Logger::setLogLocation(const std::string& folder)
 	alreadySetLogLocation = true;
 }
 
-const std::string& Logger::LOGPREFIX()
-{
-	const static std::string value = "log ";
-	return value;
-}
-
 Logger* Logger::getInstance()
 {
 	if(instance == NULL)
@@ -47,7 +41,7 @@ q()
 	}
 	
 	const std::string nowString = std::string(ctime(&logTimeT));
-	const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
+	const std::string logName = LOGPREFIX + nowString.substr(0, nowString.length()-1);
 	logfile = std::ofstream(folder+"/"+logName);
 
 	try
@@ -89,7 +83,7 @@ void Logger::diskRw()
 			logfile.close();
 			logTimeT = now;
 			const std::string nowString = std::string(ctime(&logTimeT));
-			const std::string logName = LOGPREFIX() + nowString.substr(0, nowString.length()-1);
+			const std::string logName = LOGPREFIX + nowString.substr(0, nowString.length()-1);
 			logfile.open(folder+"/"+logName);
 		}
 		logfile << log << "\n";

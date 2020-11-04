@@ -44,7 +44,7 @@ private:
 	//don't allow copying the logger. there is only the 1
 	Logger(const Logger&) = delete;
 
-	const static std::string& LOGPREFIX();
+	inline const static std::string LOGPREFIX = "log ";
 };
 
 #endif /* LOGGER_HPP_ */

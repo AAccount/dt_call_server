@@ -17,11 +17,11 @@
 class UdpContext
 {
 public:
-	UdpContext(Logger* clogger, UserUtils* cuserUtils, const std::unique_ptr<unsigned char[]>& cpublic, const std::unique_ptr<unsigned char[]>& cprivate, struct sockaddr_in& csender, int csenderLength, int cmediaFd, std::string& cuser);
-	UdpContext(Logger* clogger, UserUtils* cuserUtils, const std::unique_ptr<unsigned char[]>& cpublic, const std::unique_ptr<unsigned char[]>& cprivate, struct sockaddr_in& csender, int csenderLength, int cmediaFd, std::string& cuser, std::string& cregistrationString, std::vector<std::string>& cregistrationContents);
+	UdpContext(Logger* clogger, UserUtils* cuserUtils, const std::unique_ptr<unsigned char[]>& cpublic, const std::unique_ptr<unsigned char[]>& cprivate, const struct sockaddr_in& csender, int csenderLength, int cmediaFd, std::string& cuser);
+	UdpContext(Logger* clogger, UserUtils* cuserUtils, const std::unique_ptr<unsigned char[]>& cpublic, const std::unique_ptr<unsigned char[]>& cprivate, const struct sockaddr_in& csender, int csenderLength, int cmediaFd, std::string& cuser, std::string& cregistrationString, std::vector<std::string>& cregistrationContents);
 	virtual ~UdpContext();
 
-	Logger* getLogger();
+	Logger* getLogger() const;
 	UserUtils* getUserUtils();
 	const std::unique_ptr<unsigned char[]>& getPublicKey();
 	const std::unique_ptr<unsigned char[]>& getPrivateKey();
@@ -32,9 +32,9 @@ public:
 	std::string getRegistrationString();
 	std::vector<std::string> getRegistrationContents();
 
-	void setUser(std::string user);
-	void setRegistrationString(std::string& reg);
-	void setRegistrationContents(std::vector<std::string>& contents);
+	void setUser(const std::string& user);
+	void setRegistrationString(const std::string& reg);
+	void setRegistrationContents(const std::vector<std::string>& contents);
 
 private:
 	Logger* logger;
