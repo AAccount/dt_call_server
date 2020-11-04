@@ -84,6 +84,7 @@ void initClient(CommandContext& ctx, std::unique_ptr<unsigned char[]>& inputBuff
 	{
 		const std::string error = "bad initial sodium socket setup";
 		ctx.getLogger()->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::DONTKNOW() , Log::TYPE::ERROR, ip).toString());
+		ctx.getRemovals().push_back(ctx.getFd());
 		return;
 	}
 
