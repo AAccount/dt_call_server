@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
 
 		if(select(maxsd+1, &readfds, NULL, NULL, NULL) < 0)
 		{
-			const std::string error = "read fds select system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+			const std::string error = "read fds select system call error " + ServerUtils::printErrno();
 			logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 			exit(1); //see call thread fx for why
 		}
@@ -162,7 +162,7 @@ void udpThread(int mediaFd, const std::unique_ptr<unsigned char[]>& publicKey, c
 		const int receivedLength = recvfrom(mediaFd, mediaBuffer.get(), MEDIASIZE, 0, (struct sockaddr*)&sender, &senderLength);
 		if(receivedLength < 0)
 		{
-			const std::string error = "udp read error with errno " + std::to_string(errno) + ": " + std::string(strerror(errno));
+			const std::string error = "udp read error with errno " + ServerUtils::printErrno();
 			logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 			continue; //received nothing, this round is a write off
 		}
@@ -211,7 +211,7 @@ void socketAccept(int cmdFD, std::unordered_map<int, std::unique_ptr<Client>>& c
 	const int incomingCmd = accept(cmdFD, (struct sockaddr*) &cli_addr, &clilen);
 	if(incomingCmd < 0)
 	{
-		const std::string error = "accept system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		const std::string error = "accept system call error " + ServerUtils::printErrno();
 		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, Log::DONTKNOW()).toString());
 		return;
 	}
@@ -223,7 +223,7 @@ void socketAccept(int cmdFD, std::unordered_map<int, std::unique_ptr<Client>>& c
 	unauthTimeout.tv_usec = UNAUTHTIMEOUT;
 	if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*)&unauthTimeout, sizeof(struct timeval)) < 0)
 	{
-		const std::string error = "cannot set timeout for incoming command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		const std::string error = "cannot set timeout for incoming command socket " + ServerUtils::printErrno();
 		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip).toString());
 		shutdown(incomingCmd, 2);
 		close(incomingCmd);
@@ -234,7 +234,7 @@ void socketAccept(int cmdFD, std::unordered_map<int, std::unique_ptr<Client>>& c
 	int nagle = 0;
 	if(setsockopt(incomingCmd, IPPROTO_TCP, TCP_NODELAY, (char*)&nagle, sizeof(int)))
 	{
-		const std::string error = "cannot disable nagle delay (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		const std::string error = "cannot disable nagle delay " + ServerUtils::printErrno();
 		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip).toString());
 	}
 	clients[incomingCmd] = std::unique_ptr<Client>(new Client());

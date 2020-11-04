@@ -52,17 +52,6 @@ void udpThread(int port, const std::unique_ptr<unsigned char[]>& publicKey, cons
 //remove a client's command and media or only media depending what kind of sd is given
 void removeClient(int sd, std::unordered_map<int, std::unique_ptr<Client>>& clients);
 
-//verify the call is real and not a malicious hand crafted command
-//persona is the one who will be sent an invalid command if it is not real.
-bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG tag);
-
-//convert the string to c char[] and send it by ssl* (when sending, send only as many bytes as there are characters
-// and not the whole command string buffer [] size
-void write2Client(const std::string&, int sd);
-
-//get the ip address of a socket descriptor in human readable 192.168.1.1 format
-std::string ipFromFd(int sd, std::unordered_map<int, std::unique_ptr<Client>>& clients);
-
 //accept ssl commands from the command socket
 void socketAccept(int cmdFD, std::unordered_map<int, std::unique_ptr<Client>>& clients);
 

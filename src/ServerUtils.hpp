@@ -31,6 +31,8 @@ namespace ServerUtils
 	
 	//check if a file exists
 	bool fileExists(const std::string& path);
+
+	std::string printErrno();
 };
 
 #endif /* UTILS_HPP_ */

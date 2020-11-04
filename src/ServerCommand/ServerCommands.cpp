@@ -97,7 +97,7 @@ void initClient(CommandContext& ctx, const std::unique_ptr<unsigned char[]>& inp
 		const int errValue = write(ctx.getFd(), encTCPKey.get(), encTCPKeyLength);
 		if(errValue == -1)
 		{
-			const std::string error = "initial sodium socket setup write errno " + std::to_string(errno) + " " + std::string(strerror(errno));
+			const std::string error = "initial sodium socket setup write errno " + ServerUtils::printErrno();
 			ctx.getLogger()->insertLog(Log(Log::TAG::TCP, error, Log::DONTKNOW(), Log::TYPE::ERROR, ip).toString());
 			ctx.getRemovals().push_back(ctx.getFd());
 		}
@@ -190,7 +190,7 @@ void login2(CommandContext& ctx)
 	authTimeout.tv_usec = 0;
 	if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&authTimeout, sizeof(authTimeout)) < 0)
 	{
-		const std::string error = "cannot set timeout for authenticated command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		const std::string error = "cannot set timeout for authenticated command socket " + ServerUtils::printErrno();
 		logger->insertLog(Log(Log::TAG::LOGIN, error, Log::SELF(), Log::TYPE::ERROR, ip).toString());
 	}
 
@@ -469,7 +469,7 @@ void write2Client(CommandContext& ctx, const std::string& response, int sd)
 		UserUtils* userUtils = UserUtils::getInstance();
 		const std::string user = userUtils->userFromCommandFd(sd);
 		const std::string ip = ipFromFd(sd);
-		const std::string error = "write errno " + std::to_string(errno) + " " + std::string(strerror(errno));
+		const std::string error = "write2Client " + ServerUtils::printErrno();
 		logger->insertLog(Log(Log::TAG::TCP, error, user, Log::TYPE::ERROR, ip).toString());
 	}
 }
@@ -485,7 +485,7 @@ std::string ipFromFd(int sd)
 	}
 	else
 	{
-		return "(" +std::to_string(errno) + ": " + std::string(strerror(errno)) + ")";
+		return "ipFromFd " + ServerUtils::printErrno();
 	}
 }
 

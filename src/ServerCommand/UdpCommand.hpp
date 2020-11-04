@@ -10,6 +10,7 @@
 #include "CommandUtils.hpp"
 #include "UdpContext.hpp"
 #include "../User/Client.hpp"
+#include "../ServerUtils.hpp"
 
 bool udpDecrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBuffer, int receivedLength);
 void udpRegister(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap);

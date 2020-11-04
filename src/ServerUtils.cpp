@@ -51,3 +51,9 @@ bool ServerUtils::fileExists(const std::string& path)
 	const int result = stat(path.c_str(), &buffer);
 	return (result == 0);
 }
+
+std::string ServerUtils::printErrno()
+{
+	return "(" + std::to_string(errno) + ") " + std::string(strerror(errno));
+}
+

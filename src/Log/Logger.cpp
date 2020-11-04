@@ -57,7 +57,7 @@ q()
 	}
 	catch(std::system_error& e)
 	{
-		std::cerr << "cannot create the disk rw thread (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		std::cerr << "cannot create the disk rw thread " + ServerUtils::printErrno();
 		exit(1);
 	}
 }

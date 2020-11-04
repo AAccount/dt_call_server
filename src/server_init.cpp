@@ -153,7 +153,7 @@ void setupListeningSocket(int type, struct timeval* timeout, int* fd, struct soc
 	*fd = socket(AF_INET, type, 0); //tcp socket
 	if(*fd < 0)
 	{
-		std::string error = "cannot establish socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		std::string error = "cannot establish socket " + ServerUtils::printErrno();
 		std::cerr << error << "\n";
 		exit(1);
 	}
@@ -163,7 +163,7 @@ void setupListeningSocket(int type, struct timeval* timeout, int* fd, struct soc
 	info->sin_port = htons(port);
 	if(bind(*fd, (struct sockaddr*)info, sizeof(struct sockaddr_in)) < 0)
 	{
-		std::string error = "cannot bind socket to a nic (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		std::string error = "cannot bind socket to a nic " + ServerUtils::printErrno();
 		std::cerr << error << "\n";
 		exit(1);
 	}
@@ -172,14 +172,14 @@ void setupListeningSocket(int type, struct timeval* timeout, int* fd, struct soc
 	{
 		if(setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, (char*)timeout, sizeof(struct timeval)) < 0)
 		{
-			std::string error="cannot set tcp socket options SO_RCVTIMEO (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+			std::string error="cannot set tcp socket options SO_RCVTIMEO " + ServerUtils::printErrno();
 			std::cerr << error << "\n";
 			exit(1);
 		}
 		const int reuse = 1;
 		if(setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse, sizeof(int)) < 0)
 		{
-			std::string error="cannot set tcp socket options SO_REUSEADDR (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+			std::string error="cannot set tcp socket options SO_REUSEADDR " + ServerUtils::printErrno();
 			std::cerr << error << "\n";
 			exit(1);
 		}
@@ -257,7 +257,7 @@ int setupMediaFd(int mediaPort, Logger* logger)
 	const int express = IPTOS_DSCP_EF;
 	if(setsockopt(mediaFd, IPPROTO_IP, IP_TOS, (char*)&express, sizeof(int)) < 0)
 	{
-		std::string error="cannot set udp socket dscp expedited (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		std::string error="cannot set udp socket dscp expedited " + ServerUtils::printErrno();
 		logger->insertLog(Log(Log::TAG::UDPTHREAD, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 	}
 	return mediaFd;

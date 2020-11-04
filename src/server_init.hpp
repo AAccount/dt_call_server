@@ -22,8 +22,9 @@
 
 #include "const.h"
 #include "Log/Log.hpp"
-#include "User/UserUtils.hpp"
 #include "sodium_utils.hpp"
+#include "ServerUtils.hpp"
+#include "User/UserUtils.hpp"
 #include "ServerCommand/ServerCommands.hpp"
 #include "ServerCommand/CommandContext.hpp"
 

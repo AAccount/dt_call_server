@@ -110,7 +110,7 @@ void udpAck(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& c
 	const int sent = sendto(ctx.getMediaFd(), ackEnc.get(), encLength, 0, (struct sockaddr*)&sender, ctx.getSenderLength());
 	if (sent < 0)
 	{
-		const std::string error = "udp sendto failed during media port registration with errno (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		const std::string error = "udp sendto failed during media port registration " + ServerUtils::printErrno();
 		logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user, Log::TYPE::ERROR, ip).toString());
 	}
 }
@@ -134,7 +134,7 @@ void udpCall(UdpContext& ctx, const std::unique_ptr<unsigned char[]> &mediaBuffe
 	const int sent = sendto(ctx.getMediaFd(), mediaBuffer.get(), receivedLength, 0, (struct sockaddr*)&otherSocket, sizeof(otherSocket));
 	if (sent < 0)
 	{
-		const std::string error = "udp sendto failed during live call with errno (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+		const std::string error = "udp sendto failed during live call " + ServerUtils::printErrno();
 		const std::string ip = std::string(inet_ntoa(otherSocket.sin_addr));
 		ctx.getLogger()->insertLog(Log(Log::TAG::UDPTHREAD, error, user, Log::TYPE::ERROR, ip).toString());
 	}
