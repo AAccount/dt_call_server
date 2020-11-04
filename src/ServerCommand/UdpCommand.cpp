@@ -8,7 +8,7 @@ bool udpDecrypt(UdpContext& ctx, std::unique_ptr<unsigned char[]>& mediaBuffer, 
 
 	std::unique_ptr<unsigned char[]> decryptedArray = std::make_unique<unsigned char[]>(MEDIASIZE);
 	unsigned char *decrypted = decryptedArray.get(); //extra space will be zeroed creating an automatically zero terminated string
-	int unsealok = crypto_box_seal_open(decrypted, mediaBuffer.get(), receivedLength, ctx.getPrivateKey().get(), ctx.getPrivateKey().get());
+	int unsealok = crypto_box_seal_open(decrypted, mediaBuffer.get(), receivedLength, ctx.getPublicKey().get(), ctx.getPrivateKey().get());
 	if (unsealok != 0)
 	{
 		const std::string error = "udp bad unseal";
