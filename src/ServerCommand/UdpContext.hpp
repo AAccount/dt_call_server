@@ -22,15 +22,15 @@ public:
 	virtual ~UdpContext();
 
 	Logger* getLogger() const;
-	UserUtils* getUserUtils();
-	const std::unique_ptr<unsigned char[]>& getPublicKey();
-	const std::unique_ptr<unsigned char[]>& getPrivateKey();
-	const struct sockaddr_in& getSender();
- 	int getSenderLength();
-	int getMediaFd();
-	std::string getUser();
-	std::string getRegistrationString();
-	std::vector<std::string> getRegistrationContents();
+	UserUtils* getUserUtils() const;
+	const std::unique_ptr<unsigned char[]>& getPublicKey() const;
+	const std::unique_ptr<unsigned char[]>& getPrivateKey() const;
+	const struct sockaddr_in& getSender() const;
+ 	int getSenderLength() const;
+	int getMediaFd() const;
+	std::string getUser() const;
+	std::string getRegistrationString() const;
+	std::vector<std::string> getRegistrationContents() const;
 
 	void setUser(const std::string& user);
 	void setRegistrationString(const std::string& reg);

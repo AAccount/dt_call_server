@@ -34,47 +34,47 @@ Logger* UdpContext::getLogger() const
 	return logger;
 }
 
-UserUtils* UdpContext::getUserUtils()
+UserUtils* UdpContext::getUserUtils() const
 {
 	return userUtils;
 }
 
-const std::unique_ptr<unsigned char[]>& UdpContext::getPublicKey()
+const std::unique_ptr<unsigned char[]>& UdpContext::getPublicKey() const
 {
 	return publicKey;
 }
 
-const std::unique_ptr<unsigned char[]>& UdpContext::getPrivateKey()
+const std::unique_ptr<unsigned char[]>& UdpContext::getPrivateKey() const
 {
 	return privateKey;
 }
 
-const struct sockaddr_in& UdpContext::getSender()
+const struct sockaddr_in& UdpContext::getSender() const
 {
 	return sender;
 }
 
-int UdpContext::getSenderLength()
+int UdpContext::getSenderLength() const
 {
 	return senderLength;
 }
 
-int UdpContext::getMediaFd()
+int UdpContext::getMediaFd() const
 {
 	return mediaFd;
 }
 
-std::string UdpContext::getUser()
+std::string UdpContext::getUser() const
 {
 	return user;
 }
 
-std::string UdpContext::getRegistrationString()
+std::string UdpContext::getRegistrationString() const
 {
 	return registrationString;
 }
 
-std::vector<std::string> UdpContext::getRegistrationContents()
+std::vector<std::string> UdpContext::getRegistrationContents() const
 {
 	return registrationContents;
 }

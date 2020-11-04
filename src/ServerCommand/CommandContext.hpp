@@ -21,17 +21,16 @@ class CommandContext
 		CommandContext(Logger* clogger, UserUtils* cuserUtils, int cfd, Client* cclient, std::unordered_map<int, std::unique_ptr<Client>>& cclientMap, const std::string& cogBuffer, const std::vector<std::string>& ccommandContents, const std::string& cuser, std::vector<int>& cremovals);
 		virtual ~CommandContext();
 
-		Logger* getLogger();
+		Logger* getLogger() const;
 		UserUtils* getUserUtils() const;
 
 		int getFd() const;
-		Client* getClient();
-		std::unordered_map<int, std::unique_ptr<Client>>& getClientMap();
-		std::string getOriginalBufferString();
+		Client* getClient() const;
+		std::unordered_map<int, std::unique_ptr<Client>>& getClientMap() const;
+		std::string getOriginalBufferString() const;
 		const std::vector<std::string> getCommandContents() const;
 		const std::string getUser() const;
-
-		std::vector<int>& getRemovals();
+		std::vector<int>& getRemovals() const;
 
 	private:
 		Logger* logger;

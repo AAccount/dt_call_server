@@ -15,7 +15,7 @@ removals(cremovals)
 
 CommandContext::~CommandContext(){}
 
-Logger* CommandContext::getLogger()
+Logger* CommandContext::getLogger() const
 {
 	return logger;
 }
@@ -30,17 +30,17 @@ int CommandContext::getFd() const
 	return fd;
 }
 
-Client* CommandContext::getClient()
+Client* CommandContext::getClient() const
 {
 	return client;
 }
 
-std::unordered_map<int, std::unique_ptr<Client>>& CommandContext::getClientMap()
+std::unordered_map<int, std::unique_ptr<Client>>& CommandContext::getClientMap() const
 {
 	return clientMap;
 }
 
-std::string CommandContext::getOriginalBufferString()
+std::string CommandContext::getOriginalBufferString() const
 {
 	return originalBufferString;
 }
@@ -55,7 +55,7 @@ const std::string CommandContext::getUser() const
 	return user;
 }
 
-std::vector<int>& CommandContext::getRemovals()
+std::vector<int>& CommandContext::getRemovals() const
 {
 	return removals;
 }
