@@ -91,3 +91,9 @@ std::vector<std::string> parse(unsigned char command[])
 	}
 	return result;
 }
+
+std::string unixTs()
+{
+	const time_t now = time(NULL);
+	return std::to_string(now);
+}

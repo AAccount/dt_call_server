@@ -9,12 +9,10 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/time.h>
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
-#include <signal.h>
 #include <arpa/inet.h>
 
 #include <cmath>

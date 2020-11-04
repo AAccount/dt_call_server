@@ -90,8 +90,7 @@ void udpAck(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& c
 	const std::string user = ctx.getUser();
 
 	//create and encrypt ack
-	const time_t now = time(NULL);
-	const std::string ack = std::to_string(now);
+	const std::string ack = unixTs();
 	std::unique_ptr<unsigned char[]> ackEnc = std::make_unique<unsigned char[]>(COMMANDSIZE);
 	int encLength = 0;
 	const int userCmdPort = userUtils->getCommandFd(user);

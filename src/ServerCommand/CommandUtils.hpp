@@ -9,6 +9,8 @@
 
 #include <string>
 #include <vector>
+#include <sys/time.h>
+
 #include "../Log/Log.hpp"
 
 //check the timestamp string to see if it's within the limits
@@ -19,5 +21,7 @@ bool legitimateAscii(unsigned char* buffer, int length);
 
 //parse incoming server commands (split the incoming command string by the | character)
 std::vector<std::string> parse(unsigned char command[]);
+
+std::string unixTs();
 
 #endif

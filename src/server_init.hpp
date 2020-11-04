@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
+#include <signal.h>
 
 #include "const.h"
 #include "Log/Log.hpp"

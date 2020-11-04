@@ -51,8 +51,7 @@ bool decryptCommand(CommandContext& ctx, const std::unique_ptr<unsigned char[]>&
 		const std::string error = "INVALID SESSION ID. refusing command (" + ogCommand + ")";
 		ctx.getLogger()->insertLog(Log(Log::TAG::BADCMD, error, user, Log::TYPE::ERROR, ip).toString());
 
-		const time_t now = time(NULL);
-		const std::string invalid = std::to_string(now) + "|invalid";
+		const std::string invalid = unixTs() + "|invalid";
 		write2Client(ctx, invalid, ctx.getFd());
 		ctx.getLogger()->insertLog(Log(Log::TAG::BADCMD, invalid, user, Log::TYPE::OUTBOUND, ip).toString());
 		return false;
@@ -115,7 +114,6 @@ void login1(CommandContext& ctx, const std::unique_ptr<unsigned char[]>& sodiumP
 	UserUtils* userUtils = ctx.getUserUtils();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
-	const time_t now = time(NULL);
 
 	//timestamp|login1|username
 	const std::string username = ctx.getCommandContents().at(2);
@@ -127,7 +125,7 @@ void login1(CommandContext& ctx, const std::unique_ptr<unsigned char[]>& sodiumP
 	unsigned char userSodiumPublic[crypto_box_PUBLICKEYBYTES] = {};
 	if (!userUtils->getSodiumPublicKey(username, userSodiumPublic))
 	{
-		const std::string invalid = std::to_string(now) + "|invalid";
+		const std::string invalid = unixTs() + "|invalid";
 		logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip).toString());
 		write2Client(ctx, invalid, fd);
 		ctx.getRemovals().push_back(fd); //nothing useful can come from this socket
@@ -147,7 +145,7 @@ void login1(CommandContext& ctx, const std::unique_ptr<unsigned char[]>& sodiumP
 	}
 	const std::string encString = Stringify::stringify(enc.get(), encLength);
 
-	const std::string resp = std::to_string(now) + "|login1resp|" + encString;
+	const std::string resp = unixTs() + "|login1resp|" + encString;
 	write2Client(ctx, resp, fd);
 	logger->insertLog(Log(Log::TAG::LOGIN, resp, username, Log::TYPE::OUTBOUND, ip).toString());
 }
@@ -160,7 +158,6 @@ void login2(CommandContext& ctx)
 	const std::vector<std::string> commandContents = ctx.getCommandContents();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
-	const time_t now = time(NULL);
 
 	//timestamp|login2|username|challenge|keepudp(optional)
 
@@ -175,7 +172,7 @@ void login2(CommandContext& ctx)
 	const std::string answer = userUtils->getChallenge(username);
 	if (answer == "" || triedChallenge != answer)
 	{
-		const std::string invalid = std::to_string(now) + "|invalid";
+		const std::string invalid = unixTs() + "|invalid";
 		logger->insertLog(Log(Log::TAG::LOGIN, invalid, username, Log::TYPE::OUTBOUND, ip).toString());
 		write2Client(ctx, invalid, fd);
 		removals.push_back(fd); 
@@ -229,9 +226,9 @@ void login2(CommandContext& ctx)
 	userUtils->setCommandFd(sessionkey, fd);
 	userUtils->setChallenge(username, ""); //reset after successful completion
 
-	std::string resp = std::to_string(now) + "|login2resp|" + sessionkey;
+	std::string resp = unixTs() + "|login2resp|" + sessionkey;
 	write2Client(ctx, resp, fd);
-	resp = std::to_string(now) + "|login2resp|" + SESSION_KEY_PLACEHOLDER;
+	resp = unixTs() + "|login2resp|" + SESSION_KEY_PLACEHOLDER;
 	logger->insertLog(Log(Log::TAG::LOGIN, resp, username, Log::TYPE::OUTBOUND, ip).toString());
 }
 
@@ -245,7 +242,6 @@ void cmdCall(CommandContext& ctx)
 	const std::vector<std::string> commandContents = ctx.getCommandContents();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
-	const time_t now = time(NULL);
 
 	//timestamp|call|zapper|toumakey
 
@@ -263,7 +259,7 @@ void cmdCall(CommandContext& ctx)
 
 	if (offline || busy || selfDial)
 	{
-		const std::string na = std::to_string(now) + "|end|" + zapper;
+		const std::string na = unixTs() + "|end|" + zapper;
 		write2Client(ctx, na, fd);
 		logger->insertLog(Log(Log::TAG::CALL, na, touma, Log::TYPE::OUTBOUND, ip).toString());
 		return; //nothing more to do
@@ -275,12 +271,12 @@ void cmdCall(CommandContext& ctx)
 	userUtils->setCallPair(touma, zapper);
 
 	//tell touma that zapper is being rung
-	const std::string notifyTouma = std::to_string(now) + "|available|" + zapper;
+	const std::string notifyTouma = unixTs() + "|available|" + zapper;
 	write2Client(ctx, notifyTouma, fd);
 	logger->insertLog(Log(Log::TAG::CALL, notifyTouma, touma, Log::TYPE::OUTBOUND, ip).toString());
 
 	//tell zapper touma wants to call her
-	const std::string notifyZapper = std::to_string(now) + "|incoming|" + touma;
+	const std::string notifyZapper = unixTs() + "|incoming|" + touma;
 	write2Client(ctx, notifyZapper, zapperCmdFd);
 	const std::string zapperip = ipFromFd(zapperCmdFd);
 	logger->insertLog(Log(Log::TAG::CALL, notifyZapper, zapper, Log::TYPE::OUTBOUND, zapperip).toString());
@@ -295,7 +291,6 @@ void cmdAccept(CommandContext& ctx)
 	const std::vector<std::string> commandContents = ctx.getCommandContents();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
-	const time_t now = time(NULL);
 
 	//timestamp|accept|touma|zapperkey
 	const std::string zapper = ctx.getUser();
@@ -309,12 +304,12 @@ void cmdAccept(CommandContext& ctx)
 
 	//arbitrarily chosen that the one who makes the call (touma) gets to generate the aes key
 	const int toumaCmdFd = userUtils->getCommandFd(touma);
-	const std::string toumaResp = std::to_string(now) + "|prepare|" + userUtils->getSodiumKeyDump(zapper) + "|" + zapper;
+	const std::string toumaResp = unixTs() + "|prepare|" + userUtils->getSodiumKeyDump(zapper) + "|" + zapper;
 	write2Client(ctx, toumaResp, toumaCmdFd);
 	logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)).toString());
 
 	//send zapper touma's public key to be able to verify that the aes256 passthrough is actually from him
-	const std::string zapperResp = std::to_string(now) + "|prepare|" + userUtils->getSodiumKeyDump(touma) + "|" + touma;
+	const std::string zapperResp = unixTs() + "|prepare|" + userUtils->getSodiumKeyDump(touma) + "|" + touma;
 	write2Client(ctx, zapperResp, fd);
 	logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip).toString());
 }
@@ -326,7 +321,6 @@ void cmdPassthrough(CommandContext& ctx)
 	const std::vector<std::string> commandContents = ctx.getCommandContents();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
-	const time_t now = time(NULL);
 	std::string originalBufferCmd = ctx.getOriginalBufferString();
 
 	//timestamp|passthrough|zapper|encrypted aes key|toumakey
@@ -342,7 +336,7 @@ void cmdPassthrough(CommandContext& ctx)
 	}
 
 	const int zapperfd = userUtils->getCommandFd(zapper);
-	std::string direct = std::to_string(now) + "|direct|" + end2EndKeySetup + "|" + touma; //as in "directly" from touma, not from the server
+	std::string direct = unixTs() + "|direct|" + end2EndKeySetup + "|" + touma; //as in "directly" from touma, not from the server
 	write2Client(ctx, direct, zapperfd);
 	direct.replace(direct.find(end2EndKeySetup), end2EndKeySetup.length(), AES_PLACEHOLDER);
 	logger->insertLog(Log(Log::TAG::PASSTHROUGH, direct, zapper, Log::TYPE::OUTBOUND, ipFromFd(zapperfd)).toString());
@@ -355,7 +349,6 @@ void cmdReady(CommandContext& ctx)
 	const std::vector<std::string> commandContents = ctx.getCommandContents();
 	const int fd = ctx.getFd();
 	const std::string ip = ipFromFd(fd);
-	const time_t now = time(NULL);
 	std::string originalBufferCmd = ctx.getOriginalBufferString();
 
 	//timestamp|ready|touma|zapperkey
@@ -374,12 +367,12 @@ void cmdReady(CommandContext& ctx)
 		//tell touma zapper accepted his call request
 		//	AND confirm to touma, it's zapper he's being connected with
 		const int toumaCmdFd = userUtils->getCommandFd(touma);
-		const std::string toumaResp = std::to_string(now) + "|start|" + zapper;
+		const std::string toumaResp = unixTs() + "|start|" + zapper;
 		write2Client(ctx, toumaResp, toumaCmdFd);
 		logger->insertLog(Log(Log::TAG::ACCEPT, toumaResp, touma, Log::TYPE::OUTBOUND, ipFromFd(toumaCmdFd)).toString());
 
 		//confirm to zapper she's being connected to touma
-		const std::string zapperResp = std::to_string(now) + "|start|" + touma;
+		const std::string zapperResp = unixTs() + "|start|" + touma;
 		write2Client(ctx, zapperResp, fd);
 		logger->insertLog(Log(Log::TAG::ACCEPT, zapperResp, zapper, Log::TYPE::OUTBOUND, ip).toString());
 	}
@@ -407,7 +400,6 @@ void cmdEnd(CommandContext& ctx)
 bool isRealCall(CommandContext& ctx, const std::string& persona, const std::string& personb, Log::TAG tag)
 {
 	Logger* logger = ctx.getLogger();
-	const time_t now = time(NULL);
 
 	bool real = true;
 	UserUtils* userUtils = ctx.getUserUtils();
@@ -430,7 +422,7 @@ bool isRealCall(CommandContext& ctx, const std::string& persona, const std::stri
 		const std::string error = persona + " sent a command for a nonexistant call";
 		logger->insertLog(Log(tag, error, persona, Log::TYPE::ERROR, ip).toString());
 
-		const std::string invalid = std::to_string(now) + "|invalid";
+		const std::string invalid = unixTs() + "|invalid";
 		if(fd > 0)
 		{
 			write2Client(ctx, invalid, fd);
@@ -496,7 +488,7 @@ void sendCallEnd(CommandContext& ctx, const std::string& user)
 	userUtils->removeCallPair(user);
 
 	//send the call end
-	const std::string resp = std::to_string(time(NULL)) + "|end|" + other;
+	const std::string resp = unixTs() + "|end|" + other;
 	const int cmdFd = userUtils->getCommandFd(user);
 	write2Client(ctx, resp, cmdFd);
 	logger->insertLog(Log(Log::TAG::END, resp, user, Log::TYPE::OUTBOUND, ipFromFd(cmdFd)).toString());
