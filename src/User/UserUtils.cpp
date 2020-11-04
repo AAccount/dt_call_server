@@ -79,7 +79,7 @@ UserUtils::UserUtils()
 			std::cerr << "User sodium public key error for: " << name << "\n";
 			continue;
 		}
-		std::string header = SodiumUtils::SODIUM_PUBLIC_HEADER();
+		std::string header = SodiumUtils::SODIUM_PUBLIC_HEADER;
 		sodiumKeyDump = sodiumKeyDump.substr(header.length(), crypto_box_PUBLICKEYBYTES*3);
 		Stringify::destringify(sodiumKeyDump, publicKeyBytes);
 

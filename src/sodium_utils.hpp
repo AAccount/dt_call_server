@@ -28,8 +28,8 @@ namespace SodiumUtils
 	void disassembleInt(int input, unsigned char* output);
 
 	//sodium file headers
-	const std::string& SODIUM_PUBLIC_HEADER();
-	const std::string& SODIUM_PRIVATE_HEADER();
+	inline const std::string SODIUM_PUBLIC_HEADER = "SODIUM PUBLIC KEY\n";
+	inline const std::string SODIUM_PRIVATE_HEADER = "SODIUM PRIVATE KEY\n";
 
 	bool checkSodiumPublic(const std::string& input);
 	bool checkSodiumPrivate(const std::string& input);

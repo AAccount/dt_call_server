@@ -7,21 +7,9 @@
 
 #include "sodium_utils.hpp"
 
-const std::string& SodiumUtils::SODIUM_PUBLIC_HEADER()
-{
-	const static std::string value = "SODIUM PUBLIC KEY\n";
-	return value;
-}
-
-const std::string& SodiumUtils::SODIUM_PRIVATE_HEADER()
-{
-	const static std::string value = "SODIUM PRIVATE KEY\n";
-	return value;
-}
-
 bool SodiumUtils::checkSodiumPrivate(const std::string& input)
 {
-	std::string privateHeader = SODIUM_PRIVATE_HEADER();
+	std::string privateHeader = SODIUM_PRIVATE_HEADER;
 	bool hasHeader = (input.length() > 0 && input.substr(0, privateHeader.length()) == privateHeader);
 	bool expectedLength = (input.length() == (privateHeader.length() + crypto_box_SECRETKEYBYTES*3));
 	return hasHeader && expectedLength;
@@ -29,7 +17,7 @@ bool SodiumUtils::checkSodiumPrivate(const std::string& input)
 
 bool SodiumUtils::checkSodiumPublic(const std::string& input)
 {
-	std::string publicHeader = SODIUM_PUBLIC_HEADER();
+	std::string publicHeader = SODIUM_PUBLIC_HEADER;
 	bool hasHeader = (input.length() > 0 && input.substr(0, publicHeader.length()) == publicHeader);
 	bool expectedLength = (input.length() == (publicHeader.length() + crypto_box_PUBLICKEYBYTES*3));
 	return hasHeader && expectedLength;

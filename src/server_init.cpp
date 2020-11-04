@@ -87,7 +87,7 @@ void readServerConfig(const std::string& settingsLocation, int& cmdPort, int& me
 			std::string keyDump = ServerUtils::dumpSmallFile(value);
 			if(SodiumUtils::checkSodiumPublic(keyDump))
 			{
-				std::string header = SodiumUtils::SODIUM_PUBLIC_HEADER();
+				std::string header = SodiumUtils::SODIUM_PUBLIC_HEADER;
 				sodiumPublic = keyDump.substr(header.length(), crypto_box_PUBLICKEYBYTES*3);
 				gotSodiumPublic = true;
 			}
@@ -101,7 +101,7 @@ void readServerConfig(const std::string& settingsLocation, int& cmdPort, int& me
 			std::string keyDump = ServerUtils::dumpSmallFile(value);
 			if(SodiumUtils::checkSodiumPrivate(keyDump))
 			{
-				std::string header = SodiumUtils::SODIUM_PRIVATE_HEADER();
+				std::string header = SodiumUtils::SODIUM_PRIVATE_HEADER;
 				sodiumPrivate = keyDump.substr(header.length(), crypto_box_SECRETKEYBYTES*3);
 				gotSodiumPrivate = true;
 			}
