@@ -1,6 +1,6 @@
 #include "ServerCommands.hpp"
 
-bool decryptCommand(CommandContext& ctx, std::unique_ptr<unsigned char[]>& inputBuffer, int length, const std::unique_ptr<unsigned char[]>& symmetricKey, std::string& ogCommand, std::vector<std::string>& commandContents)
+bool decryptCommand(CommandContext& ctx, const std::unique_ptr<unsigned char[]>& inputBuffer, int length, const std::unique_ptr<unsigned char[]>& symmetricKey, std::string& ogCommand, std::vector<std::string>& commandContents)
 {
 	int decLength = 0;
 	std::unique_ptr<unsigned char[]> decBuffer = std::make_unique<unsigned char[]>(COMMANDSIZE);
@@ -74,7 +74,7 @@ bool decryptCommand(CommandContext& ctx, std::unique_ptr<unsigned char[]>& input
 	* 	middle man decrypts tcp session key --> can't send to client because he can't sign as the server
 	* Clients are required to have the server's public sodium key ahead of time.
  */
-void initClient(CommandContext& ctx, std::unique_ptr<unsigned char[]>& inputBufferArray, int amountRead, const std::unique_ptr<unsigned char[]>& sodiumPublicKey, const std::unique_ptr<unsigned char[]>& sodiumPrivateKey)
+void initClient(CommandContext& ctx, const std::unique_ptr<unsigned char[]>& inputBufferArray, int amountRead, const std::unique_ptr<unsigned char[]>& sodiumPublicKey, const std::unique_ptr<unsigned char[]>& sodiumPrivateKey)
 {
 	const std::string ip = ipFromFd(ctx.getFd());
 	std::unique_ptr<unsigned char[]> decryptedInputBuffer = std::make_unique<unsigned char[]>(COMMANDSIZE);//need to have space for malicious input that may be as long as the whole buffer

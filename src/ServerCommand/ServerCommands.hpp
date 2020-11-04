@@ -18,8 +18,8 @@
 #include "CommandContext.hpp"
 #include "CommandUtils.hpp"
 
-bool decryptCommand(CommandContext& ctx, std::unique_ptr<unsigned char[]>& inputBuffer, int length, const std::unique_ptr<unsigned char[]>& symmetricKey, std::string& ogCommand, std::vector<std::string>& commandContents);
-void initClient(CommandContext& ctx, std::unique_ptr<unsigned char[]>& inputBufferArray, int amountRead, const std::unique_ptr<unsigned char[]>& sodiumPublicKey, const std::unique_ptr<unsigned char[]>& sodiumPrivateKey);
+bool decryptCommand(CommandContext& ctx, const std::unique_ptr<unsigned char[]>& inputBuffer, int length, const std::unique_ptr<unsigned char[]>& symmetricKey, std::string& ogCommand, std::vector<std::string>& commandContents);
+void initClient(CommandContext& ctx, const std::unique_ptr<unsigned char[]>& inputBufferArray, int amountRead, const std::unique_ptr<unsigned char[]>& sodiumPublicKey, const std::unique_ptr<unsigned char[]>& sodiumPrivateKey);
 void login1(CommandContext& ctx, const std::unique_ptr<unsigned char[]>& sodiumPrivateKey);
 void login2(CommandContext& ctx);
 void cmdCall(CommandContext& ctx);

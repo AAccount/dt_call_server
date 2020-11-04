@@ -1,6 +1,6 @@
 #include "UdpCommand.hpp"
 
-bool udpDecrypt(UdpContext& ctx, std::unique_ptr<unsigned char[]>& mediaBuffer, int receivedLength)
+bool udpDecrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBuffer, int receivedLength)
 {
 	Logger* logger = ctx.getLogger();
 	const std::string ip = std::string(inet_ntoa(ctx.getSender().sin_addr));
@@ -115,7 +115,7 @@ void udpAck(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& c
 	}
 }
 
-void udpCall(UdpContext& ctx, std::unique_ptr<unsigned char[]> &mediaBuffer, int receivedLength)
+void udpCall(UdpContext& ctx, const std::unique_ptr<unsigned char[]> &mediaBuffer, int receivedLength)
 {
 	UserUtils* userUtils = ctx.getUserUtils();
 	std::string user = ctx.getUser();

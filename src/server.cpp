@@ -7,11 +7,9 @@
 
 #include "server.hpp"
 
-//associates socket descriptors to their ssl structs
-std::unordered_map<int, std::unique_ptr<Client>> clients;
-
 int main(int argc, char* argv[])
 {
+	std::unordered_map<int, std::unique_ptr<Client>> clients;
 	const std::unique_ptr<unsigned char[]> sodiumPublicKey = std::make_unique<unsigned char[]>(crypto_box_PUBLICKEYBYTES);
 	const std::unique_ptr<unsigned char[]> sodiumPrivateKey = std::make_unique<unsigned char[]>(crypto_box_SECRETKEYBYTES);
 	int cmdFD, mediaFd;
@@ -22,12 +20,12 @@ int main(int argc, char* argv[])
 
 	try
 	{
-		std::thread udpThreadObj(udpThread, mediaFd, std::ref(sodiumPublicKey), std::ref(sodiumPrivateKey));
+		std::thread udpThreadObj(udpThread, mediaFd, std::ref(sodiumPublicKey), std::ref(sodiumPrivateKey), std::ref(clients));
 		udpThreadObj.detach();
 	}
 	catch(std::system_error& e)
 	{
-		std::string error = "cannot create the udp thread (" + std::string(e.what()) + ") ";
+		const std::string error = "cannot create the udp thread (" + std::string(e.what()) + ") ";
 		logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 		exit(1);
 	}
@@ -48,27 +46,25 @@ int main(int argc, char* argv[])
 
 		if(select(maxsd+1, &readfds, NULL, NULL, NULL) < 0)
 		{
-			std::string error = "read fds select system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
+			const std::string error = "read fds select system call error (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 			logger->insertLog(Log(Log::TAG::STARTUP, error, Log::SELF(), Log::TYPE::ERROR, Log::SELFIP()).toString());
 			exit(1); //see call thread fx for why
 		}
 
 		if(FD_ISSET(cmdFD, &readfds))
 		{
-			struct timeval unauthTimeout; //for new sockets
-			unauthTimeout.tv_sec = 0;
-			unauthTimeout.tv_usec = UNAUTHTIMEOUT;
-			socketAccept(cmdFD, &unauthTimeout);
+			socketAccept(cmdFD, clients);
 		}
 
 		std::vector<int> removals;
 		for(const auto& clientTableEntry : clients)
 		{
-			int fd = clientTableEntry.first;
+			const int fd = clientTableEntry.first;
 			Client* client = clientTableEntry.second.get();
-			std::unique_ptr<unsigned char[]> inputBuffer = std::make_unique<unsigned char[]>(COMMANDSIZE);
+			
 			if(FD_ISSET(fd, &readfds))
 			{
+				const std::unique_ptr<unsigned char[]> inputBuffer = std::make_unique<unsigned char[]>(COMMANDSIZE);
 				const int amountRead = read(clientTableEntry.first, inputBuffer.get(), COMMANDSIZE);
 				if(amountRead < 1)
 				{
@@ -140,7 +136,7 @@ int main(int argc, char* argv[])
 			{
 				if(clients.count(deadSock) > 0)
 				{
-					removeClient(deadSock);
+					removeClient(deadSock, clients);
 				}
 			}
 			removals.clear();
@@ -152,14 +148,14 @@ int main(int argc, char* argv[])
 	return 0; 
 }
 
-void udpThread(int mediaFd, const std::unique_ptr<unsigned char[]>& publicKey, const std::unique_ptr<unsigned char[]>& privateKey)
+void udpThread(int mediaFd, const std::unique_ptr<unsigned char[]>& publicKey, const std::unique_ptr<unsigned char[]>& privateKey, std::unordered_map<int, std::unique_ptr<Client>>& clients)
 {
 	UserUtils* userUtils = UserUtils::getInstance();
 	Logger* logger = Logger::getInstance();
 
 	while(true)
 	{
-		std::unique_ptr<unsigned char[]> mediaBuffer = std::make_unique<unsigned char[]>(MEDIASIZE);
+		const std::unique_ptr<unsigned char[]> mediaBuffer = std::make_unique<unsigned char[]>(MEDIASIZE);
 		struct sockaddr_in sender;
 		socklen_t senderLength = sizeof(struct sockaddr_in);
 
@@ -193,7 +189,7 @@ void udpThread(int mediaFd, const std::unique_ptr<unsigned char[]>& publicKey, c
 	}
 }
 
-void removeClient(int fd)
+void removeClient(int fd, std::unordered_map<int, std::unique_ptr<Client>>& clients)
 {
 	UserUtils* userUtils = UserUtils::getInstance();
 	const std::string uname = userUtils->userFromCommandFd(fd);
@@ -205,7 +201,7 @@ void removeClient(int fd)
 	userUtils->clearSession(uname, true);
 }
 
-void socketAccept(int cmdFD, struct timeval* unauthTimeout)
+void socketAccept(int cmdFD, std::unordered_map<int, std::unique_ptr<Client>>& clients)
 {
 	Logger* logger = Logger::getInstance();
 
@@ -222,7 +218,10 @@ void socketAccept(int cmdFD, struct timeval* unauthTimeout)
 	const std::string ip = inet_ntoa(cli_addr.sin_addr);
 
 	//for new sockets that nobody owns, don't give much leniency for timeouts
-	if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*)unauthTimeout, sizeof(struct timeval)) < 0)
+	struct timeval unauthTimeout;
+	unauthTimeout.tv_sec = 0;
+	unauthTimeout.tv_usec = UNAUTHTIMEOUT;
+	if(setsockopt(incomingCmd, SOL_SOCKET, SO_RCVTIMEO, (char*)&unauthTimeout, sizeof(struct timeval)) < 0)
 	{
 		const std::string error = "cannot set timeout for incoming command socket (" + std::to_string(errno) + ") " + std::string(strerror(errno));
 		logger->insertLog(Log(Log::TAG::INCOMINGCMD, error, Log::SELF(), Log::TYPE::ERROR, ip).toString());

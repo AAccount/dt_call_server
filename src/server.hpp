@@ -47,10 +47,10 @@
 void sendCallEnd(const std::string& user);
 
 //dedicated function for handling a call. each call is processed on this thread.
-void udpThread(int port, const std::unique_ptr<unsigned char[]>& publicKey, const std::unique_ptr<unsigned char[]>& privateKey);
+void udpThread(int port, const std::unique_ptr<unsigned char[]>& publicKey, const std::unique_ptr<unsigned char[]>& privateKey, std::unordered_map<int, std::unique_ptr<Client>>& clients);
 
 //remove a client's command and media or only media depending what kind of sd is given
-void removeClient(int sd);
+void removeClient(int sd, std::unordered_map<int, std::unique_ptr<Client>>& clients);
 
 //verify the call is real and not a malicious hand crafted command
 //persona is the one who will be sent an invalid command if it is not real.
@@ -61,9 +61,9 @@ bool isRealCall(const std::string& persona, const std::string& personb, Log::TAG
 void write2Client(const std::string&, int sd);
 
 //get the ip address of a socket descriptor in human readable 192.168.1.1 format
-std::string ipFromFd(int sd);
+std::string ipFromFd(int sd, std::unordered_map<int, std::unique_ptr<Client>>& clients);
 
 //accept ssl commands from the command socket
-void socketAccept(int cmdFD, struct timeval* unauthTimeout);
+void socketAccept(int cmdFD, std::unordered_map<int, std::unique_ptr<Client>>& clients);
 
 #endif

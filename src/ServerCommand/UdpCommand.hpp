@@ -11,9 +11,9 @@
 #include "UdpContext.hpp"
 #include "../User/Client.hpp"
 
-bool udpDecrypt(UdpContext& ctx, std::unique_ptr<unsigned char[]>& mediaBuffer, int receivedLength);
+bool udpDecrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBuffer, int receivedLength);
 void udpRegister(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap);
 void udpAck(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap);
-void udpCall(UdpContext& ctx, std::unique_ptr<unsigned char[]> &mediaBuffer, int receivedLength);
+void udpCall(UdpContext& ctx, const std::unique_ptr<unsigned char[]> &mediaBuffer, int receivedLength);
 
 #endif
