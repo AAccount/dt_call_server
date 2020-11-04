@@ -96,11 +96,11 @@ int main(int argc, char* argv[])
 				const std::string command = commandContents.at(1);
 				if (command == "login1")
 				{
-					login1(preDecryptCtx, sodiumPrivateKey);
+					login1(postDecryptCtx, sodiumPrivateKey);
 				}
 				else if (command == "login2")
 				{ 
-					login2(preDecryptCtx);
+					login2(postDecryptCtx);
 				}
 				else if (command == "call")
 				{
