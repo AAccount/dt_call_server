@@ -12,6 +12,7 @@
 #include <fstream>
 #include <queue>
 #include <thread>
+#include <filesystem>
 #include <string.h>
 #include "BlockingQ.hpp"
 #include "../ServerUtils.hpp"

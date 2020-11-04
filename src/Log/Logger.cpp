@@ -40,7 +40,7 @@ folder(logLocation),
 logTimeT(time(NULL)),
 q()
 {
-	if(!ServerUtils::fileExists(logLocation))
+	if(!std::filesystem::exists(logLocation))
 	{
 		std::cerr << "Log folder doesn't exist: " << logLocation << "\n";
 		exit(1);

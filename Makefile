@@ -2,6 +2,7 @@
 MATH = -lm
 PTHREAD = -pthread
 SODIUM = -lsodium
+FS = -lstdc++fs
 
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Linux)
@@ -29,7 +30,7 @@ OBJS = server.o server_init.o UserUtils.o Log.o ServerUtils.o User.o Client.o so
 TARGET = dtoperator
 
 all: ${OBJS}
-	${CXX} ${CFLAGS} ${LDFLAGS} -o ${TARGET} ${OBJS} ${MATH} ${PTHREAD} ${SODIUM} ${INC} ${LIB}
+	${CXX} ${CFLAGS} ${LDFLAGS} -o ${TARGET} ${OBJS} ${MATH} ${PTHREAD} ${SODIUM} ${FS} ${INC} ${LIB}
 
 Log.o : src/Log/Log.cpp src/Log/Log.hpp
 	${CXX} ${CFLAGS} -c src/Log/Log.cpp ${INC}

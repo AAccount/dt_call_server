@@ -36,7 +36,7 @@ void readServerConfig(const std::string& settingsLocation, int& cmdPort, int& me
 {
 	const std::string FILE_NAME = "dtoperator.conf";
 	const std::string fileLocation = settingsLocation + "/" + FILE_NAME;
-	if(!ServerUtils::fileExists(fileLocation))
+	if(!std::filesystem::exists(fileLocation))
 	{
 		std::cerr << "config file " << FILE_NAME << " not found in " << fileLocation << "\n";
 		exit(1);

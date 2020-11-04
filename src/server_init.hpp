@@ -10,6 +10,7 @@
 #include <sstream>
 #include <iostream>
 #include <string>
+#include <filesystem>
 
 #include <sodium.h>
 #include <signal.h>

@@ -34,7 +34,7 @@ UserUtils* UserUtils::getInstance()
 UserUtils::UserUtils()
 {
 	//generate all user objects and have them accessible by name
-	if(!ServerUtils::fileExists(usersFileLocation))
+	if(!std::filesystem::exists(usersFileLocation))
 	{
 		std::cerr << "Users file does not exist: " << usersFileLocation << "\n";
 		exit(1);

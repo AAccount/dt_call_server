@@ -15,6 +15,8 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <filesystem>
+
 #include <time.h>
 #include <stdint.h>
 #include <sodium.h>
@@ -29,9 +31,6 @@ namespace ServerUtils
 	//verify basic key file formatting based on header and string length
 	std::string dumpSmallFile(const std::string& path);
 	
-	//check if a file exists
-	bool fileExists(const std::string& path);
-
 	std::string printErrno();
 };
 

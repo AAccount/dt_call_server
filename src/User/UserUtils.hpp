@@ -18,6 +18,7 @@
 #include <cstring>
 #include <random>
 #include <queue>
+#include <filesystem>
 
 #include <sodium.h>
 #include <stdio.h>
