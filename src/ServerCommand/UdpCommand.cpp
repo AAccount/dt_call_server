@@ -1,6 +1,6 @@
 #include "UdpCommand.hpp"
 
-bool udpDecrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBuffer, int receivedLength)
+bool UdpCommand::decrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBuffer, int receivedLength)
 {
 	Logger* logger = ctx.getLogger();
 	const std::string ip = std::string(inet_ntoa(ctx.getSender().sin_addr));
@@ -17,7 +17,7 @@ bool udpDecrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBu
 	}
 
 	std::string registration((char *)decrypted);
-	if (!legitimateAscii((unsigned char *)registration.c_str(), registration.length()))
+	if (!CommandUtils::legitimateAscii((unsigned char *)registration.c_str(), registration.length()))
 	{
 		const std::string error = "udp unseal ok, bad ascii";
 		logger->insertLog(Log(Log::TAG::UDPTHREAD, error, user, Log::TYPE::ERROR, ip).toString());
@@ -25,7 +25,7 @@ bool udpDecrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBu
 	}
 
 	std::string ogregistration = registration;
-	std::vector<std::string> registrationParsed = parse((unsigned char *)registration.c_str());
+	std::vector<std::string> registrationParsed = CommandUtils::parse((unsigned char *)registration.c_str());
 	if (registrationParsed.size() != REGISTRATION_SEGMENTS)
 	{
 		const std::string error = "udp unseal ok, ascii ok, bad format: " + ogregistration;
@@ -38,7 +38,7 @@ bool udpDecrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBu
 	return true;
 }
 
-void udpRegister(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap)
+void UdpCommand::registerUser(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap)
 {
 	UserUtils* userUtils = ctx.getUserUtils();
 	Logger* logger = ctx.getLogger();
@@ -50,7 +50,7 @@ void udpRegister(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client
 
 	const std::string sessionkey = registrationParsed.at(1);
 	std::string user = userUtils->userFromSessionKey(sessionkey);
-	const bool timestampOK = checkTimestamp(registrationParsed.at(0), Log::TAG::UDPTHREAD, ogRegistration, user, ip);
+	const bool timestampOK = CommandUtils::checkTimestamp(registrationParsed.at(0), Log::TAG::UDPTHREAD, ogRegistration, user, ip);
 	if (!timestampOK)
 	{
 		const std::string error = "udp unseal ok, ascii ok, format ok, bad timestamp " + ogRegistration;
@@ -78,10 +78,10 @@ void udpRegister(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client
 	}
 
 	ctx.setUser(user);
-	udpAck(ctx, clientMap);
+	ack(ctx, clientMap);
 }
 
-void udpAck(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap)
+void UdpCommand::ack(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap)
 {
 	UserUtils* userUtils = ctx.getUserUtils();
 	Logger* logger = ctx.getLogger();
@@ -90,7 +90,7 @@ void udpAck(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& c
 	const std::string user = ctx.getUser();
 
 	//create and encrypt ack
-	const std::string ack = unixTs();
+	const std::string ack = CommandUtils::unixTs();
 	std::unique_ptr<unsigned char[]> ackEnc = std::make_unique<unsigned char[]>(COMMANDSIZE);
 	int encLength = 0;
 	const int userCmdPort = userUtils->getCommandFd(user);
@@ -114,7 +114,7 @@ void udpAck(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& c
 	}
 }
 
-void udpCall(UdpContext& ctx, const std::unique_ptr<unsigned char[]> &mediaBuffer, int receivedLength)
+void UdpCommand::call(UdpContext& ctx, const std::unique_ptr<unsigned char[]> &mediaBuffer, int receivedLength)
 {
 	UserUtils* userUtils = ctx.getUserUtils();
 	std::string user = ctx.getUser();

@@ -21,7 +21,6 @@ const int REGISTRATION_SEGMENTS = 2;
 //java 1 byte ignored character
 inline const std::string JBYTE = "D";
 
-//timeouts
 const int UNAUTHTIMEOUT = 500000; //microseconds
 const int AUTHTIMEOUT = 2; //seconds
 

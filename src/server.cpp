@@ -77,13 +77,13 @@ int main(int argc, char* argv[])
 
 				if(client->isNew())
 				{
-					initClient(preDecryptCtx, inputBuffer, amountRead, sodiumPublicKey, sodiumPrivateKey);
+					ServerCommand::initClient(preDecryptCtx, inputBuffer, amountRead, sodiumPublicKey, sodiumPrivateKey);
 					continue; //sent the initial key. nothing left to do for this client
 				}
 
 				std::vector<std::string> commandContents;
 				std::string originalBufferCmd;
-				if(!decryptCommand(preDecryptCtx, inputBuffer, amountRead, client->getSymmetricKey(), originalBufferCmd, commandContents))
+				if(!ServerCommand::decrypt(preDecryptCtx, inputBuffer, amountRead, client->getSymmetricKey(), originalBufferCmd, commandContents))
 				{
 					continue;
 				}
@@ -92,36 +92,36 @@ int main(int argc, char* argv[])
 				const std::string command = commandContents.at(1);
 				if (command == "login1")
 				{
-					login1(postDecryptCtx, sodiumPrivateKey);
+					ServerCommand::login1(postDecryptCtx, sodiumPrivateKey);
 				}
 				else if (command == "login2")
 				{ 
-					login2(postDecryptCtx);
+					ServerCommand::login2(postDecryptCtx);
 				}
 				else if (command == "call")
 				{
-					cmdCall(postDecryptCtx);
+					ServerCommand::call(postDecryptCtx);
 				}
 				else if (command == "accept")
 				{					
-					cmdAccept(postDecryptCtx);
+					ServerCommand::accept(postDecryptCtx);
 				}
 				else if (command == "passthrough")
 				{
-					cmdPassthrough(postDecryptCtx);
+					ServerCommand::passthrough(postDecryptCtx);
 				}
 				else if (command == "ready")
 				{				
-					cmdReady(postDecryptCtx);
+					ServerCommand::ready(postDecryptCtx);
 				}
 				else if (command == "end")
 				{ 
-					cmdEnd(postDecryptCtx);
+					ServerCommand::end(postDecryptCtx);
 				}
 				else
 				{
-					const std::string ip = ipFromFd(fd);
-					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, userUtils->userFromCommandFd(clientTableEntry.first), Log::TYPE::INBOUND, ip).toString());
+					const std::string ip = ServerCommand::ipFromFd(fd);
+					logger->insertLog(Log(Log::TAG::BADCMD, originalBufferCmd, user, Log::TYPE::INBOUND, ip).toString());
 				}
 			}
 		}
@@ -176,15 +176,15 @@ void udpThread(int mediaFd, const std::unique_ptr<unsigned char[]>& publicKey, c
 		{
 			//input: [sodium seal bytes[nonce|message length|encrypted]]
 			UdpContext initCtx(logger, userUtils, publicKey, privateKey, sender, senderLength, mediaFd, user);
-			if(udpDecrypt(initCtx, mediaBuffer, receivedLength))
+			if(UdpCommand::decrypt(initCtx, mediaBuffer, receivedLength))
 			{
-				udpRegister(initCtx, clients);
+				UdpCommand::registerUser(initCtx, clients);
 			}
 		}
 		else if(state == INCALL)
 		{
 			UdpContext ctx(logger, userUtils, publicKey, privateKey, sender, senderLength, mediaFd, user);
-			udpCall(ctx, mediaBuffer, receivedLength);
+			UdpCommand::call(ctx, mediaBuffer, receivedLength);
 		}
 	}
 }

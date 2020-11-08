@@ -12,9 +12,11 @@
 #include "../User/Client.hpp"
 #include "../ServerUtils.hpp"
 
-bool udpDecrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBuffer, int receivedLength);
-void udpRegister(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap);
-void udpAck(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap);
-void udpCall(UdpContext& ctx, const std::unique_ptr<unsigned char[]> &mediaBuffer, int receivedLength);
-
+namespace UdpCommand
+{
+	bool decrypt(UdpContext& ctx, const std::unique_ptr<unsigned char[]>& mediaBuffer, int receivedLength);
+	void registerUser(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap);
+	void ack(UdpContext& ctx, std::unordered_map<int, std::unique_ptr<Client>>& clientMap);
+	void call(UdpContext& ctx, const std::unique_ptr<unsigned char[]> &mediaBuffer, int receivedLength);
+};
 #endif

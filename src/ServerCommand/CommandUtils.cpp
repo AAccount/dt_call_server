@@ -1,6 +1,6 @@
 #include "ServerCommands.hpp"
 
-bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string& errorMessage, const std::string& user, const std::string& ip)
+bool CommandUtils::checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string& errorMessage, const std::string& user, const std::string& ip)
 {
 	Logger* logger = Logger::getInstance();
 	try
@@ -43,7 +43,7 @@ bool checkTimestamp(const std::string& tsString, Log::TAG tag, const std::string
 	return true;
 }
 
-bool legitimateAscii(unsigned char* buffer, int length)
+bool CommandUtils::legitimateAscii(unsigned char* buffer, int length)
 {
 	for (int i = 0; i < length; i++)
 	{
@@ -64,7 +64,7 @@ bool legitimateAscii(unsigned char* buffer, int length)
 }
 
 //use a vector to prevent reading out of bounds
-std::vector<std::string> parse(unsigned char command[])
+std::vector<std::string> CommandUtils::parse(unsigned char command[])
 {
 //timestamp|login1|username
 //timestamp|login2|username|challenge_decrypted
@@ -92,7 +92,7 @@ std::vector<std::string> parse(unsigned char command[])
 	return result;
 }
 
-std::string unixTs()
+std::string CommandUtils::unixTs()
 {
 	const time_t now = time(NULL);
 	return std::to_string(now);
